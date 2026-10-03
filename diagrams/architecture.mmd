@@ -1,0 +1,29 @@
+flowchart TD
+    CH["Channels: app chat, web, WhatsApp, voice-STT"] --> GW["1 Gateway & Session Manager"]
+    GW --> IG["2 Input Guard"]
+    IG -->|blocked| OS
+    IG --> NLU["3 Language & NLU"]
+    NLU --> DST["4 Dialogue State Tracker"]
+    DST <--> POL["5 Dialogue Policy Engine"]
+    POL --> KR["6 Knowledge Retrieval"]
+    POL --> TO["7 Tool / Action Orchestrator"]
+    POL --> ER["8 Escalation Router"]
+    KR --> RG["9 Response Generator"]
+    TO --> RG
+    ER --> HA["Human agent queues"]
+    ER --> RG
+    POL --> RG
+    RG --> OS["10 Output Safety Layer"]
+    OS -->|fail: template, clarify, escalate| POL
+    OS --> CUST["Customer"]
+    TO --> BANK["Banking APIs: read-only and protective actions"]
+    GW -.-> AUD
+    IG -.-> AUD
+    NLU -.-> AUD
+    POL -.-> AUD
+    OS -.-> AUD
+    AUD["11 Audit & Telemetry Bus"] --> CLP["12 Continuous Learning Pipeline"]
+    CLP -.->|gated updates: KB, prompt layers 3-5, thresholds| POL
+    CLP -.-> KR
+    G["Guardian: immutable rules, can veto"] -.-> IG
+    G -.-> OS

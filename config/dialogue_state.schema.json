@@ -1,0 +1,191 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "nexbank/dialogue_state.schema.json",
+  "title": "NexBank DialogueState",
+  "description": "Authoritative per-conversation state. Never contains full card numbers, CVV, PIN, OTP or full Aadhaar.",
+  "type": "object",
+  "required": [
+    "conversation_id", "turn_index", "language", "intent", "slots", "history",
+    "sentiment", "auth_level", "guardrails", "escalation_proximity", "dialogue_phase"
+  ],
+  "properties": {
+    "conversation_id": { "type": "string" },
+    "customer_ref": { "type": "string", "description": "Pseudonymised customer identifier." },
+    "turn_index": { "type": "integer", "minimum": 0 },
+    "dialogue_phase": {
+      "type": "string",
+      "enum": ["INIT", "INTENT_DETECT", "CLARIFY", "AUTH_REQUIRED", "SLOT_FILL", "CONFIRM",
+               "EXECUTE", "RESPOND", "ESCALATING", "HANDOFF", "CLOSING", "FAIL_SAFE"]
+    },
+    "language": {
+      "type": "object",
+      "required": ["primary"],
+      "properties": {
+        "primary": { "type": "string", "enum": ["en", "hi", "hinglish", "ta", "te", "bn", "mr", "gu"] },
+        "code_switching": { "type": "boolean" },
+        "reply_language": { "type": "string" }
+      }
+    },
+    "intent": {
+      "type": "object",
+      "required": ["label", "confidence"],
+      "properties": {
+        "label": { "type": "string" },
+        "layer_path": {
+          "type": "array", "items": { "type": "string" }, "maxItems": 3,
+          "description": "[primary, secondary, tertiary]"
+        },
+        "confidence": { "type": "number", "minimum": 0, "maximum": 1 },
+        "layer_confidence": {
+          "type": "object",
+          "properties": {
+            "primary": { "type": "number" }, "secondary": { "type": "number" }, "tertiary": { "type": "number" }
+          }
+        },
+        "alternatives": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["label", "confidence"],
+            "properties": { "label": { "type": "string" }, "confidence": { "type": "number", "minimum": 0, "maximum": 1 } }
+          }
+        },
+        "multi_intent": { "type": "boolean" },
+        "out_of_scope": { "type": "boolean" },
+        "implicit": { "type": "boolean" }
+      }
+    },
+    "topic_stack": {
+      "type": "array",
+      "description": "Active topic on top; parked topics below.",
+      "items": {
+        "type": "object",
+        "required": ["intent", "status"],
+        "properties": {
+          "intent": { "type": "string" },
+          "status": { "type": "string", "enum": ["active", "parked", "resolved", "abandoned"] },
+          "slots_snapshot": { "type": "object" },
+          "parked_at_turn": { "type": "integer" },
+          "priority": { "type": "integer", "minimum": 0 }
+        }
+      }
+    },
+    "slots": {
+      "type": "object",
+      "description": "Keyed by slot name.",
+      "additionalProperties": {
+        "type": "object",
+        "required": ["status"],
+        "properties": {
+          "value": {},
+          "status": { "type": "string", "enum": ["empty", "filled", "inferred", "confirmed", "invalid", "conflicting"] },
+          "required": { "type": "boolean" },
+          "confidence": { "type": "number", "minimum": 0, "maximum": 1 },
+          "validated": { "type": "boolean" },
+          "sensitivity": { "type": "string", "enum": ["LOW", "MEDIUM", "HIGH", "CRITICAL"] },
+          "source_turn": { "type": "integer" }
+        }
+      }
+    },
+    "history": {
+      "type": "array",
+      "minItems": 0,
+      "description": "Rolling buffer, depth >= history_depth_min (20 turns). Older turns move into summary. Content is PII-masked.",
+      "items": {
+        "type": "object",
+        "required": ["turn", "speaker", "text_masked"],
+        "properties": {
+          "turn": { "type": "integer" },
+          "speaker": { "type": "string", "enum": ["customer", "agent", "human_agent", "system"] },
+          "text_masked": { "type": "string" },
+          "intent": { "type": "string" },
+          "action": { "type": "string" }
+        }
+      }
+    },
+    "history_depth": { "type": "integer", "minimum": 20, "default": 20 },
+    "summary": {
+      "type": "object",
+      "properties": {
+        "text": { "type": "string" },
+        "pinned_facts": { "type": "array", "items": { "type": "string" }, "description": "Always retained: auth state, confirmed slots, commitments, actions taken, complaints and unresolved issues." },
+        "updated_at_turn": { "type": "integer" }
+      }
+    },
+    "sentiment": {
+      "type": "object",
+      "required": ["current"],
+      "properties": {
+        "current": { "type": "number", "minimum": -1, "maximum": 1 },
+        "trajectory": { "type": "array", "items": { "type": "number", "minimum": -1, "maximum": 1 } },
+        "slope": { "type": "number" },
+        "emotions": {
+          "type": "array",
+          "items": { "type": "string", "enum": ["frustration", "anger", "confusion", "satisfaction", "urgency", "anxiety", "resignation"] }
+        },
+        "sarcasm_suspected": { "type": "boolean" }
+      }
+    },
+    "auth_level": { "type": "string", "enum": ["anonymous", "otp_verified", "biometric_verified", "full_kyc"] },
+    "auth_expiry": { "type": "string", "format": "date-time" },
+    "last_activity_at": { "type": "string", "format": "date-time" },
+    "pending_confirmation": {
+      "type": ["object", "null"],
+      "properties": {
+        "action": { "type": "string" },
+        "args_masked": { "type": "object" },
+        "prompted_at_turn": { "type": "integer" },
+        "expires_at": { "type": "string", "format": "date-time" }
+      }
+    },
+    "actions_taken": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["action", "turn", "result"],
+        "properties": {
+          "action": { "type": "string" }, "turn": { "type": "integer" },
+          "result": { "type": "string" }, "reference_id": { "type": "string" }
+        }
+      }
+    },
+    "guardrails": {
+      "type": "object",
+      "properties": {
+        "active": { "type": "array", "items": { "type": "string" } },
+        "triggered": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "rule_id": { "type": "string" }, "turn": { "type": "integer" },
+              "severity": { "type": "string", "enum": ["info", "warn", "block", "critical"] }
+            }
+          }
+        },
+        "advice_deflections": { "type": "integer", "minimum": 0 },
+        "injection_attempts": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "escalation_proximity": { "type": "number", "minimum": 0, "maximum": 1 },
+    "consecutive_low_conf": { "type": "integer", "minimum": 0 },
+    "human_request_count": { "type": "integer", "minimum": 0 },
+    "clarification_attempts": { "type": "integer", "minimum": 0 },
+    "carry_over": {
+      "type": "object",
+      "properties": {
+        "prior_conversation_ids": { "type": "array", "items": { "type": "string" } },
+        "open_tickets": { "type": "array", "items": { "type": "string" } },
+        "context_reusable_until": { "type": "string", "format": "date-time", "description": "Context (not auth) may be reused within 24 h (decision D-05)." }
+      }
+    },
+    "versions": {
+      "type": "object",
+      "properties": {
+        "prompt_version": { "type": "string" }, "model_version": { "type": "string" },
+        "kb_entry_ids": { "type": "array", "items": { "type": "string" } },
+        "state_version": { "type": "integer" }
+      }
+    }
+  }
+}

@@ -1,0 +1,20 @@
+flowchart LR
+    POL["Orchestrator / Policy Engine"] --> ACC["Account Agent"]
+    POL --> TXN["Transaction Agent"]
+    POL --> CRD["Card Agent"]
+    POL --> PRD["Product Info Agent"]
+    POL --> CMP["Complaint Agent"]
+    POL --> SEC["Security Agent"]
+    POL --> ESC["Escalation Agent"]
+    GUARD["Guardian (veto)"] -.-> POL
+
+    ACC --> t1["get_balance, get_statement, get_profile_masked"]
+    TXN --> t2["get_txn, search_txn, create_dispute_ticket"]
+    CRD --> t3["get_card_status, block_card (confirm), request_replacement (confirm)"]
+    PRD --> t4["kb_search, emi_calculator"]
+    CMP --> t5["create_complaint, get_complaint_status, schedule_callback"]
+    SEC --> t6["block_card, flag_fraud, send_credential_reset_link"]
+    ESC --> t7["route_to_queue, summarise_conversation"]
+
+    NOTE["No tool exists for fund transfer, nominee or KYC change, account closure"]
+    style NOTE fill:#fee,stroke:#c00

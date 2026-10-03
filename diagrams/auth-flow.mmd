@@ -1,0 +1,22 @@
+stateDiagram-v2
+    [*] --> anonymous
+    anonymous --> otp_pending: intent requires account data
+    otp_pending --> otp_verified: OTP correct
+    otp_pending --> otp_pending: wrong OTP (attempt 1 or 2)
+    otp_pending --> locked: 3 failed attempts
+    locked --> escalated_security: route to security queue
+    otp_verified --> biometric_verified: high-risk action and device biometric ok
+    otp_verified --> full_kyc: KYC-gated request and KYC check ok
+    biometric_verified --> full_kyc: KYC-gated request and KYC check ok
+    otp_verified --> anonymous: 5 min inactivity
+    biometric_verified --> anonymous: 5 min inactivity
+    full_kyc --> anonymous: 5 min inactivity
+    anonymous --> [*]
+
+    note right of otp_pending
+        The agent never asks the customer to
+        share an OTP in chat on voice or
+        social channels. The OTP is entered
+        in the secure in-app widget.
+        Never accepted: PIN, CVV, full card or full Aadhaar.
+    end note
