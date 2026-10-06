@@ -1,0 +1,36 @@
+stateDiagram-v2
+    [*] --> INIT
+    INIT --> INTENT_DETECT: first message passes Input Guard
+    INTENT_DETECT --> CLARIFY: confidence 0.40 to 0.70 or ambiguous pair
+    INTENT_DETECT --> AUTH_REQUIRED: intent needs higher auth than current
+    INTENT_DETECT --> SLOT_FILL: confidence >= 0.70 and required slots missing
+    INTENT_DETECT --> RESPOND: informational and all slots present
+    INTENT_DETECT --> ESCALATING: trigger fires (human request, safety, fraud)
+    INTENT_DETECT --> FAIL_SAFE: confidence < 0.40 counted toward ESC-003
+    CLARIFY --> INTENT_DETECT: customer replies
+    CLARIFY --> ESCALATING: 2 failed clarifications
+    AUTH_REQUIRED --> SLOT_FILL: auth succeeds
+    AUTH_REQUIRED --> RESPOND: auth succeeds and no slots needed
+    AUTH_REQUIRED --> ESCALATING: 3 failed attempts or fraud signal
+    AUTH_REQUIRED --> RESPOND: customer declines, offer public info only
+    SLOT_FILL --> SLOT_FILL: more slots needed
+    SLOT_FILL --> CONFIRM: action has side effects
+    SLOT_FILL --> RESPOND: read-only, slots complete
+    CONFIRM --> EXECUTE: explicit yes
+    CONFIRM --> RESPOND: no or timeout, action cancelled
+    EXECUTE --> RESPOND: tool ok or failed (honest status)
+    EXECUTE --> ESCALATING: tool failure on high-risk action
+    RESPOND --> INTENT_DETECT: next customer turn
+    RESPOND --> CLOSING: issue resolved and customer done
+    RESPOND --> ESCALATING: Output Safety block ladder exhausted
+    FAIL_SAFE --> CLARIFY: consecutive_low_conf 1 or 2
+    FAIL_SAFE --> ESCALATING: consecutive_low_conf >= 3
+    ESCALATING --> HANDOFF: package built, queue assigned
+    HANDOFF --> CLOSING: human accepted
+    CLOSING --> [*]
+
+    note right of INTENT_DETECT
+        Any state: 5 min idle expires auth.
+        Any state: topic switch pushes the
+        current topic onto the topic stack.
+    end note
