@@ -1,0 +1,19 @@
+%% Pair 6: CRD-001 (card block) vs SEC-001 (fraud report). See disambiguation.md section 7.
+%% Containment first: the block is common to both paths; the question decides whether a fraud case is also opened.
+flowchart TD
+  A(["Message: block my card / card problem"]) --> B{"Scam cue or not-me transactions<br/>stated up front?"}
+  B -- "yes" --> S["SEC-001 card_misuse: block is step 1,<br/>fraud case and ESC-001 P0 follow"]
+  B -- "no" --> C{"Physical-loss cue?<br/>lost, stolen, kho gaya, chori"}
+  C -- "yes" --> D["CRD-001 block_lost / block_stolen"]
+  C -- "no" --> E{"Plain block or freeze,<br/>'block my card', 'temporarily'"}
+  E -- "yes" --> F["CRD-001 block_temporary"]
+  E -- "no" --> G["CLARIFY Q1: 'Which card? ending ...' pick-list"]
+  G -- "card picked" --> H
+  D --> H["Pick card from list, never ask for full number<br/>explicit confirm, BLOCK NOW"]
+  F --> H
+  S --> H
+  H --> I["Post-block Q: 'Do you see any payments you didn't make?'"]
+  I -- "yes" --> J["Open SEC-001 card_misuse case<br/>ESC-001 P0 handoff, list the transactions"]
+  I -- "no" --> K{"Lost or stolen?"}
+  K -- "yes" --> L["Offer CRD-002 replacement, chain"]
+  K -- "no" --> M["Offer unblock path: CRD-001 unblock needs Biometric"]

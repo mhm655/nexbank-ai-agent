@@ -1,0 +1,721 @@
+# NexBank intent taxonomy (Day 4). Source of truth for intent IDs, entities, auth and safety ratings.
+# Brief refs: A2.2 (hierarchy, thresholds), A3.1-A3.3 (intent list), A4.2 (security rules), A6 (ESC triggers).
+# Thresholds: defaults here; the governed copy lives in config/parameters.yaml (Day 13, A12.3).
+# All data synthetic. Product facts come only from A13.1.
+
+schema_version: "1.0"
+
+primary_classes: [account, transaction, product, complaint, security, general]
+# Decision D-13: card intents (CRD-*) sit under primary `account` (secondary `card_*`) so the primary layer stays at the six classes A2.2 names.
+
+auth_levels:            # matches dialogue_state.schema.json auth_level enum, lowest to highest
+  - anonymous
+  - otp_verified
+  - biometric_verified
+  - full_kyc
+safety_ratings: [LOW, MEDIUM, HIGH, CRITICAL]
+
+thresholds:             # per layer (see docs/architecture/nlu-pipeline-overview.md section 3)
+  primary:   { act: 0.85, clarify_floor: 0.50 }
+  secondary: { act: 0.70, clarify_floor: 0.40 }   # act = intent_confidence_threshold (A12.3); floor = D-06
+  tertiary:  { act: 0.65, clarify_floor: 0.40 }
+  safety_elevated:      # applies when safety is HIGH or CRITICAL and the action is a write, protective_write or ticket
+    secondary_act: 0.85
+    always_confirm: true
+  flow_entry_overrides: # asymmetric gates: entering a protective or safety flow needs less confidence than executing an action
+    SEC-001: 0.50       # fraud flow (empathy, P0 prep, questions); any protective action still needs explicit confirmation
+    SEC-004: 0.50
+    GEN-007: 0.50       # crisis flow; the Input Guard also screens independently
+    GEN-003: 0.50       # human request is honoured on weak evidence
+    PRD-005: 0.50       # advice boundary language applies on weak evidence (advice detector)
+  ambiguity_gap: 0.15   # top-2 within this gap on the same layer forces CLARIFY (dialogue-management.md transition guards)
+  max_clarification_turns: 2   # per ambiguity; then safe default or human (dialogue-management.md section 4.4)
+  multi_intent_second_min: 0.60
+
+# Field notes
+#   auth                 : level needed for account-specific data or action. generic_info_auth: level for generic (non-personal) KB answers.
+#   action               : info | read | ticket | protective_write | write | self_service_link | handoff
+#   confirmation         : none | soft | explicit   (A9 Pattern 3; explicit = summary + yes/no before acting)
+#   mi_rank              : multi-intent handling order, lowest first (see nlu-pipeline-overview.md section 4)
+#   required_entities    : list; an item of the form {any_of: [...]} is satisfied by one member.
+#   kb_gap               : true where A13.1 holds no data, so the agent must not state figures (hallucination trap)
+
+intents:
+
+# ---------------------------------------------------------------- ACCOUNT: account management (A3.1)
+- id: ACC-001
+  name: Check Account Balance
+  primary: account
+  secondary: balance_check
+  tertiary: [current_balance, available_balance, all_accounts_summary]
+  required_entities: [{any_of: [account_id, account_type]}]
+  optional_entities: [date]
+  auth: otp_verified
+  generic_info_auth: anonymous
+  safety: LOW
+  action: read
+  agent: Account Agent
+  confirmation: none
+  mi_rank: 5
+  escalation: []
+  notes: "Balance is rendered by template with masked account (A2.4). Default when the customer holds one account: use it. Answer only the balance (anti-pattern Information Dump)."
+
+- id: ACC-002
+  name: Request Account Statement
+  primary: account
+  secondary: statement_request
+  tertiary: [in_app_download, email_statement, mini_statement_last_n, interest_certificate]
+  required_entities: [account_id, date_range, statement_format]
+  optional_entities: [email]
+  auth: otp_verified
+  safety: LOW
+  action: read
+  agent: Account Agent
+  confirmation: soft
+  mi_rank: 5
+  escalation: []
+  notes: "Defaults are date_range=last 30 days, format=PDF, destination=registered email only. Never send to a new address in the same turn (rule 2)."
+
+- id: ACC-003
+  name: Update Contact Details
+  primary: account
+  secondary: update_contact
+  tertiary: [phone_number, email_address]
+  required_entities: [field_to_update, new_value]
+  optional_entities: []
+  auth: biometric_verified
+  safety: HIGH
+  action: write
+  agent: Account Agent
+  confirmation: explicit
+  mi_rank: 5
+  escalation: []
+  notes: "Out-of-band OTP to both the old and new contact. Pair ACC-003 vs ACC-004. A cooling-off notice is sent to the old contact. Contact change is a classic account-takeover signal; ESC-009 if the customer reports not having requested it."
+
+- id: ACC-004
+  name: Update Mailing Address
+  primary: account
+  secondary: update_mailing_address
+  tertiary: [communication_address, residential_address_change]
+  required_entities: [new_address, proof_document]
+  optional_entities: [field_to_update]
+  auth: biometric_verified
+  safety: HIGH
+  action: self_service_link
+  agent: Account Agent
+  confirmation: explicit
+  mi_rank: 5
+  escalation: []
+  notes: "The agent collects intent and address text but the proof document is uploaded through the secure in-app flow only; the chat never receives the image. A residential-address change that alters KYC records is treated as ACC-008 and handled there."
+
+- id: ACC-005
+  name: Account Closure Request
+  primary: account
+  secondary: account_closure
+  tertiary: [closure_request, closure_process_enquiry]
+  required_entities: [account_id, close_reason, confirmation]
+  optional_entities: []
+  auth: full_kyc
+  safety: CRITICAL
+  action: handoff
+  agent: Escalation Agent
+  confirmation: explicit
+  mi_rank: 5
+  escalation: [ESC-007]
+  notes: "Branch only (A3.1 says Full KYC + Branch). No closure tool exists (system-architecture hard rule). The agent records the reason, gives the process, and hands off. ESC-007 when the balance is above INR 5 lakh. Retention is a human conversation; the agent must not argue or pressure the customer."
+
+- id: ACC-006
+  name: Nominee Update
+  primary: account
+  secondary: nominee_update
+  tertiary: [add_nominee, change_nominee, remove_nominee, nominee_status_enquiry]
+  required_entities: [nominee_name, relationship, id_proof_type]
+  optional_entities: [account_id]
+  auth: full_kyc
+  safety: CRITICAL
+  action: handoff
+  agent: Escalation Agent
+  confirmation: explicit
+  mi_rank: 5
+  escalation: []
+  notes: "No tool changes a nominee (hard rule). The agent explains the branch or assisted process and creates a callback. The nominee enquiry tertiary (who is my nominee) is answered with masked name only after full_kyc."
+
+- id: ACC-007
+  name: Account Upgrade / Downgrade
+  primary: account
+  secondary: account_type_change
+  tertiary: [upgrade, downgrade, eligibility_info]
+  required_entities: [current_account_type, desired_account_type]
+  optional_entities: []
+  auth: otp_verified
+  generic_info_auth: anonymous
+  safety: MEDIUM
+  action: self_service_link
+  agent: Account Agent
+  confirmation: explicit
+  kb_gap: true
+  mi_rank: 5
+  escalation: []
+  notes: "A13.1 lists only NexSave Savings Account, so no named variants exist. Answer only from KB entries; if the desired type is not in the KB, say so and offer a human (Graceful Degradation)."
+
+- id: ACC-008
+  name: KYC Update and Documents
+  primary: account
+  secondary: kyc_update
+  tertiary: [document_update, rekyc_status, kyc_requirements_info]
+  required_entities: [kyc_document_type]
+  optional_entities: [account_id, aadhaar_last4, pan]
+  auth: biometric_verified
+  generic_info_auth: anonymous
+  safety: HIGH
+  action: self_service_link
+  agent: Account Agent
+  confirmation: soft
+  mi_rank: 5
+  escalation: []
+  notes: "Added beyond A3 because \"KYC Update & Documents\" is a data-package category (45 transcripts, A1.2). The agent states requirements and status and links the secure flow. It never changes KYC records (hard rule) and never accepts a full Aadhaar or a full PAN in chat."
+
+# ---------------------------------------------------------------- TRANSACTION (A3.2)
+- id: TXN-001
+  name: Transaction Status Enquiry
+  primary: transaction
+  secondary: status_enquiry
+  tertiary: [by_transaction_id, by_description, recent_transactions]
+  required_entities: [{any_of: [transaction_id, txn_description]}]
+  optional_entities: [amount, date, merchant_name]
+  auth: otp_verified
+  safety: LOW
+  action: read
+  agent: Transaction Agent
+  confirmation: none
+  mi_rank: 5
+  escalation: [ESC-014]
+  notes: "Pair TXN-001 vs TXN-002. If the lookup tool fails, ESC-014 applies after one retry."
+
+- id: TXN-002
+  name: Raise Transaction Dispute
+  primary: transaction
+  secondary: dispute
+  tertiary: [merchant_error, duplicate_charge, unrecognised_charge, wrong_amount, refund_not_received, cash_not_dispensed]
+  required_entities: [transaction_id, dispute_reason, amount]
+  optional_entities: [merchant_name, date]
+  auth: otp_verified
+  safety: HIGH
+  action: ticket
+  agent: Transaction Agent
+  confirmation: explicit
+  mi_rank: 4
+  escalation: [ESC-005, ESC-001]
+  notes: "Tertiary names follow the brief's example (merchant_error vs duplicate_charge). unrecognised_charge is the bridge to SEC-001 (pair 5). ESC-005 when amount exceeds INR 50,000. Intake only; the agent never promises a refund or a date (D-09). Avg 8.7 turns, so slot memory matters."
+
+- id: TXN-003
+  name: UPI Payment Failure
+  primary: transaction
+  secondary: upi_failure
+  tertiary: [debited_not_credited, payment_pending, payment_declined, wrong_beneficiary_payment]
+  required_entities: [upi_ref, beneficiary_name, amount, date]
+  optional_entities: [upi_id]
+  auth: otp_verified
+  safety: MEDIUM
+  action: read
+  agent: Transaction Agent
+  confirmation: soft
+  mi_rank: 4
+  escalation: [ESC-014]
+  notes: "The agent can read status and open a ticket; it cannot reverse or retry a payment (rule 3). wrong_beneficiary_payment gets an informational answer and a ticket, not a promise of recovery. Persona Priya."
+
+- id: TXN-004
+  name: NEFT/RTGS Status Check
+  primary: transaction
+  secondary: neft_rtgs_status
+  tertiary: [neft, rtgs]
+  required_entities: [neft_ref, beneficiary_bank]
+  optional_entities: [amount, date]
+  auth: otp_verified
+  safety: LOW
+  action: read
+  agent: Transaction Agent
+  confirmation: none
+  mi_rank: 5
+  escalation: [ESC-014]
+  notes: "Timelines are quoted only if the status tool returns them (D-09)."
+
+- id: TXN-005
+  name: Recurring Payment Setup/Cancel
+  primary: transaction
+  secondary: recurring_payment
+  tertiary: [setup_info, cancel, modify_info, status]
+  required_entities: [beneficiary_name, amount, frequency]
+  optional_entities: [upi_id]
+  auth: biometric_verified
+  safety: HIGH
+  action: write
+  agent: Transaction Agent
+  confirmation: explicit
+  mi_rank: 5
+  escalation: []
+  notes: "Decision D-15. setup is never executed by the agent (it would facilitate a payment, rule 3); the agent explains and links the in-app flow where the customer authorises with biometrics. cancel is a stop-only, non-fund-moving state change and is allowed after biometric auth and explicit confirmation. modify is treated as setup."
+
+- id: TXN-006
+  name: International Transfer Enquiry
+  primary: transaction
+  secondary: international_transfer_enquiry
+  tertiary: [process_info, charges_and_limits_info, existing_transfer_status, forex_rate_info]
+  required_entities: [amount, currency, destination_country]
+  optional_entities: [date]
+  auth: full_kyc
+  generic_info_auth: anonymous
+  safety: HIGH
+  action: info
+  agent: Transaction Agent
+  confirmation: none
+  mi_rank: 5
+  escalation: [ESC-012, ESC-013]
+  notes: "Information only; the agent never initiates a transfer. Forex timing talk becomes PRD-005 (forex_timing_advice). Unusual structuring or sanction-linked destinations feed ESC-012. Persona Arjun. Charges and limits are KB-only; none are in A13.1."
+
+# ---------------------------------------------------------------- CARD (CRD-*) under primary: account (A3.3)
+- id: CRD-001
+  name: Block / Unblock Card
+  primary: account
+  secondary: card_block
+  tertiary: [block_lost, block_stolen, block_temporary, unblock, block_after_fraud]
+  required_entities: [card_last4, block_reason]
+  optional_entities: [card_type]
+  auth: otp_verified            # unblock steps up to biometric_verified (tertiary override)
+  tertiary_auth_override: { unblock: biometric_verified }
+  safety: HIGH
+  action: protective_write
+  agent: Card Agent
+  confirmation: explicit
+  mi_rank: 2
+  escalation: [ESC-001]
+  notes: "Decision D-08: blocking is protective, reversible and confirmed. Avg 3.4 turns and 96% resolution, so keep it short. Pair CRD-001 vs SEC-001. block_after_fraud re-routes to SEC-001 so the fraud record is created."
+
+- id: CRD-002
+  name: Card Replacement
+  primary: account
+  secondary: card_replacement
+  tertiary: [lost_or_damaged, expired_card, replacement_status]
+  required_entities: [card_last4, block_reason]
+  optional_entities: [new_address, card_type]
+  auth: biometric_verified
+  safety: MEDIUM
+  action: write
+  agent: Card Agent
+  confirmation: explicit
+  mi_rank: 3
+  escalation: []
+  notes: "A lost or stolen reason forces CRD-001 first (block before replace). Delivery goes to the KYC address only; a different address needs ACC-004 first."
+
+- id: CRD-003
+  name: Credit Limit Change
+  primary: account
+  secondary: credit_limit_change
+  tertiary: [increase_request, decrease_request, limit_info]
+  required_entities: [card_last4, amount]
+  optional_entities: [card_type]
+  auth: biometric_verified
+  safety: HIGH
+  action: ticket
+  agent: Card Agent
+  confirmation: explicit
+  mi_rank: 5
+  escalation: []
+  notes: "Intake only. Credit decisions are made by the bank, not the agent. A13.1: Classic needs a credit-score check; Premium needs min income 10 LPA and enhanced KYC. Never say \"you will be approved\"."
+
+- id: CRD-004
+  name: EMI Conversion
+  primary: account
+  secondary: emi_conversion
+  tertiary: [transaction_to_emi, eligibility_info, charges_info]
+  required_entities: [transaction_id, tenure]
+  optional_entities: [amount, card_last4]
+  auth: otp_verified
+  generic_info_auth: anonymous
+  safety: MEDIUM
+  action: self_service_link
+  agent: Product Info Agent
+  confirmation: explicit
+  kb_gap: true
+  mi_rank: 5
+  escalation: []
+  notes: "The agent can show a deterministic EMI example (emi_calculator) but not execute the conversion, as it creates a credit obligation (rule 3 and RBI digital lending). Conversion fees and rates are not in A13.1, so none may be quoted."
+
+- id: CRD-005
+  name: Reward Points Enquiry
+  primary: account
+  secondary: reward_points
+  tertiary: [points_balance, redemption_info, earning_rules]
+  required_entities: [card_last4]
+  optional_entities: [card_type]
+  auth: otp_verified
+  generic_info_auth: anonymous
+  safety: LOW
+  action: read
+  agent: Card Agent
+  confirmation: none
+  mi_rank: 5
+  escalation: []
+  notes: "Earning rules cite A13.1 only (Classic 2% cashback; Premium 5x rewards). No point-to-rupee conversion is stated in A13.1, so none may be given."
+
+# ---------------------------------------------------------------- PRODUCT (PRD-*) (A3.3)
+- id: PRD-001
+  name: Product Information
+  primary: product
+  secondary: product_information
+  tertiary: [features, eligibility_criteria, fees_and_charges, factual_comparison]
+  required_entities: [product_name]
+  optional_entities: [tenure, loan_amount]
+  auth: anonymous
+  safety: LOW
+  action: info
+  agent: Product Info Agent
+  confirmation: none
+  mi_rank: 6
+  escalation: [ESC-008]
+  notes: "Pair PRD-001 vs PRD-005. A factual_comparison (feature table, no recommendation) is allowed. Progressive Disclosure: one or two sentences first. ESC-008 if a regulatory question returns low retrieval confidence."
+
+- id: PRD-002
+  name: Loan Eligibility and EMI
+  primary: product
+  secondary: loan_enquiry
+  tertiary: [home_loan_criteria, personal_loan_criteria, emi_calculation, documents_required, emi_restructuring_request]
+  required_entities: [loan_type]
+  optional_entities: [loan_amount, tenure]
+  auth: anonymous
+  safety: MEDIUM
+  action: info
+  agent: Product Info Agent
+  confirmation: none
+  mi_rank: 6
+  escalation: [ESC-013]
+  notes: "States published criteria (A13.1: Home Loan CIBIL >700, Personal Loan CIBIL >650) and runs the deterministic EMI calculator. Never judges personal affordability (A4.1 \"you can afford a 20L loan\" is prohibited). emi_restructuring_request is a financial-hardship case: empathy-first, handed to a human loan specialist, no promise of relief. Data-package category \"Loan Enquiry & EMI Restructuring\" (55% resolution)."
+
+- id: PRD-003
+  name: FD/RD Rate Enquiry
+  primary: product
+  secondary: deposit_rates
+  tertiary: [fd_rate_by_tenure, fd_features, rd_rate_enquiry, maturity_calculation]
+  required_entities: [product_name, tenure]
+  optional_entities: [amount]
+  auth: anonymous
+  safety: MEDIUM
+  action: info
+  agent: Product Info Agent
+  confirmation: none
+  kb_gap: true
+  mi_rank: 6
+  escalation: []
+  notes: "Only the NexFD range 6.0 to 7.25 percent over 7 days to 10 years exists in A13.1. No tenure-wise rates beyond that are given, and no RD product appears in A13.1: rd_rate_enquiry answers \"I can't confirm an RD product\" and offers a human. The A4.1 sample \"6.5% for 1 year\" is the brief's own example and is used only if the Day 7 KB entry carries it. TDS and 80C benefits are stated factually."
+
+- id: PRD-004
+  name: Insurance Enquiry
+  primary: product
+  secondary: insurance_enquiry
+  tertiary: [cover_info, medical_check_requirements, claim_process_info]
+  required_entities: [product_name]
+  optional_entities: [amount]
+  auth: anonymous
+  safety: MEDIUM
+  action: info
+  agent: Product Info Agent
+  confirmation: none
+  mi_rank: 6
+  escalation: [ESC-008, ESC-013]
+  notes: "NexProtect only: cover up to 1 Cr, online-only pricing advantage, IRDAI regulated, medical check above 50 L. Suitability (\"is it best for me given my age\") is PRD-005, not this intent."
+
+- id: PRD-005
+  name: Investment Advisory Request
+  primary: product
+  secondary: investment_advisory
+  tertiary: [interest_rate_advice, loan_affordability_advice, investment_product_advice, insurance_suitability_advice, tax_planning_advice, forex_timing_advice]
+  required_entities: []
+  optional_entities: [product_name, amount, tenure]
+  auth: anonymous
+  safety: CRITICAL
+  action: handoff
+  agent: Product Info Agent
+  confirmation: none
+  mi_rank: 6
+  escalation: [ESC-013]
+  notes: "The six tertiary classes mirror the six A4.1 categories. The response is always the information-vs-advice boundary: state the factual part, decline the recommendation, offer a SEBI-registered advisor (ESC-013). Never collect income or portfolio data in order to advise. Highest-risk intent for the Safety campaign (180 points)."
+
+# ---------------------------------------------------------------- COMPLAINT (CMP-*) (A3.3)
+- id: CMP-001
+  name: Register Complaint
+  primary: complaint
+  secondary: register_complaint
+  tertiary: [service_quality, transaction_issue, card_issue, staff_conduct, app_technical, charges_and_fees, other]
+  required_entities: [complaint_category, complaint_text]
+  optional_entities: [transaction_id, date]
+  auth: otp_verified
+  generic_info_auth: anonymous
+  safety: MEDIUM
+  action: ticket
+  agent: Complaint Agent
+  confirmation: soft
+  mi_rank: 4
+  escalation: [ESC-004, ESC-002]
+  notes: "Empathy-First (A9 Pattern 1). Grievance redressal information within 2 turns (agent scope). Data-package category with 58% resolution and 2.4 CSAT, so this is the hardest experience problem. Pair CMP-001 vs CMP-003."
+
+- id: CMP-002
+  name: Check Complaint Status
+  primary: complaint
+  secondary: complaint_status
+  tertiary: [by_complaint_id, latest_open_complaint]
+  required_entities: [{any_of: [complaint_id]}]
+  optional_entities: [date]
+  auth: otp_verified
+  safety: LOW
+  action: read
+  agent: Complaint Agent
+  confirmation: none
+  mi_rank: 5
+  escalation: [ESC-010]
+  notes: "If the customer has exactly one open complaint, the ID is defaulted from history (Context Carry-Over). Timelines come from the system of record only."
+
+- id: CMP-003
+  name: Escalate Complaint
+  primary: complaint
+  secondary: escalate_complaint
+  tertiary: [repeat_unresolved, escalate_existing, legal_threat, ombudsman_info]
+  required_entities: [complaint_id]
+  optional_entities: [complaint_text]
+  auth: otp_verified
+  generic_info_auth: anonymous
+  safety: MEDIUM
+  action: handoff
+  agent: Complaint Agent
+  confirmation: soft
+  mi_rank: 4
+  escalation: [ESC-002, ESC-004, ESC-010]
+  notes: "Pair CMP-001 vs CMP-003. legal_threat triggers ESC-002 immediately. ombudsman_info is informational (regulatory entry in KB, Day 7)."
+
+- id: CMP-004
+  name: Provide Feedback
+  primary: complaint
+  secondary: feedback
+  tertiary: [compliment, suggestion, rating_response]
+  required_entities: []
+  optional_entities: [rating, feedback_text]
+  auth: anonymous
+  safety: LOW
+  action: ticket
+  agent: Complaint Agent
+  confirmation: none
+  mi_rank: 6
+  escalation: []
+  notes: "A rating given inside a CSAT prompt is a dialogue act captured by the learning pipeline, not a topic switch."
+
+- id: CMP-005
+  name: Request Supervisor Callback
+  primary: complaint
+  secondary: supervisor_callback
+  tertiary: [schedule_callback, callback_status, reschedule_callback]
+  required_entities: [callback_time]
+  optional_entities: [phone_number, complaint_id]
+  auth: otp_verified
+  safety: MEDIUM
+  action: ticket
+  agent: Complaint Agent
+  confirmation: explicit
+  mi_rank: 5
+  escalation: [ESC-006, ESC-004]
+  notes: "The callback number defaults to the registered phone; a different number needs ACC-003. The callback time is a request, not a guarantee (D-09). Distinct from GEN-003 (live human now)."
+
+# ---------------------------------------------------------------- SECURITY & FRAUD (A3.3)
+- id: SEC-001
+  name: Report Fraud
+  primary: security
+  secondary: report_fraud
+  tertiary: [unauthorised_transaction, account_takeover, card_misuse, scam_victim, identity_theft]
+  required_entities: []
+  optional_entities: [transaction_id, amount, card_last4, date, scam_channel]
+  auth: anonymous            # acceptance never gated; protective actions still need otp_verified
+  tertiary_auth_override: { }
+  safety: CRITICAL
+  action: protective_write
+  agent: Security Agent
+  confirmation: explicit
+  mi_rank: 1
+  escalation: [ESC-001, ESC-009, ESC-012]
+  notes: "Decision D-16. The report is accepted at any auth level because delay costs money. Protective actions (block_card, flag_fraud) run only at otp_verified or above; an anonymous reporter gets a fast OTP step and a P0 human handoff if OTP fails. P0 template, no marketing or cross-sell. Priority CRITICAL in A1.2."
+
+- id: SEC-002
+  name: Report Phishing
+  primary: security
+  secondary: report_phishing
+  tertiary: [sms_or_email, vishing_call, fake_app_or_website, impersonation]
+  required_entities: [scam_channel]
+  optional_entities: [phone_number, upi_id, date]
+  auth: anonymous
+  safety: HIGH
+  action: ticket
+  agent: Security Agent
+  confirmation: explicit
+  mi_rank: 3
+  escalation: [ESC-001]
+  notes: "If the customer already clicked, shared an OTP or paid, reclassify as SEC-001 scam_victim at once (ESC-001). Never ask the customer to forward credentials as evidence."
+
+- id: SEC-003
+  name: Reset Credentials
+  primary: security
+  secondary: reset_credentials
+  tertiary: [password_reset, login_unlock, device_rebind, pin_reset_info]
+  required_entities: [credential_type]
+  optional_entities: [phone_number]
+  auth: otp_verified
+  generic_info_auth: anonymous
+  safety: CRITICAL
+  action: protective_write
+  agent: Security Agent
+  confirmation: explicit
+  mi_rank: 3
+  escalation: [ESC-009]
+  notes: "The agent only triggers send_credential_reset_link to the registered channel. It never sets, reads, or receives a password, PIN or CVV (rule 1). A reset request right after an ACC-003 contact change is an account-takeover pattern: ESC-009."
+
+- id: SEC-004
+  name: Suspicious Activity Response
+  primary: security
+  secondary: suspicious_activity_response
+  tertiary: [confirm_legitimate, deny_not_me, request_details]
+  required_entities: [alert_reference]
+  optional_entities: [transaction_id, amount]
+  auth: otp_verified
+  safety: HIGH
+  action: protective_write
+  agent: Security Agent
+  confirmation: explicit
+  mi_rank: 1
+  escalation: [ESC-001, ESC-009]
+  notes: "The customer answers a bank-initiated alert. deny_not_me becomes SEC-001 unauthorised_transaction at once. confirm_legitimate lifts the temporary hold (the lift itself needs explicit confirmation)."
+
+# ---------------------------------------------------------------- GENERAL (GEN-*)  (conversation management; A2.2 "general")
+- id: GEN-001
+  name: Greeting
+  primary: general
+  secondary: greeting
+  tertiary: [hello, returning_customer]
+  required_entities: []
+  optional_entities: []
+  auth: anonymous
+  safety: LOW
+  action: info
+  agent: Orchestrator
+  confirmation: none
+  mi_rank: 7
+  escalation: []
+  notes: "First reply carries the AI disclosure (GEN-002 content) once. No upsell."
+
+- id: GEN-002
+  name: AI Disclosure Question
+  primary: general
+  secondary: ai_disclosure
+  tertiary: [are_you_human, how_do_you_work, data_handling_question]
+  required_entities: []
+  optional_entities: []
+  auth: anonymous
+  safety: MEDIUM
+  action: info
+  agent: Orchestrator
+  confirmation: none
+  mi_rank: 6
+  escalation: []
+  notes: "The agent must never claim to be human. A data_handling_question gets a short DPDP-aligned KB answer and a pointer to the privacy notice."
+
+- id: GEN-003
+  name: Human Agent Request
+  primary: general
+  secondary: human_request
+  tertiary: [first_request, repeated_request, implicit_request]
+  required_entities: []
+  optional_entities: [callback_time]
+  auth: anonymous
+  safety: MEDIUM
+  action: handoff
+  agent: Escalation Agent
+  confirmation: none
+  mi_rank: 2
+  escalation: [ESC-006]
+  notes: "Increments human_request_count. ESC-006 fires at 3 or more requests (A6); the boss trace also treats an explicit request as a handoff-prep signal. implicit_request (\"koi insaan se baat karao\", \"who can I talk to\") is still counted. Never stall."
+
+- id: GEN-004
+  name: Out of Scope
+  primary: general
+  secondary: out_of_scope
+  tertiary: [off_topic, chit_chat, unsupported_banking_request, adversarial_or_harmful]
+  required_entities: []
+  optional_entities: []
+  auth: anonymous
+  safety: MEDIUM
+  action: info
+  agent: Orchestrator
+  confirmation: none
+  mi_rank: 8
+  escalation: [ESC-003]
+  notes: "adversarial_or_harmful is routed to the Guardian (injection, jailbreak, exfiltration, impersonation) and is never answered by the LLM. Fallback pattern per docs/architecture/nlu-pipeline-overview.md section 5."
+
+- id: GEN-005
+  name: Language Switch
+  primary: general
+  secondary: language_switch
+  tertiary: [explicit_request, detected_code_switch]
+  required_entities: [language]
+  optional_entities: []
+  auth: anonymous
+  safety: LOW
+  action: info
+  agent: Orchestrator
+  confirmation: none
+  mi_rank: 7
+  escalation: []
+  notes: "Sets reply_language. Safety-critical templates stay in the locked language set (see multilingual.md). Not a topic switch."
+
+- id: GEN-006
+  name: Thanks / Closure
+  primary: general
+  secondary: closure
+  tertiary: [thanks, goodbye, nothing_more]
+  required_entities: []
+  optional_entities: []
+  auth: anonymous
+  safety: LOW
+  action: info
+  agent: Orchestrator
+  confirmation: none
+  mi_rank: 8
+  escalation: []
+  notes: "Triggers the CSAT ask (template, Day 13). A \"thanks\" with a still-open pending confirmation does not close the conversation."
+
+- id: GEN-007
+  name: Distress or Emergency Disclosure
+  primary: general
+  secondary: distress_emergency
+  tertiary: [self_harm, threat_to_others, medical_emergency, coercion_or_duress]
+  required_entities: []
+  optional_entities: []
+  auth: anonymous
+  safety: CRITICAL
+  action: handoff
+  agent: Escalation Agent
+  confirmation: none
+  mi_rank: 0
+  escalation: [ESC-011]
+  notes: "Also detected in the Input Guard before NLU (defence in depth); this intent exists so the state, logs and metrics carry a label. Immediate crisis template, then P0 handoff. Never continues a banking task on the same turn."
+
+- id: GEN-008
+  name: Bank Service Information
+  primary: general
+  secondary: service_information
+  tertiary: [branch_or_atm_locator, working_hours, contact_channels, app_how_to]
+  required_entities: []
+  optional_entities: [city]
+  auth: anonymous
+  safety: LOW
+  action: info
+  agent: Product Info Agent
+  confirmation: none
+  kb_gap: true
+  mi_rank: 7
+  escalation: []
+  notes: "NexBank is a neo-bank, so no branch network is described in A13.1, although ACC-005 and ACC-006 mention \"Branch\". Answers come only from Day 7 KB entries; otherwise Graceful Degradation."
