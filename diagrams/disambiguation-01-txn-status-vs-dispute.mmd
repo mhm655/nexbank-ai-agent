@@ -1,0 +1,16 @@
+%% Pair 1: TXN-001 (status) vs TXN-002 (dispute). See docs/intent-taxonomy/disambiguation.md section 2.
+flowchart TD
+  A(["Message: both TXN-001 and TXN-002 plausible"]) --> B{"Fraud or not-me cue?<br/>didn't make, unknown, hacked"}
+  B -- "yes" --> P5[["Pair 5 tree: SEC-001 vs TXN-002"]]
+  B -- "no" --> C{"Dispute reason entity present?<br/>wrong amount, charged twice, refund, not delivered"}
+  C -- "yes, conf >= 0.70" --> D["TXN-002: confirm tertiary from reason<br/>pick-list of transactions"]
+  C -- "no" --> E{"Only transaction_id or description<br/>and a status word?<br/>status, pending, kab tak"}
+  E -- "yes, conf >= 0.70" --> F["TXN-001: read status<br/>offer 'raise a dispute' as follow-up"]
+  E -- "no" --> G["CLARIFY Q1, buttons:<br/>'Check where it stands' / 'Something is wrong with it'"]
+  G -- "check" --> F
+  G -- "wrong" --> D
+  G -- "unclear after 2 turns" --> H["Safe default: TXN-001 read first<br/>then offer dispute in the same reply"]
+  F --> I{"Status shows success<br/>but customer says not received?"}
+  I -- "yes" --> J["Re-route: TXN-003 UPI failure<br/>or TXN-002 refund_not_received"]
+  D --> K{"Amount > INR 50,000?"}
+  K -- "yes" --> L["Tag ESC-005 P1 Dispute Resolution"]

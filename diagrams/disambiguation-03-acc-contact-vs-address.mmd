@@ -1,0 +1,14 @@
+%% Pair 3: ACC-003 (contact details) vs ACC-004 (mailing address). See disambiguation.md section 4.
+flowchart TD
+  A(["Message: update / change details / address"]) --> B{"Entity cue"}
+  B -- "phone-shaped value or the words<br/>phone, mobile, number" --> C["ACC-003 phone_number"]
+  B -- "email-shaped value or 'email'" --> D["ACC-003 email_address<br/>note: 'email address' is NOT ACC-004"]
+  B -- "PIN code, street, flat, 'ghar ka pata',<br/>'mailing' or 'postal'" --> E["ACC-004"]
+  B -- "KYC address or 'address on my Aadhaar'" --> F["ACC-008 kyc_update"]
+  B -- "'address' alone, or 'my details'" --> G["CLARIFY Q1, buttons:<br/>Mobile number / Email / Postal address"]
+  G -- "phone or email" --> C
+  G -- "postal" --> E
+  G -- "unclear after 2 turns" --> H["Handoff to human: no default,<br/>both are HIGH-risk writes"]
+  B -- "both phone and address in one message" --> I["Multi-intent: ACC-003 first,<br/>then ACC-004 because contact change<br/>moves the OTP destination"]
+  C --> J["Biometric auth + OTP to old and new contact + explicit confirm"]
+  E --> K["Biometric auth + secure upload for proof + explicit confirm"]

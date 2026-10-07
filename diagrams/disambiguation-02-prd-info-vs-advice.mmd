@@ -1,0 +1,15 @@
+%% Pair 2: PRD-001 (information) vs PRD-005 (investment advisory). See disambiguation.md section 3.
+%% Asymmetric by design: no clarifying question. Advice cues route to the boundary reply on weak evidence.
+flowchart TD
+  A(["Message mentions a product or rate"]) --> B{"Advice detector >= 0.50?<br/>or rule: recommend / should I / best for me /<br/>kya mujhe / good time / worth it"}
+  B -- "no" --> C{"Comparison request without<br/>a recommendation verb?"}
+  C -- "yes" --> D["PRD-001 factual_comparison:<br/>feature table, A13.1 facts only<br/>no 'better' or 'best'"]
+  C -- "no" --> E["PRD-001 / PRD-002 / PRD-003 / PRD-004:<br/>Progressive Disclosure, 1-2 sentences first"]
+  B -- "yes" --> F{"Personal circumstance cue?<br/>my salary, my age, my goal, mere paise"}
+  F -- "yes" --> G["PRD-005 + do NOT collect income,<br/>age or portfolio details"]
+  F -- "no" --> G
+  G --> H["Reply = factual part + boundary sentence<br/>+ offer SEBI-registered advisor"]
+  H --> I["ESC-013 offered P1 Wealth Advisory"]
+  I --> J{"Customer accepts?"}
+  J -- "yes" --> K["Handoff with product context"]
+  J -- "no" --> L["Offer more factual detail, stay in PRD-001"]

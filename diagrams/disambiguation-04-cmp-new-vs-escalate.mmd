@@ -1,0 +1,14 @@
+%% Pair 4: CMP-001 (new complaint) vs CMP-003 (escalate). See disambiguation.md section 5.
+flowchart TD
+  A(["Message: complaint-like"]) --> B{"Legal threat?<br/>court, lawyer, consumer forum, legal notice"}
+  B -- "yes" --> Z["CMP-003 legal_threat + ESC-002 P1<br/>Senior Resolution Mgr, regardless of confidence"]
+  B -- "no" --> C{"Open complaint on file?<br/>CRM and interaction history"}
+  C -- "no" --> D["CMP-001: new complaint<br/>cannot escalate what does not exist"]
+  C -- "yes" --> E{"Repeat cue?<br/>still, again, third time, phir se,<br/>abhi tak nahi hua, or complaint_id given"}
+  E -- "yes, conf >= 0.70 and same subject" --> F["CMP-003 repeat_unresolved<br/>soft confirm: 'this is about CMP-... from DATE?'"]
+  E -- "unclear" --> G["CLARIFY Q1 with evidence:<br/>'I can see complaint X about Y, still open.<br/>Is this about that one, or something new?'"]
+  G -- "that one" --> F
+  G -- "new" --> D
+  G -- "unclear after 2 turns" --> H["Safe default: CMP-003 flow,<br/>link to the open complaint, human reviewer splits it"]
+  D --> I["Empathy-First, grievance info within 2 turns"]
+  F --> J["Empathy-First, send to Senior queue,<br/>no promise of outcome or date"]

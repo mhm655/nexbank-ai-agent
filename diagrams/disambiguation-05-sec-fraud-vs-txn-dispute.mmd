@@ -1,0 +1,18 @@
+%% Pair 5: SEC-001 (fraud) vs TXN-002 (merchant dispute). See disambiguation.md section 6.
+%% Safety-biased: fraud wins on weak evidence; nothing is blocked without explicit confirmation.
+flowchart TD
+  A(["Message: charge or payment problem"]) --> B{"Scam cue?<br/>shared OTP, clicked link, fake call,<br/>remote-access app"}
+  B -- "yes" --> S["SEC-001 scam_victim immediately<br/>ESC-001 P0, no further questions"]
+  B -- "no" --> C{"Not-me cue?<br/>didn't make, not me, unknown, hacked,<br/>maine nahi kiya, multiple unknown charges"}
+  C -- "yes, SEC-001 >= 0.50" --> T["SEC-001 unauthorised_transaction<br/>Empathy-First, offer card block<br/>explicit confirm"]
+  C -- "no" --> D{"Known-merchant cue?<br/>I bought, charged twice, refund,<br/>not delivered, wrong amount"}
+  D -- "yes, TXN-002 >= 0.70" --> U["TXN-002 merchant_error / duplicate_charge /<br/>wrong_amount / refund_not_received"]
+  D -- "no / mixed" --> E["CLARIFY Q1, buttons:<br/>'I made or approved it, but it's wrong' /<br/>'I didn't make this payment' / 'Not sure'"]
+  E -- "I made it" --> U
+  E -- "I didn't" --> T
+  E -- "Not sure" --> F["Q2: 'Do you recognise the merchant, and is your<br/>card and phone with you?' + ledger check for<br/>holds and pre-authorisations"]
+  F -- "resolved as known" --> U
+  F -- "still unsure or unknown merchant" --> T
+  T --> G["ESC-001 P0 Fraud Investigation"]
+  U --> H{"Amount > INR 50,000?"}
+  H -- "yes" --> I["ESC-005 P1; P0 wins if both fire"]
