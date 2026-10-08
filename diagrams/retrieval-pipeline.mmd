@@ -1,0 +1,54 @@
+%% NexBank retrieval pipeline (Day 8). Spec: docs/knowledge-base/retrieval-pipeline.md
+%% Thresholds: retrieval_confidence_threshold 0.65 (config/parameters.yaml on Day 13); fusion 0.6 dense / 0.4 sparse; p95 budget about 160-180 ms, limit 200 ms.
+flowchart TD
+    REQ["Policy Engine request<br/>rewritten query, auth_level, language, intent hint, mode, now"]
+    RW["1. Query rewrite (rules, in the 50 ms state/policy slot)<br/>anaphora, entity injection (no identifiers), language handling<br/>secondary language: English pivot is the query"]
+    CACHE{"FAQ result cache hit?<br/>key: query hash + language + auth class + index_epoch"}
+    FILT["2. Hard pre-filter inside both searches<br/>status = published, effective_from <= now<br/>hard expiry (regulatory, rates): now < expires_at<br/>soft expiry: stale flag, 30-day grace<br/>auth rank >= auth_level_required<br/>audience lane: evidence or guidance"]
+    EMB["Embed query (20 ms)"]
+    ANN["3a. Dense ANN top-20 (30 ms)"]
+    BM["3b. BM25 top-20 (20 ms, parallel)"]
+    FUSE["4. Weighted fusion 0.6 dense + 0.4 sparse<br/>min-max normalised, intent prior (soft), gap companions<br/>truncate to 20 candidates"]
+    RR["5. Cross-encoder re-rank to top-5 (80 ms)<br/>calibrated relevance 0 to 1"]
+    CONF{"6. top1_confidence >= 0.65?"}
+    GAPQ{"Gap entry in the evidence set (score >= 0.65)<br/>for the asked fact?"}
+    REGQ1{"Regulatory topic and gap entry lists ESC-008<br/>for the asked fact?"}
+    REGQ2{"Regulatory topic or ESC-008 hook?"}
+    PROBE{"Step-up probe (metadata only):<br/>higher-level entry would score >= 0.65?"}
+    ANS["decision: answer<br/>evidence set (entries >= 0.65), stale flags<br/>synthesis_confidence = mean of cited scores"]
+    GAP["decision: gap<br/>template graceful_degradation<br/>safe_statement + known_adjacent_facts + offer"]
+    ESC8["decision: escalate_esc_008<br/>Compliance Helpdesk, P1<br/>template handoff"]
+    STEP["decision: step_up<br/>Policy Engine runs auth step-up, then re-retrieves"]
+    DEG["decision: degrade<br/>template graceful_degradation<br/>clarify once, then offer a human (KB-ESC-020)"]
+    UNAV["decision: unavailable<br/>cached FAQ, else handoff (ESC-014)"]
+    OUT["RetrievalResult<br/>passages id@version + score + lane + flags, confidence, decision, latency"]
+    LOG["Audit log (async): kb_entry_ids, scores, decision, filtered_counts,<br/>index_epoch, versions, latency per stage"]
+    SAFE["Response Generator, then Output Safety Layer<br/>numbers checked against returned passages"]
+    DOWN["Both searches down or index unavailable (section 13 row 5)<br/>re-ranker only down: degrade or ESC-008 (row 4)"]
+
+    REQ --> RW --> CACHE
+    CACHE -- "yes: re-check auth and expiry at serve time" --> OUT
+    CACHE -- no --> FILT
+    FILT --> EMB --> ANN
+    FILT --> BM
+    ANN --> FUSE
+    BM --> FUSE
+    FUSE --> RR --> CONF
+    CONF -- yes --> GAPQ
+    GAPQ -- yes --> REGQ1
+    GAPQ -- no --> ANS
+    REGQ1 -- yes --> ESC8
+    REGQ1 -- no --> GAP
+    CONF -- no --> REGQ2
+    REGQ2 -- "yes: low confidence or hard-expired regulatory entry" --> ESC8
+    REGQ2 -- no --> PROBE
+    PROBE -- yes --> STEP
+    PROBE -- no --> DEG
+    ANS --> OUT
+    GAP --> OUT
+    ESC8 --> OUT
+    STEP --> OUT
+    DEG --> OUT
+    DOWN --> UNAV --> OUT
+    OUT --> SAFE
+    OUT -.-> LOG

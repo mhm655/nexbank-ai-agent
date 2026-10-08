@@ -227,25 +227,29 @@ entries:
   format: semi_structured
   title: Regulatory question with an uncertain answer, and advisory requests
   body: >-
-    When a customer asks a regulatory question and retrieval confidence is below the threshold, the agent does not guess. It says it is not certain and hands off to the Compliance Helpdesk (ESC-008, P1). When a customer needs personalised investment advice, the route is the Wealth Advisory queue (ESC-013, P1).
+    When a customer asks a regulatory question and the answer is uncertain, the agent does not guess. The answer is uncertain when retrieval confidence is below the threshold, when the best match is a gap entry that lists ESC-008 and the fact asked for is in its unknown list (for example the cooling-off length or an ombudsman time limit), or when the only entries that would have answered were removed by hard regulatory expiry. The agent says what the KB does state, says it is not certain of the specifics, and hands off to the Compliance Helpdesk (ESC-008, P1). When a customer needs personalised investment advice, the route is the Wealth Advisory queue (ESC-013, P1).
   structured_fields:
     triggers:
       ESC-008: {condition: regulatory question with uncertain answer, priority: P1, queue: Compliance Helpdesk, sla: under 10 min}
       ESC-013: {condition: investment advisory requiring SEBI advisor, priority: P1, queue: Wealth Advisory, sla: under 10 min}
+    uncertain_when:
+      - retrieval confidence below the threshold
+      - the best match is a gap entry that lists ESC-008 and the fact asked for is in its unknown list (known unknown)
+      - the only entries that would have answered were removed by hard regulatory expiry
     retrieval_threshold_ref: config/parameters.yaml retrieval_confidence_threshold
     never: [quote a regulation from memory, state a figure that is not in the KB]
-    related_entries: [KB-REG-001, KB-REG-005, KB-REG-006, KB-POL-001]
+    related_entries: [KB-REG-001, KB-REG-005, KB-REG-006, KB-POL-001, KB-ESC-019, KB-ESC-021]
   regulatory_tags: [SEBI_ROBO_ADVISORY, RBI_DIGITAL_LENDING]
   auth_level_required: anonymous
   audience: agent_internal
-  version: 1.0.0
-  effective_from: *eff
+  version: 1.1.0
+  effective_from: 2026-10-08
   ttl_class: escalation_procedure
   ttl_days: 365
-  expires_at: 2027-10-01
+  expires_at: 2027-10-08
   owner: Customer Experience
   approval_chain: *chain_esc
-  source_ref: A6 (ESC-008, ESC-013); A2.3
+  source_ref: A6 (ESC-008, ESC-013); A2.3; D-43; D-50
   languages: [en]
   intents: [PRD-001, PRD-004, PRD-005, CMP-003]
   escalation_triggers: [ESC-008, ESC-013]

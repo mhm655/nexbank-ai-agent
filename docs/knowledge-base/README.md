@@ -1,10 +1,15 @@
-# Knowledge Base (Day 7)
+# Knowledge Base (Days 7-8)
 
-Sample knowledge base for the NexBank agent: the schema and ER model, and 77 entries across the six A2.3 categories and three representation formats. Retrieval, the maintenance workflow and the access matrix are Day 8.
+Sample knowledge base for the NexBank agent: the schema and ER model, and 77 entries across the six A2.3 categories and three representation formats. Day 8 adds the retrieval pipeline, the maintenance workflow and the access matrix.
 
 | File | Contents |
 |---|---|
 | [`kb-schema.md`](kb-schema.md) | Entry schema, ER model, ID convention, versioning, TTL classes, regulatory tags, auth-level access control, intent links, gap handling |
+| [`retrieval-pipeline.md`](retrieval-pipeline.md) | Query rewrite, auth and expiry pre-filter, hybrid retrieval and fusion, re-rank, confidence, ESC-008 and gap fallback, caching, latency, failure modes, evaluation plan |
+| [`maintenance-workflow.md`](maintenance-workflow.md) | Authoring to rollback, regulatory fast-track, staleness alerts, versioning, audit trail, retirement |
+| [`access-control-matrix.md`](access-control-matrix.md) | Auth level by category, audience and intent; step-up behaviour; worked examples |
+| `../../diagrams/retrieval-pipeline.mmd` | Mermaid flowchart of the retrieval pipeline |
+| `../../tests/kb/boss-level3.yaml`, `../../tests/kb/README.md` | Level 3 boss (5 synthesis queries) and the retrieval evaluation schema |
 | [`entries/product.yaml`](entries/product.yaml) | A13.1 catalogue entries, comparisons and one EMI illustration |
 | [`entries/policy.yaml`](entries/policy.yaml) | Advice boundary, the 8 security rules, auth levels, protective actions, disclosure |
 | [`entries/regulatory.yaml`](entries/regulatory.yaml) | Regulations as stated in the brief (RBI, PCI DSS, KYC/AML, SEBI, IRDAI, DPDP, DICGC, tax) |

@@ -1,0 +1,176 @@
+# Level 3 boss set: 5 queries that each need 3 or more KB entries synthesised (brief Part B, Level 3; PLAN 4 Phase 3 item 7).
+# Target: synthesis_confidence > 0.85 (the brief's retrieval relevance target) with every required entry in the top 5.
+# Schema and scoring: tests/kb/README.md (section "Retrieval evaluation"). Pipeline: docs/knowledge-base/retrieval-pipeline.md.
+# Figures below appear only in the cited entries (A13.1, A4.1, A6) or in the pipeline spec. Thresholds are NOT restated
+# as new values: retrieval_confidence_threshold 0.65 and relevance target 0.85 are the project's existing values.
+# All data synthetic. Gold IDs are checked against docs/knowledge-base/entries/*.yaml and the auth rule by the Day 8 checker.
+
+schema_version: "1.0"
+set_id: KB-BOSS-L3
+unlock_condition: "All 5 queries retrieve every required entry in the top 5 with synthesis_confidence > 0.85 (or, for answerable: false, the expected decision), no forbidden entry returned, and every claim in the answer outline traceable to the cited entries (brief Part B, Level 3)."
+target_synthesis_confidence_gt: 0.85
+coverage:
+  cases: 5
+  languages: [en, hinglish]
+  auth_levels: [anonymous, otp_verified]
+  gap_or_uncertain_cases: [KB-BOSS-L3-01, KB-BOSS-L3-04, KB-BOSS-L3-05]
+  auth_trap_cases: [KB-BOSS-L3-03]
+  advice_boundary_cases: [KB-BOSS-L3-02]
+
+cases:
+
+- id: KB-BOSS-L3-01
+  query: "I am comparing the two NexCredit cards. What are the interest-free period, the rewards and the eligibility for each, and what are the fees after the first year?"
+  language: en
+  auth_level: anonymous
+  intents: [PRD-001, CRD-005]
+  answerable: partial          # figures for features and eligibility; fees after year 1 are a known gap
+  required_ids: [KB-PRD-003, KB-PRD-004, KB-ESC-017]
+  supporting_ids: [KB-PRD-011, KB-FAQ-003, KB-FAQ-011, KB-REG-001, KB-POL-008]
+  forbidden_ids: []
+  expected_decision: answer     # a gap part is handled with the KB-ESC-017 safe_statement inside the answer
+  target_synthesis_confidence_gt: 0.85
+  expected_answer_outline:
+    - "One short factual comparison (Classic and Premium), no recommendation of which is better"
+    - "Interest-free period: Classic 40 days, Premium 50 days"
+    - "Rewards: Classic 2% cashback; Premium 5x rewards and lounge access"
+    - "Eligibility: Classic needs income proof and a credit score check; Premium needs minimum income of 10 LPA and enhanced KYC"
+    - "Fees: Classic has no annual fee in year 1; the fee after year 1, the Premium fee, credit limits and the interest after the interest-free period are not held, so say so and offer a human (graceful_degradation wording)"
+    - "Mandatory disclosure note: rate, fees and terms are in the offer documents (RBI Digital Lending, KB-POL-008)"
+  grounding:
+    - { claim: "Classic 40-day interest-free, 2% cashback, no annual fee in year 1, income proof and credit score check", entries: [KB-PRD-003], figures: ["40-day", "2%"] }
+    - { claim: "Premium 50-day interest-free, lounge access, 5x rewards, minimum income 10 LPA, enhanced KYC", entries: [KB-PRD-004], figures: ["50-day", "5x", "10 LPA"] }
+    - { claim: "Fees after year 1, Premium fee, credit limit, revolving interest and reward conversion are not available", entries: [KB-ESC-017], figures: [] }
+    - { claim: "Side-by-side layout without a ruling on which is better", entries: [KB-PRD-011], figures: [] }
+  must_not:
+    - "state any annual fee figure after year 1, any Premium fee, credit limit or interest rate (KB-ESC-017 never list)"
+    - "say which card is better for the customer or that the customer will be approved"
+    - "convert reward points into rupees"
+  notes: "Synthesis of two product entries plus a gap entry. Near-duplicate trap: KB-PRD-003 vs KB-PRD-004 vs KB-PRD-011; all must be separated correctly."
+
+- id: KB-BOSS-L3-02
+  query: "I have some savings. Should I put them in NexFD or in a mutual fund SIP? What are the rates, the tax benefit and the smallest amount to start?"
+  language: en
+  auth_level: anonymous
+  intents: [PRD-005, PRD-003, PRD-001]
+  answerable: partial          # facts yes; the recommendation is declined (advice boundary)
+  required_ids: [KB-PRD-002, KB-PRD-008, KB-REG-011, KB-POL-001]
+  supporting_ids: [KB-FAQ-006, KB-REG-005, KB-ESC-008, KB-FAQ-008, KB-ESC-014]
+  forbidden_ids: []
+  expected_decision: answer     # plus policy route ESC-013 for the advice part; the retriever does not fire it
+  policy_route: ESC-013
+  target_synthesis_confidence_gt: 0.85
+  expected_answer_outline:
+    - "Acknowledge the question, then split it: facts are answered, the recommendation is declined in a friendly way (information vs advice)"
+    - "NexFD: rates 6.0 to 7.25 percent, tenures 7 days to 10 years; the brief's 1-year example is 6.5 percent (published illustration); Section 80C benefits and TDS apply, 80C example limit 1.5L"
+    - "NexInvest: direct mutual fund platform, SIP from INR 100, SEBI regulated, KYC mandatory, risk disclosure applies"
+    - "Smallest amount to start: SIP from INR 100 (KB-PRD-008); the NexFD minimum deposit is not held (KB-PRD-002 not_in_catalogue) and no tax benefit is held for the SIP, so say so with no figure"
+    - "Decline which option is right for the customer and how much to put in; offer a SEBI-registered advisor through the Wealth Advisory queue (ESC-013)"
+    - "Do not ask for income, age or portfolio to help decide"
+  grounding:
+    - { claim: "NexFD rate range, tenure range, 80C and TDS", entries: [KB-PRD-002], figures: ["6.0", "7.25", "7 days", "10 years"] }
+    - { claim: "1-year example 6.5 percent as the brief's illustration", entries: [KB-PRD-002, KB-POL-001], figures: ["6.5%", "1 year"] }
+    - { claim: "Section 80C example limit and TDS applicable, stated as fact only", entries: [KB-REG-011, KB-POL-001], figures: ["1.5L"] }
+    - { claim: "SIP from INR 100, SEBI regulated, risk disclosure, KYC", entries: [KB-PRD-008, KB-FAQ-006], figures: ["INR 100"] }
+    - { claim: "NexFD minimum deposit is not held", entries: [KB-PRD-002], figures: [] }
+    - { claim: "Advice is declined and routed to a SEBI-registered advisor", entries: [KB-POL-001, KB-REG-005, KB-ESC-008], figures: [] }
+  must_not:
+    - "recommend NexFD or NexInvest, or say one gives better returns"
+    - "state expected returns, fund names, or a tenure-specific rate other than the 1-year illustration"
+    - "state a NexFD minimum deposit or a tax benefit for the SIP"
+    - "advise how much to invest or how to reduce tax"
+  notes: "Information-vs-advice boundary case (KB-POL-001 is agent_internal: guidance lane, never quoted). The 6.5 percent figure is an A4.1 example and must be labelled as such."
+
+- id: KB-BOSS-L3-03
+  query: "A card payment showed up that I did not make. Please block my card, tell me when I will get the money back, and how do I unblock it later?"
+  language: en
+  auth_level: otp_verified
+  intents: [SEC-001, CRD-001, TXN-002]
+  answerable: true
+  required_ids: [KB-TRB-005, KB-POL-006, KB-ESC-002, KB-POL-007]
+  supporting_ids: [KB-POL-011, KB-REG-003, KB-ESC-001]
+  forbidden_ids: [KB-TRB-008]   # biometric_verified: above the session level; the unblock detail must not be retrieved at otp_verified
+  expected_decision: answer     # a step-up hint toward biometric_verified is allowed if the customer proceeds to unblock
+  target_synthesis_confidence_gt: 0.85
+  expected_answer_outline:
+    - "Empathy first, one sentence; no accusation"
+    - "Treat as a fraud report because the customer says they did not make the payment; offer to block the card first, with a short summary and an explicit yes before the block runs"
+    - "Never ask for CVV, PIN or the full card number"
+    - "Fraud is the highest-priority path (P0, Fraud Investigation, under 2 min); create the fraud record and hand off with the package"
+    - "Refund: no promise and no date; the team will review and update the customer; offer a callback request"
+    - "Unblocking later needs biometric_verified (stated from KB-POL-006) and is a separate confirmed step; no detail beyond that at this level"
+  grounding:
+    - { claim: "Unknown transaction is treated as SEC-001 and the card is blocked first", entries: [KB-TRB-005, KB-POL-006], figures: [] }
+    - { claim: "Block needs otp_verified, summary and explicit yes; unblock needs biometric_verified", entries: [KB-POL-006], figures: [] }
+    - { claim: "Fraud path priority P0, queue Fraud Investigation, SLA under 2 min", entries: [KB-ESC-002], figures: ["2 min"] }
+    - { claim: "No refund promise or date; timelines only from a system of record", entries: [KB-POL-007, KB-TRB-005], figures: [] }
+    - { claim: "Do not ask for CVV or full card number; masked last 4 only", entries: [KB-POL-006, KB-REG-003], figures: [] }
+  must_not:
+    - "promise that the money will be refunded or give a refund date"
+    - "run the block without an explicit yes"
+    - "describe or quote the biometric-level unblock procedure (KB-TRB-008 must not be retrieved at otp_verified)"
+    - "tell the customer how fraud is detected"
+  notes: "Auth trap: the question about unblocking tempts retrieval of KB-TRB-008 (biometric_verified). Pass requires it to be absent; the pre-filter must exclude it and the answer relies on KB-POL-006 only."
+
+- id: KB-BOSS-L3-04
+  query: "If I take a NexPersonal Loan, how many days do I get to cancel it (the cooling-off period), and what is the deadline to approach the ombudsman if I am unhappy?"
+  language: en
+  auth_level: anonymous
+  intents: [PRD-002, CMP-003, PRD-001]
+  answerable: false             # the two figures asked for are not in the KB: a known unknown on a regulatory topic
+  required_ids: [KB-ESC-019, KB-REG-001, KB-REG-002]
+  supporting_ids: [KB-ESC-008, KB-PRD-006, KB-ESC-018, KB-ESC-005, KB-ESC-001]
+  forbidden_ids: []
+  expected_decision: escalate_esc_008   # regulatory-uncertain: a gap entry that lists ESC-008 covers the asked fact (D-43)
+  expected_esc_trigger: ESC-008
+  target_synthesis_confidence_gt: 0.85  # confidence that the right gap and regulatory entries were retrieved, not confidence in a figure
+  expected_answer_outline:
+    - "State what is known: RBI Digital Lending requires cooling-off information for new product sign-ups, and grievance information is given within 2 turns of any complaint (Banking Ombudsman Scheme)"
+    - "State plainly that the number of cooling-off days and the ombudsman time limit or contact are not held, and the agent will not guess"
+    - "Offer the in-bank route: register a complaint, a senior colleague or a supervisor callback (KB-ESC-019 safe_statement)"
+    - "Hand off to the Compliance Helpdesk (ESC-008, P1, under 10 min) for the specifics, with the eight-element handoff package (KB-ESC-001)"
+    - "Loan facts the KB does hold may be offered: NexPersonal starts at 10.5 percent, up to 5 years; fees and terms are in the offer documents (optional, not required)"
+  grounding:
+    - { claim: "Cooling-off information and grievance within 2 turns are obligations", entries: [KB-REG-001, KB-REG-002], figures: ["2 turns"] }
+    - { claim: "Cooling-off length, ombudsman contact and filing time limits are not in the KB", entries: [KB-ESC-019], figures: [] }
+    - { claim: "ESC-008 routes a regulatory question with an uncertain answer to the Compliance Helpdesk, P1, under 10 min", entries: [KB-ESC-008], figures: ["10 min"] }
+    - { claim: "The handoff carries the eight-element package", entries: [KB-ESC-001], figures: [] }
+    - { claim: "Optional loan facts: from 10.5 percent, up to 5 years, fees and terms in the offer documents", entries: [KB-PRD-006], figures: ["10.5%", "5 years"] }
+  must_not:
+    - "state any number of cooling-off days, any filing deadline or any ombudsman contact"
+    - "quote a regulation from memory"
+    - "discourage the customer from approaching a regulator"
+    - "tell the customer the loan will be approved"
+  notes: "Graceful-degradation / uncertain regulatory topic. Passing retrieval means the gap entry KB-ESC-019 and the two regulatory entries are returned with high confidence; the correct behaviour is then to escalate, not to answer the figure."
+
+- id: KB-BOSS-L3-05
+  query: "NexSave account mein minimum balance rakhna padta hai kya, aur kya uska deposit insured hai? Aur NexFD ka rate kitna hai, tax pe kya benefit milta hai, aur ek khaas tenure ka exact rate kya hoga?"
+  language: hinglish
+  auth_level: anonymous
+  intents: [PRD-001, PRD-003]
+  answerable: partial          # NexSave and NexFD facts are held; the rate for one specific tenure is a known gap
+  required_ids: [KB-PRD-001, KB-FAQ-001, KB-PRD-002, KB-REG-011, KB-ESC-014]
+  supporting_ids: [KB-FAQ-002, KB-FAQ-008, KB-REG-010]
+  forbidden_ids: []
+  expected_decision: answer     # the gap part is handled with the KB-ESC-014 safe_statement inside the answer (same pattern as KB-BOSS-L3-01)
+  target_synthesis_confidence_gt: 0.85
+  expected_answer_outline:
+    - "Reply in Hinglish (the customer's form), warm, answering the three requests in order: NexSave, NexFD, then the specific tenure (multi-intent, within the cap of 3)"
+    - "NexSave: zero balance, so no minimum balance; DICGC cover up to 5L as listed in the product catalogue; how the cover is counted is not held, so offer a team member. Use the reviewed Hinglish wording of KB-FAQ-002 and KB-FAQ-001, not a fresh translation"
+    - "NexFD: rates 6.0 to 7.25 percent and tenures 7 days to 10 years; the brief's 1-year 6.5 percent only if labelled as a published illustration; Section 80C benefits and TDS apply, stated as fact only (80C example limit 1.5L)"
+    - "Specific tenure: the exact rate is not held, so say so with the KB-ESC-014 safe_statement (graceful_degradation wording), share the published range and offer a callback or a team member"
+    - "Offer one next step; no figure that is not in the cited entries; DICGC cover is stated for NexSave only and is not extended to NexFD"
+  grounding:
+    - { claim: "NexSave is zero balance with no minimum balance; KYC mandatory", entries: [KB-PRD-001, KB-FAQ-002], figures: [] }
+    - { claim: "DICGC cover up to 5L on NexSave, as listed in the catalogue; cover counting is not held", entries: [KB-PRD-001, KB-FAQ-001, KB-REG-010], figures: ["5L"] }
+    - { claim: "NexFD rate range and tenure range", entries: [KB-PRD-002, KB-FAQ-008], figures: ["6.0", "7.25", "7 days", "10 years"] }
+    - { claim: "1-year 6.5 percent example as the brief's illustration", entries: [KB-PRD-002], figures: ["6.5", "1 year"] }
+    - { claim: "Section 80C benefits and TDS applicable, stated as fact; 80C example limit", entries: [KB-REG-011], figures: ["1.5L"] }
+    - { claim: "The rate for a specific tenure is not held; share the range or hand to a team member", entries: [KB-ESC-014], figures: [] }
+  must_not:
+    - "state or interpolate a rate for any single tenure, or say which tenure is better (KB-ESC-014 never list)"
+    - "say or imply that NexFD deposits carry DICGC cover (the catalogue lists it for NexSave only)"
+    - "state a TDS rate or threshold, a NexFD minimum deposit or premature-withdrawal terms, or advise how much to invest or how to reduce tax"
+    - "state a NexSave fee, payout frequency or transaction limit (not in the catalogue)"
+    - "machine-translate a financial fact: the Hinglish reply uses the reviewed Hinglish bodies of KB-FAQ-001, -002 and -008 or a reviewed graceful_degradation template"
+  notes: "Hinglish multi-intent case with genuine synthesis: two products (KB-PRD-001, KB-PRD-002), their reviewed FAQ answers, the tax entry and a gap entry. Scored per segment (tests/kb/README.md): NexSave segment needs KB-PRD-001 and KB-FAQ-001, NexFD segment needs KB-PRD-002 and KB-REG-011, tenure segment needs KB-ESC-014 (PRD-003 has kb_gap: true, so the gap companion is added to the re-rank set). Traps: KB-REG-010 and KB-FAQ-001 are near-duplicates (DICGC on NexSave); the DICGC figure must not be carried over to NexFD; KB-FAQ-002 and KB-FAQ-008 carry reviewed Hinglish bodies (provisional until native-reviewed, D-22). All entries are anonymous, so no step-up is requested. The previous version of this case (three gap entries: RD, branches, international transfer) is superseded by D-49; those gaps stay covered by the gap entries and the hallucination-trap stratum of the gold set (retrieval-pipeline.md section 15.2)."

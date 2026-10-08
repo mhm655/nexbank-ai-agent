@@ -212,7 +212,7 @@ The brief requires TTL specifications for freshness (A2.3) but gives no values, 
 Rules:
 1. An entry whose body states a regulatory obligation must carry at least one tag, and a tagged `regulatory` entry must have the Regulatory Compliance Manager in its `approval_chain`.
 2. An entry tagged with a regime is retrieved together with its gap entry when the question needs a figure the brief lacks (for example the cooling-off length: KB-ESC-019).
-3. A question that maps to a tag but returns confidence below the retrieval threshold goes to ESC-008. Entries list the trigger in `escalation_triggers`.
+3. A question that maps to a tag (or to an intent whose `escalation` list carries ESC-008) and is regulatory-uncertain goes to ESC-008 (D-43). It is uncertain when (a) retrieval confidence is below the retrieval threshold, (b) the best match is a gap entry that lists `ESC-008` in `escalation_triggers` and the fact asked for is in its `unknown` list (a known unknown, for example the cooling-off length in KB-ESC-019, which retrieves with high confidence), or (c) the only entries that would have answered were removed by hard regulatory expiry (section 7). A gap on a non-regulatory topic does not fire ESC-008. Entries list the trigger in `escalation_triggers`; the Policy Engine fires the escalation and the retriever supplies the reason code (`retrieval-pipeline.md` section 9).
 4. Tags drive the Day 9 regulatory mapping matrix (tag, guardrail, test). NIST AI RMF and OWASP LLM Top 10 are design references, not customer-facing regimes, so they have no tag.
 
 ## 9. Authentication-level access control

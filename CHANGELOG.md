@@ -191,3 +191,39 @@ One entry per working day (15). Each entry: tasks, decisions with rationale, cha
 **Day 6-7 audit fixes (applied after review)**
 - Day 6: fixed 13 defects (Aadhaar-shaped UPI ref in the CSV and in `config/entities.yaml`, mislabelled intents/tertiary labels, gold entities absent from the text, boss-set runner-up and card wording, stale counts). Then resolved the open items: RED-04 postal-code exception (D-35), pair-tree trigger covers a third candidate between members (D-36), gold entities are text-derived only with a separate context track (D-37), GEN-005 rows corrected, library now 551 rows (D-38), `debited_not_credited` convention (D-39), `kb_gap` tags on all 53 rows of the four gap intents (D-40).
 - Day 7: validator holes closed (14 mutation cases now caught), four FAQ TTLs moved to the 90-day `rates` class, figures removed from gap entries, KB-ESC-020 no longer conflates ESC-003, source_ref fixes. Then resolved the open items: detection rule moved from anonymous KB-TRB-007 to agent-internal KB-TRB-011 (D-30), `generic_info_auth` for SEC-003 and CRD-004 (D-30, D-31), KB-PRD-007/008/009 and KB-FAQ-004/006 on `rates` (D-32), SEBI_ROBO_ADVISORY removed from three entries (D-33), KB-REG-008 reworded to the regulation only (D-34), ER diagram gained a gap-for link (parser check passed, not rendered). KB now has 77 entries.
+
+## Day 8: Retrieval pipeline, maintenance workflow, access matrix, Level 3 boss
+
+**Tasks completed**
+- `docs/knowledge-base/retrieval-pipeline.md`: query rewrite (anaphora, safe entity injection, primary and secondary language handling), hard pre-filter inside both searches (epoch, status, effective date, hard and soft expiry, auth rank, evidence and guidance audience lanes), dense top-20 plus BM25 top-20, weighted 0.6/0.4 fusion with intent prior and gap companions, cross-encoder re-rank to top-5 with calibrated confidence and the 0.65 gate, decision table (answer, gap, degrade, ESC-008, step-up, unavailable), fallback ladder, caching, 160-180 ms p95 budget, 16 failure modes, log fields including `kb_entry_ids`, and the retrieval evaluation plan (Recall@5, MRR, nDCG, mean relevance > 0.85, gold-set design with auth, expiry and hallucination traps).
+- `diagrams/retrieval-pipeline.mmd`: flowchart of the pipeline and its decisions.
+- `docs/knowledge-base/maintenance-workflow.md`: roles and chains by category, lifecycle, authoring, review, compliance approval, staged publish with canary and circuit breaker, rollback, regulatory fast-track for RBI circulars (quarantine and TTL reset), staleness alerts by `ttl_class` with worked dates, versioning, feedback loop from retrieval and supervisors, audit trail, retirement.
+- `docs/knowledge-base/access-control-matrix.md`: enforcement points, level by category and audience matrix (64, 10, 1, 2 entries first visible per level), level-assignment rules, the 41-intent by level by entries matrix, 12 step-up scenarios, audience rules, 8 worked examples tied to real IDs.
+- `tests/kb/boss-level3.yaml`: 5 queries each needing 3 or more entries (card comparison, information-vs-advice, fraud with an auth trap, regulatory-uncertain, Hinglish multi-gap), with gold IDs, outline and grounding. `tests/kb/README.md` documents the retrieval eval schema and static checks. Checker (scratchpad): PASS; `validate_kb_entries.py`: PASS.
+- Updated README (Day 8 of 15), requirements traceability (R-21 done; R-35 and R-36 added), decisions D-41 to D-48.
+
+**Decisions (rationale in `docs/assumptions-and-decisions.md`)**
+- D-41: weighted fusion 0.6/0.4, RRF as challenger. D-42: calibrated confidence, 0.65 gate, synthesis confidence > 0.85. D-43: regulatory-uncertain includes known-unknown gaps that list ESC-008. D-44: pre-filter semantics and metadata-only step-up probe. D-45: latency, cache, badge not claimed. D-46: maintenance workflow, fast-track, quarantine. D-47: proposed eval gates and level-change rule. D-48: boss pass rule for gap cases.
+
+**Challenges**
+- The brief gives a threshold but no definition of retrieval confidence, and a known gap retrieves with high confidence, so confidence alone would not trigger ESC-008. D-43 adds the gap-entry rule.
+- Pre-retrieval auth filtering hides the evidence needed to decide a step-up. The metadata-only probe on the low-confidence path solves it without leaking existence or costing happy-path latency.
+- The 160-180 ms budget does not support the under-150 ms Retriever badge; it is recorded as a Day 14 measurement question, not claimed.
+- Boss queries had to use only figures in the entries; amounts in queries were avoided and a checker confirms every outline number occurs in the gold entries.
+
+**Open questions**
+- Risk Committee: TTL classes, 14-day alert, 30-day grace, fast-track time target, and the eval gates (all proposals).
+- Native-speaker review of Hindi and Hinglish wording, including the Hinglish graceful-degradation template (Day 13).
+- None for the diagram: the Day 8 audit parsed `diagrams/retrieval-pipeline.mmd` and the workflow state diagram with the Mermaid 10.9 parser (OK).
+
+**Day 8 audit fixes**
+- `boss-level3.yaml`: KB-BOSS-L3-04 outline cited the eight-element handoff package without KB-ESC-001 in its gold IDs (added, with grounding rows for it and KB-PRD-006); KB-BOSS-L3-02 gained a "not held" line for the NexFD minimum deposit and SIP tax. `tests/kb/README.md`: per-segment scoring rule for multi-intent boss queries.
+- `retrieval-pipeline.md`: ESC-008 intent-hook example corrected to PRD-001 and PRD-004 (CMP-003 has no ESC-008 in `config/intents.yaml`); step-up probe counts only customer_facing entries and uses a calibrated score (D-44 updated); the unblock example no longer relies on KB-POL-006 (otp_verified) for an anonymous session; broken `system-architecture` section 3.6 reference fixed. Diagram: the failure node no longer sends a re-ranker failure to `unavailable`.
+
+**Day 8 follow-ups**
+- `boss-level3.yaml` KB-BOSS-L3-05 replaced (D-49): Hinglish NexSave, NexFD, tax and tenure-gap query needing 5 entries (was three gap entries). `tests/kb/README.md` updated; checker PASS.
+- D-43 spread (D-50): `kb-schema.md` section 8 rule 3, `component-interfaces.md` row 6 (adds `decision`, `lane`, flags, `step_up_hint`), KB-ESC-008 v1.1.0 (effective 2026-10-08, expires 2027-10-08).
+- Step-up probe residual signal (D-51): identical wording plus 2 prompts per session cap in `retrieval-pipeline.md` section 5.4; Risk Committee review open.
+- Gap-hit condition made explicit in spec and diagram (D-52); section 9 'intent-level floor' reworded; `troubleshooting.yaml` header count 11; R-35 and R-36 moved into numeric order.
+
+**Next (Day 9)**: advice, security and compliance guardrails: information-vs-advice spec, the 8 account-security rules with enforcement points, and the regulatory mapping matrix (tag to guardrail to test), reusing the KB tags and the retrieval-side auth assertions.
