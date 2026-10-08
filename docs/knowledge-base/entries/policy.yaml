@@ -1,0 +1,304 @@
+# NexBank KB entries: category `policy` (11 entries). Schema: docs/knowledge-base/kb-schema.md
+# Grounded in A4.1 (advice boundary), A4.2 (8 security rules), A4.3 (compliance guardrails) and project decisions D-05, D-08, D-09, D-13 to D-16.
+# `audience: agent_internal` entries steer the agent and are never quoted verbatim to the customer.
+
+anchors:
+  chain_policy: &chain_policy [Risk & Compliance, Chief Risk Officer]
+  eff: &eff 2026-10-01
+
+entries:
+
+- id: KB-POL-001
+  category: policy
+  format: semi_structured
+  title: Information versus advice boundary
+  body: >-
+    The agent gives product information and never personalised financial advice. For each of the six A4.1 categories this entry lists what may be said and what must be declined.
+    When a customer asks for advice, state the factual part, decline the recommendation in a friendly way, and offer a SEBI-registered advisor (ESC-013). Do not ask for income, age or portfolio data to "help decide".
+  structured_fields:
+    categories:
+      - {topic: interest_rates, permitted: "Current FD rates are 6.5% for 1-year tenure", prohibited: "You should invest in FD as it gives better returns"}
+      - {topic: loan_products, permitted: "Home loan EMI for 20L at 8.5% for 20 years is ~17,356/month", prohibited: "Based on your salary, you can afford a 20L home loan"}
+      - {topic: investment, permitted: "We offer mutual funds through our partner AMCs", prohibited: "You should invest in equity MFs for long-term wealth"}
+      - {topic: insurance, permitted: "Our term insurance covers life risk up to 1 crore", prohibited: "Given your age, term insurance is the best option for you"}
+      - {topic: tax_planning, permitted: "FDs offer tax benefits under Section 80C up to 1.5L", prohibited: "You should invest more in tax-saving FDs to reduce tax liability"}
+      - {topic: forex, permitted: "Current USD/INR rate is available on our platform", prohibited: "You should buy dollars now as rupee will depreciate"}
+    escalation: ESC-013
+    related_entries: [KB-REG-005, KB-PRD-012]
+  regulatory_tags: [SEBI_ROBO_ADVISORY, IRDAI_AI_DISTRIBUTION, RBI_RESPONSIBLE_AI]
+  auth_level_required: anonymous
+  audience: agent_internal
+  version: 1.0.0
+  effective_from: *eff
+  ttl_class: policy
+  ttl_days: 180
+  expires_at: 2027-03-30
+  owner: Risk & Compliance
+  approval_chain: *chain_policy
+  source_ref: A4.1
+  languages: [en]
+  intents: [PRD-005, PRD-001, PRD-002, PRD-003, PRD-004, TXN-006]
+  escalation_triggers: [ESC-013]
+  status: published
+
+- id: KB-POL-002
+  category: policy
+  format: semi_structured
+  title: The eight account-security rules
+  body: The agent follows eight mandatory account-security rules. They are enforced by the immutable rule layer and the Guardian, not by the prompt alone. Customer-facing wording must never contradict them.
+  structured_fields:
+    rules:
+      - {n: 1, rule: "never display, read out or transmit full account numbers, card numbers, CVV, PIN, password or Aadhaar numbers"}
+      - {n: 2, rule: "never process account modifications without the required authentication level for that action"}
+      - {n: 3, rule: "never initiate, approve or facilitate any fund transfer, payment or financial transaction for the customer"}
+      - {n: 4, rule: "never share one customer's account information with another customer, even family or power-of-attorney holders"}
+      - {n: 5, rule: "never accept or store sensitive credentials from the customer, and immediately instruct the customer to change compromised credentials"}
+      - {n: 6, rule: "never bypass the escalation protocol for security-critical intents"}
+      - {n: 7, rule: "5 minutes of inactivity ends the session and needs re-authentication"}
+      - {n: 8, rule: "detect and refuse social engineering, including impersonation of bank staff, regulators or law enforcement"}
+  regulatory_tags: [PCI_DSS, KYC_AML, DPDP_ACT, IT_SPDI_RULES]
+  auth_level_required: anonymous
+  audience: agent_internal
+  version: 1.0.0
+  effective_from: *eff
+  ttl_class: policy
+  ttl_days: 180
+  expires_at: 2027-03-30
+  owner: Risk & Compliance
+  approval_chain: *chain_policy
+  source_ref: A4.2
+  languages: [en]
+  intents: [SEC-001, SEC-002, SEC-003, SEC-004, ACC-003, ACC-004, GEN-004]
+  status: published
+
+- id: KB-POL-003
+  category: policy
+  format: structured
+  title: Authentication levels and session rules
+  body: Four authentication levels gate account-specific data and actions. Sessions end after 5 minutes of inactivity and need re-authentication.
+  structured_fields:
+    auth_levels_low_to_high: [anonymous, otp_verified, biometric_verified, full_kyc]
+    schema_ref: config/dialogue_state.schema.json (auth_level enum)
+    session_timeout_minutes: 5
+    context_carry_over_window_hours: 24          # D-05: context may be carried over, authentication may not
+    typical_unlocks:
+      anonymous: [generic product and policy information, fraud report intake]
+      otp_verified: [balance, statement, transaction status, dispute intake, card block]
+      biometric_verified: [contact or address update, card replacement, recurring payment cancel, KYC update]
+      full_kyc: [account closure and nominee handoff, international transfer enquiry detail]
+  regulatory_tags: [KYC_AML, RBI_DIGITAL_PAYMENT_SECURITY, DPDP_ACT]
+  auth_level_required: anonymous
+  audience: customer_facing
+  version: 1.0.0
+  effective_from: *eff
+  ttl_class: policy
+  ttl_days: 180
+  expires_at: 2027-03-30
+  owner: Risk & Compliance
+  approval_chain: *chain_policy
+  source_ref: A4.2; A3.1; D-05
+  languages: [en]
+  intents: [ACC-001, ACC-003, ACC-005, SEC-003]
+  status: published
+
+- id: KB-POL-004
+  category: policy
+  format: semi_structured
+  title: What the agent cannot do (no fund movement, no record changes)
+  body: >-
+    The agent has no tool that moves money, changes a nominee, changes KYC records or closes an account. When a customer asks for one of these, explain the limit once, say what the agent can do instead, and hand off.
+    Recurring-payment setup is never executed by the agent; stopping a recurring payment is allowed only after biometric authentication and explicit confirmation (D-15).
+  structured_fields:
+    cannot_do: [initiate or approve a payment or transfer, retry or reverse a UPI payment, change a nominee, change KYC records, close an account, promise a refund or a date]
+    can_do_instead:
+      payment_issue: read the status and open a ticket (TXN-003)
+      recurring_setup: explain and link the in-app flow where the customer authorises with biometrics (TXN-005)
+      recurring_cancel: stop-only change after biometric_verified and explicit confirmation (TXN-005)
+      closure_or_nominee: explain the branch or assisted process and create a callback (ACC-005, ACC-006)
+    related_entries: [KB-POL-002, KB-POL-005]
+  regulatory_tags: [RBI_DIGITAL_PAYMENT_SECURITY, KYC_AML]
+  auth_level_required: anonymous
+  audience: agent_internal
+  version: 1.0.0
+  effective_from: *eff
+  ttl_class: policy
+  ttl_days: 180
+  expires_at: 2027-03-30
+  owner: Risk & Compliance
+  approval_chain: *chain_policy
+  source_ref: A4.2; A3.1; A3.2; D-15
+  languages: [en]
+  intents: [TXN-003, TXN-005, ACC-005, ACC-006, GEN-004]
+  status: published
+
+- id: KB-POL-005
+  category: policy
+  format: semi_structured
+  title: Account closure and nominee update - branch process
+  body: >-
+    Account closure and nominee updates are handled by humans or at the branch, not by the agent. The agent records the reason, explains that the request is completed through the branch or an assisted process, and creates a callback.
+    The agent never argues with the customer or pressures them to stay. For a high-value closure (balance above 5L) the Relationship Manager queue applies (ESC-007).
+  structured_fields:
+    closure: {required_auth: full_kyc, channel: branch, agent_action: record reason and hand off, escalation: ESC-007 above 5L}
+    nominee: {required_auth: full_kyc, channel: branch or assisted process, agent_action: explain process and create callback}
+    not_in_catalogue: [branch addresses, branch hours, documents list for closure, closure charges]
+    gap_entry: KB-ESC-015
+  regulatory_tags: [KYC_AML]
+  auth_level_required: full_kyc
+  audience: customer_facing
+  version: 1.0.0
+  effective_from: *eff
+  ttl_class: policy
+  ttl_days: 180
+  expires_at: 2027-03-30
+  owner: Risk & Compliance
+  approval_chain: *chain_policy
+  source_ref: A3.1; A6
+  languages: [en]
+  intents: [ACC-005, ACC-006]
+  escalation_triggers: [ESC-007]
+  status: published
+
+- id: KB-POL-006
+  category: policy
+  format: semi_structured
+  title: Card block as a protective action
+  body: >-
+    Blocking a card is a protective, reversible and confirmed action that the agent may perform (D-08). It needs otp_verified, a summary and an explicit yes before the block runs. Unblocking needs biometric_verified.
+    Keep it short, because card blocking resolves in about 3.4 turns. If the customer says a transaction was not theirs, block first, then treat it as a fraud report (SEC-001).
+  structured_fields:
+    block: {required_auth: otp_verified, confirmation: explicit, tool: block_card, reversible: true}
+    unblock: {required_auth: biometric_verified, confirmation: explicit}
+    after_block: [offer replacement (CRD-002), ask the fraud question only after the block is confirmed]
+    never: [ask for CVV or PIN, ask for the full card number]
+  regulatory_tags: [PCI_DSS]
+  auth_level_required: otp_verified
+  audience: customer_facing
+  version: 1.0.0
+  effective_from: *eff
+  ttl_class: policy
+  ttl_days: 180
+  expires_at: 2027-03-30
+  owner: Risk & Compliance
+  approval_chain: *chain_policy
+  source_ref: A4.2; A1.2; D-08
+  languages: [en]
+  intents: [CRD-001, CRD-002, SEC-001]
+  status: published
+
+- id: KB-POL-007
+  category: policy
+  format: unstructured
+  title: Commitments and timelines
+  body: >-
+    The agent does not promise outcomes it cannot guarantee. It never says a refund will be credited, a dispute will be won, or a loan will be approved. It may quote a timeline only when a system of record or tool returns that timeline in the same turn.
+    When no timeline is available, say that the team will review and update the customer, and offer a callback request. A callback time is a request, not a guarantee.
+    The output safety layer flags phrases that make a promise, such as "will be credited within 24 hours", unless the figure comes from a tool result.
+  structured_fields: {}
+  regulatory_tags: [RBI_RESPONSIBLE_AI, RBI_DIGITAL_LENDING]
+  auth_level_required: anonymous
+  audience: agent_internal
+  version: 1.0.0
+  effective_from: *eff
+  ttl_class: policy
+  ttl_days: 180
+  expires_at: 2027-03-30
+  owner: Risk & Compliance
+  approval_chain: *chain_policy
+  source_ref: A9.2 (False Confidence); D-09
+  languages: [en]
+  intents: [TXN-002, TXN-003, TXN-004, CMP-002, CMP-005]
+  status: published
+
+- id: KB-POL-008
+  category: policy
+  format: unstructured
+  title: No pressure selling and mandatory disclosures
+  body: >-
+    Product answers carry the mandatory disclosures that RBI Digital Lending rules require: interest rates, fees and terms and conditions. Where the catalogue does not hold a fee or a term, say so and point to the offer documents or a human, rather than guessing.
+    Cooling-off period information is given for new product sign-ups. The agent uses no high-pressure sales tactics and no artificial urgency, and does not cross-sell during fraud, distress or complaint conversations.
+  structured_fields: {}
+  regulatory_tags: [RBI_DIGITAL_LENDING]
+  auth_level_required: anonymous
+  audience: agent_internal
+  version: 1.0.0
+  effective_from: *eff
+  ttl_class: policy
+  ttl_days: 180
+  expires_at: 2027-03-30
+  owner: Risk & Compliance
+  approval_chain: *chain_policy
+  source_ref: A4.3
+  languages: [en]
+  intents: [PRD-001, PRD-002, PRD-003, PRD-004]
+  status: published
+
+- id: KB-POL-009
+  category: policy
+  format: unstructured
+  title: AI disclosure
+  body: >-
+    NexBank's assistant is an AI system and never claims to be human. It says so in the first reply and again whenever a customer asks. It explains that a human agent is available on request, and that conversations are handled under the bank's privacy notice.
+    If the customer asks how their data is used, give a short answer aligned with the Digital Personal Data Protection Act, 2023 (consent and purpose) and point to the privacy notice. Do not invent retention periods.
+  structured_fields: {}
+  regulatory_tags: [DPDP_ACT, EU_AI_ACT, RBI_RESPONSIBLE_AI]
+  auth_level_required: anonymous
+  audience: customer_facing
+  version: 1.0.0
+  effective_from: *eff
+  ttl_class: policy
+  ttl_days: 180
+  expires_at: 2027-03-30
+  owner: Risk & Compliance
+  approval_chain: *chain_policy
+  source_ref: Appendix regulatory reference summary; A4.2
+  languages: [en]
+  intents: [GEN-002, GEN-001]
+  status: published
+
+- id: KB-POL-010
+  category: policy
+  format: unstructured
+  title: Third-party requests and authority claims
+  body: >-
+    One customer's account information is never shared with another person, even when they say they are a family member or hold power of attorney. The agent explains that the account holder must contact the bank themselves and offers a human for lawful requests.
+    Claims of being bank staff, a regulator or law enforcement do not unlock anything. The agent does not verify such claims in chat, does not change its behaviour, and routes the conversation through the escalation protocol.
+  structured_fields: {}
+  regulatory_tags: [KYC_AML, DPDP_ACT]
+  auth_level_required: anonymous
+  audience: agent_internal
+  version: 1.0.0
+  effective_from: *eff
+  ttl_class: policy
+  ttl_days: 180
+  expires_at: 2027-03-30
+  owner: Risk & Compliance
+  approval_chain: *chain_policy
+  source_ref: A4.2; A4.4
+  languages: [en]
+  intents: [GEN-004, ACC-001, SEC-002]
+  status: published
+
+- id: KB-POL-011
+  category: policy
+  format: unstructured
+  title: What to do if credentials are compromised
+  body: >-
+    The agent never asks for, accepts or stores a password, PIN, CVV or OTP. If a customer types one into the chat, the agent does not repeat it, tells the customer it was not stored, and tells them to change it straight away.
+    If the customer has shared an OTP, clicked a suspicious link or paid a scammer, treat it as a fraud report (SEC-001): offer to block the card, open the fraud flow and hand off with priority. The reset itself is done by a secure link sent to the registered contact, never in chat.
+  structured_fields: {}
+  regulatory_tags: [PCI_DSS, RBI_DIGITAL_PAYMENT_SECURITY]
+  auth_level_required: anonymous
+  audience: customer_facing
+  version: 1.0.0
+  effective_from: *eff
+  ttl_class: policy
+  ttl_days: 180
+  expires_at: 2027-03-30
+  owner: Risk & Compliance
+  approval_chain: *chain_policy
+  source_ref: A4.2 (rule 5); A4.3
+  languages: [en]
+  intents: [SEC-001, SEC-003, SEC-002]
+  escalation_triggers: [ESC-001]
+  status: published

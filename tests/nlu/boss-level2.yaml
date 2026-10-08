@@ -1,0 +1,238 @@
+# Level 2 boss set: 10 ambiguous customer messages (brief Part B, Level 2 "The Classifier").
+# Each message could match 2 to 3 intents. Pass = top intent, expected_action and (for clarify) the question
+# structure all match. Schema and scoring: tests/nlu/README.md. Rules: docs/intent-taxonomy/disambiguation.md.
+# Thresholds are NOT restated here; they live in config/intents.yaml (thresholds) and D-06 / D-19.
+# All data synthetic. No card numbers, OTP, CVV, PIN or Aadhaar values appear in any message.
+
+schema_version: "1.0"
+set_id: NLU-BOSS-L2
+unlock_condition: "All 10 messages disambiguated as specified, with the reasoning documented (brief Part B, Level 2)."
+coverage:
+  pairs_covered: [1, 2, 3, 4, 5, 6]       # NLU-DIS-1..6 correspond to the six A3.4 pairs in disambiguation.md
+  cross_pair_cases: 4                     # NLU-DIS-X-01 to X-04
+  hinglish_cases: 6                       # DIS-3-01, 5-01, 6-01, X-01, X-02, X-04
+
+cases:
+
+- id: NLU-DIS-1-01
+  message: "Payment shows done but the merchant says not received"
+  language: en
+  preconditions: { auth_level: otp_verified, open_complaints: [], last_agent_act: null }
+  disambiguation_pair: "TXN-001 vs TXN-002"          # pair 1; TXN-003 ranks second, as in the disambiguation.md example
+  candidates: [TXN-001, TXN-003, TXN-002]
+  expected_intent: TXN-001
+  runner_up: TXN-003
+  expected_action: clarify
+  rule_ids: [dis-01]
+  reasoning: >
+    The status word ("shows done") and the dispute cue ("not received") both fire, and no dispute_reason entity
+    is present, so the scores stay in the clarify band with a gap under the ambiguity gap (disambiguation.md
+    pair 1 example: TXN-001 0.52, TXN-003 0.48, TXN-002 0.44). A successful status
+    with a non-receipt claim is the case the pair 1 hook re-routes to TXN-003 or to TXN-002 refund_not_received.
+    The tree therefore asks one closed question; it does not guess. Safe default after 2 turns: read the status
+    (LOW risk), then offer the dispute in the same reply.
+  clarifying_question:
+    english: "Would you like me to check where this payment stands, or is something wrong with it?"
+    hinglish: "Payment ka status dekhna hai, ya kuch galat hua hai?"
+    options: ["Check status", "Something is wrong"]
+  follow_up: "If 'Something is wrong': pick the transaction from a masked list, then offer reasons as buttons."
+  must_not: ["promise a credit timeline not returned by a system of record (D-09)", "open a dispute before the customer chooses"]
+
+- id: NLU-DIS-2-01
+  message: "Is an FD better than a mutual fund for my retirement?"
+  language: en
+  preconditions: { auth_level: anonymous }
+  disambiguation_pair: "PRD-001 vs PRD-005"          # pair 2
+  candidates: [PRD-005, PRD-001, PRD-003]
+  expected_intent: PRD-005
+  runner_up: PRD-001
+  expected_action: act                               # act = boundary reply; this pair never clarifies by design
+  rule_ids: [dis-02]
+  reasoning: >
+    The evaluative verb "better" plus a personal-circumstance cue ("my retirement") hits the rule layer, which
+    forces PRD-005 investment_product_advice regardless of the model score. PRD-001 factual_comparison is the
+    runner-up because both products are named. Asking "do you want advice?" would invite the customer to
+    volunteer age or income, which the agent must not use, so there is no clarifying question. The reply states
+    published facts for each product and declines the verdict.
+  clarifying_question: null
+  follow_up: "Facts from the KB with version cited, one boundary sentence, offer of a SEBI-registered advisor (ESC-013), offer of more factual detail."
+  must_not: ["say which product is better or suitable", "ask for income, age, goals or portfolio", "quote a return as a recommendation"]
+
+- id: NLU-DIS-3-01
+  message: "mera address update kar do"
+  language: hinglish
+  preconditions: { auth_level: otp_verified }
+  disambiguation_pair: "ACC-003 vs ACC-004"          # pair 3
+  candidates: [ACC-004, ACC-003, ACC-008]
+  expected_intent: ACC-004
+  runner_up: ACC-003
+  expected_action: clarify
+  rule_ids: [dis-03]
+  reasoning: >
+    "Address" alone has no value shape (no email token, no phone, no PIN code) and no street cue, so it can mean
+    a postal address (ACC-004), an email address (ACC-003) or an address correction on the KYC record (ACC-008).
+    Both writes are HIGH-risk and need 0.85 to execute, so the tree asks which detail. There is no safe default:
+    after 2 unanswered turns the agent offers a human with the gathered context.
+  clarifying_question:
+    english: "Which detail would you like to update: your mobile number, your email, or your postal address?"
+    hinglish: "Aap kya update karna chahte hain: mobile number, email, ya postal address?"
+    options: ["Mobile number", "Email", "Postal address"]
+  follow_up: "Vague answer ('my details'): reframe once with examples (a new phone number, or a new house address?)."
+  must_not: ["start any write flow before the choice", "ask for the new value before the field is known"]
+
+- id: NLU-DIS-4-01
+  message: "I want to complain about the extra charge on my credit card"
+  language: en
+  preconditions:
+    auth_level: otp_verified
+    open_complaints: [{ id: CMP-20260410-0042, category: charges_and_fees, subject: credit card charge, opened: "6 days ago", status: open }]
+  disambiguation_pair: "CMP-001 vs CMP-003"          # pair 4
+  candidates: [CMP-001, CMP-003, CMP-002]
+  expected_intent: CMP-001
+  runner_up: CMP-003
+  expected_action: clarify
+  rule_ids: [dis-04]
+  reasoning: >
+    The message describes a complaint but carries no repeat cue (still, again, third time, no response) and no
+    complaint_id, while the CRM holds an open complaint on the same subject. Evidence is mixed: the open
+    complaint raises the CMP-003 prior, the wording keeps CMP-001 on top. The tree shows the evidence and asks
+    once, after an Empathy-First line (CSAT here is the weakest in the brief's data). Safe default after 2
+    turns: open the CMP-003 flow linked to the open complaint, so the customer who already waited is not
+    restarted.
+  clarifying_question:
+    english: "I can see complaint CMP-20260410-0042 about credit card charges, opened 6 days ago and still open. Is this about that one, or a new issue?"
+    hinglish: "Mujhe complaint CMP-20260410-0042 dikh rahi hai, credit card charges ke baare mein, 6 din pehle khuli thi aur abhi open hai. Kya yeh usi ke baare mein hai, ya naya issue hai?"
+    options: ["That one", "A new issue"]
+  follow_up: "A new issue with repeated frustration: register as CMP-001 and link the two for the reviewer."
+  must_not: ["restart the complaint clock by silently filing a new one", "promise a resolution date"]
+
+- id: NLU-DIS-5-01
+  message: "Ek Rs 480 Swiggy charge samajh nahi aaya"
+  language: hinglish
+  preconditions: { auth_level: otp_verified, ledger: "Rs 480 Swiggy charge present; no earlier Swiggy transactions" }
+  disambiguation_pair: "SEC-001 vs TXN-002"          # pair 5
+  candidates: [TXN-002, SEC-001, TXN-001]
+  expected_intent: TXN-002
+  runner_up: SEC-001
+  expected_action: clarify
+  rule_ids: [dis-05]
+  reasoning: >
+    "Samajh nahi aaya" (did not understand) is neither "I did not make it" nor "I made it and it is wrong".
+    TXN-002 unrecognised_charge leads because the merchant is known, but SEC-001 sits above its 0.50 flow-entry
+    gate, and the ledger shows no earlier Swiggy payment that would raise the dispute prior. This is the Day 3
+    trace. The tree asks whether the customer made or approved the payment; it never accuses the customer or the
+    merchant. If still unsure after Q2, it treats the charge as unauthorised_transaction. Reclassification
+    between fraud and dispute stays open until handoff.
+  clarifying_question:
+    english: "Did you make or approve this payment, even if the amount or merchant looks wrong?"
+    hinglish: "Kya yeh payment aapne kiya ya approve kiya tha?"
+    options: ["Yes, I made it", "No, I didn't", "Not sure"]
+  follow_up: "Not sure: Q2 'Do you recognise the merchant name, and do you have your card and phone with you?' plus a ledger check for holds and pre-authorisations."
+  must_not: ["block the card on this turn without confirmation", "say the customer is mistaken or the merchant is a fraudster"]
+
+- id: NLU-DIS-6-01
+  message: "mera card kho gaya hai"
+  language: hinglish
+  preconditions: { auth_level: otp_verified, cards_on_file: ["debit ending 5678", "NexCredit Classic ending 4321"] }
+  disambiguation_pair: "CRD-001 vs SEC-001"          # pair 6
+  candidates: [CRD-001, SEC-001, CRD-002]
+  expected_intent: CRD-001
+  runner_up: SEC-001
+  expected_action: act                               # contain first: card pick, explicit confirm, block; the fraud question comes after
+  rule_ids: [dis-06]
+  reasoning: >
+    A loss cue with no not-me cue and no misuse report is CRD-001 block_lost. SEC-001 is the runner-up because a
+    lost card can be misused. The principle is contain first, classify second: the block is common to
+    both paths and no delay is ever safer, so the agent does not open with a classification question. It resolves
+    which card (two on file), takes explicit confirmation (the 0.85 execution gate is met by the confirm step),
+    blocks, and only then asks whether any payments were not made by the customer.
+  clarifying_question: null
+  follow_up:
+    pick_list: "Which card? Debit ending 5678 / NexCredit Classic ending 4321"
+    confirm: "I'll block the card ending 4321 now. Is that right?"
+    post_block_question: "Do you see any payments you didn't make?"
+    yes_branch: "SEC-001 card_misuse case with the transactions listed, ESC-001, then the replacement offer"
+    no_branch: "Offer CRD-002 replacement as a chained step"
+  must_not: ["ask for the full card number", "delay the block to ask the fraud question first"]
+
+- id: NLU-DIS-X-01
+  message: "mera email address badalna hai"
+  language: hinglish
+  preconditions: { auth_level: otp_verified }
+  disambiguation_pair: "ACC-003 vs ACC-004"          # pair 3, the email-address trap
+  candidates: [ACC-003, ACC-004]
+  expected_intent: ACC-003
+  runner_up: ACC-004
+  expected_action: act                               # enter the ACC-003 flow (email_address); the write still needs confirmation and Biometric
+  rule_ids: [dis-03]
+  reasoning: >
+    The word "address" pulls toward ACC-004, but the token "email" is an entity cue that the extractor runs
+    before intent fusion, and it forces ACC-003 email_address. The decisive evidence is cheap (entity cue first
+    in the order of evidence), so no question is asked. Executing the update still needs the write gate and
+    explicit confirmation, so "act" here means entering the secure flow, not changing anything yet.
+  clarifying_question: null
+  follow_up: "Next slot: new email value, entered through the secure flow, then Biometric step-up and explicit confirmation."
+  must_not: ["route to the postal-address flow", "echo the full email value in clear text (display as n***@example.com)"]
+
+- id: NLU-DIS-X-02
+  message: "mere card se 3 transaction hue jo maine nahi kiye, block kar do"
+  language: hinglish
+  preconditions: { auth_level: otp_verified, cards_on_file: ["debit ending 5678"] }
+  disambiguation_pair: "SEC-001 vs CRD-001 (pairs 5 and 6 together)"
+  candidates: [SEC-001, CRD-001, TXN-002]
+  expected_intent: SEC-001
+  runner_up: CRD-001
+  expected_action: act
+  rule_ids: [dis-05, dis-06]
+  reasoning: >
+    The message holds a block request ("block kar do") and a not-me cue ("jo maine nahi kiye"). Pair 6 says that
+    when both are present SEC-001 takes the lead and CRD-001 becomes its first step; pair 5 says the not-me cue
+    outranks a dispute reading (TXN-002 is the third candidate and is not asked about). SEC-001 enters at its
+    lower flow-entry gate; the block itself still needs the execution gate and explicit confirmation. ESC-001
+    (P0) fires and the card block, the fraud case and the replacement run in that order.
+  clarifying_question: null
+  follow_up: "Empathy line, confirm the block of the card ending 5678, block, list the 3 transactions for the fraud case, offer replacement."
+  must_not: ["ask 'did you make these?' (the customer already said no)", "block without explicit confirmation", "treat it as a merchant dispute"]
+
+- id: NLU-DIS-X-03
+  message: "Third time I'm telling you my Rs 2,000 refund hasn't come. Next stop consumer court."
+  language: en
+  preconditions:
+    auth_level: otp_verified
+    open_complaints: [{ id: CMP-20260406-0031, category: transaction_issue, subject: refund, opened: "10 days ago", status: open }]
+  disambiguation_pair: "CMP-001 vs CMP-003 (pair 4) crossed with TXN-001 vs TXN-002 (pair 1)"
+  candidates: [CMP-003, TXN-002, CMP-001]
+  expected_intent: CMP-003
+  runner_up: TXN-002
+  expected_action: act
+  rule_ids: [dis-04, dis-01]
+  reasoning: >
+    "Consumer court" is a legal threat, which maps to CMP-003 legal_threat and fires ESC-002 regardless of other
+    scores. "Third time" and an open same-subject complaint confirm the repeat reading, so CMP-001 loses. The
+    refund non-receipt is a real TXN-002 refund_not_received item; it is queued behind the complaint (equal
+    mi_rank, the order of mention does not outrank the legal-threat rule) and attached to the escalation so
+    nothing is lost. No clarifying question: asking an angry, repeat customer to choose between "new" and
+    "existing" is the Robotic Loop the tree is meant to avoid.
+  clarifying_question: null
+  follow_up: "Empathy-First line, soft confirmation naming CMP-20260406-0031, escalate with the refund attached, no timeline promised unless the system of record returns one."
+  must_not: ["file a new complaint", "argue with or downplay the legal threat", "commit to a refund date (D-09)"]
+
+- id: NLU-DIS-X-04
+  message: "payment status batao, 4500 kat gaya par maine kiya hi nahi"
+  language: hinglish
+  preconditions: { auth_level: otp_verified, ledger: "Rs 4,500 debit to an unknown beneficiary, last 24 hours" }
+  disambiguation_pair: "TXN-001 vs SEC-001 (pair 1 exit rule into pair 5)"
+  candidates: [SEC-001, TXN-001, TXN-002]
+  expected_intent: SEC-001
+  runner_up: TXN-001
+  expected_action: act
+  rule_ids: [dis-01, dis-05]
+  reasoning: >
+    "Status batao" is a TXN-001 cue, but "maine kiya hi nahi" (I did not do it at all) is a not-me cue, and the
+    pair 1 table sends any "didn't make / not me / unknown" message to pair 5. The beneficiary is unknown, so
+    there is no known-merchant cue and no question is needed: the pair 5 default is unauthorised_transaction. The
+    status request is answered inside the fraud flow (the debit is shown) rather than as a stand-alone status
+    read. ESC-001 (P0) fires; protective actions still need explicit confirmation.
+  clarifying_question: null
+  follow_up: "Empathy line, show the Rs 4,500 debit, offer to secure the account (card block if applicable, confirmed), hand over to Fraud Investigation."
+  must_not: ["read a plain status and stop", "ask whether the customer made the payment", "accuse the customer"]

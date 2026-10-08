@@ -1,0 +1,468 @@
+# NexBank entity catalogue (Day 4). Brief refs: A2.2 entity table, A4.2 rule 1, A10 (PII handling).
+# Fields: type | examples (synthetic) | extraction (ordered, first success wins; llm is last resort) | validation | sensitivity | handling.
+# Sensitivity tiers: LOW, MEDIUM, HIGH (PII), CRITICAL (PCI or KYC). See docs/intent-taxonomy/entities.md for tier handling.
+# handling.store: how the value is held in dialogue state and logs.
+#   plain = as is; masked = last 4 only; ref_only = opaque reference; never = redacted before NLU, never stored or logged.
+
+schema_version: "1.0"
+
+sensitivity_policy:
+  LOW:      { log: plain,  llm_visible: true,  state: plain }
+  MEDIUM:   { log: plain,  llm_visible: true,  state: plain }
+  HIGH:     { log: masked, llm_visible: masked, state: masked }
+  CRITICAL: { log: never_raw, llm_visible: false, state: masked_or_ref, input_guard_redaction: true }
+
+# Patterns the Input Guard (component 2) redacts BEFORE NLU. NLU receives a typed placeholder and a flag, never the value.
+input_guard_redaction:
+  - { id: RED-01, name: full_card_number,   detect: "13-19 digits (spaces or dashes allowed) passing Luhn", placeholder: "[CARD_REDACTED]",    reply: "ask_not_to_share_card" }
+  - { id: RED-02, name: cvv,                detect: "cvv|cvc|security code within 5 tokens of 3-4 digits", placeholder: "[CVV_REDACTED]",     reply: "ask_not_to_share_cvv" }
+  - { id: RED-03, name: full_aadhaar,       detect: "12 digits (grouped 4-4-4 allowed) passing Verhoeff", placeholder: "[AADHAAR_REDACTED]", reply: "ask_not_to_share_aadhaar" }
+  - { id: RED-04, name: pin_or_password,    detect: "pin|mpin|password|passcode|pwd followed by a value, or a 4-6 digit string after a PIN request", placeholder: "[SECRET_REDACTED]", reply: "ask_not_to_share_secret", exception: postal_code_see_comment, exception_test: "U-ACC-004-10" }
+  # RED-04 postal-code exception (D-35). A 6-digit Indian PIN code is address data, not a credential. It is NOT redacted only when ALL hold:
+  #   (a) it matches [1-8][0-9]{5} and is introduced by "pin code|pincode|postal code|zip" (any language form), OR the new_address / address slot is open and the 6 digits are inside an address phrase (city, state, locality, house or flat tokens);
+  #   (b) it is not preceded by a credential cue (pin, mpin, atm pin, upi pin, card pin, login pin, password, passcode, pwd) without the word "code" directly after "pin";
+  #   (c) no credential or OTP cue and no pending credential request exists in the same message or turn (e.g. agent just asked for a PIN, or the SEC-003 credential flow is open).
+  # Any doubt means redact: a false redaction costs one re-ask, a leaked PIN is a compliance incident. Credential PIN redaction stays strict: "PIN is 482910", "mpin 4829" and bare 4-6 digit answers to a PIN request are always redacted.
+  - { id: RED-05, name: otp_in_chat,        detect: "4-8 digit string while an OTP is pending, or otp|code followed by digits", placeholder: "[OTP_REDACTED]", reply: "use_secure_widget" }
+  - { id: RED-06, name: full_pan,           detect: "[A-Z]{5}[0-9]{4}[A-Z] (case-insensitive)", placeholder: "[PAN_REDACTED]", reply: "use_secure_form" }
+  - { id: RED-07, name: full_account_number, detect: "NexBank account format SA-XXXX-XXXX-NNNN or 12+ digit run with account context", placeholder: "[ACCT_REDACTED]", reply: "use_masked_reference" }
+# Decision D-14: PAN is accepted only through the secure form widget; a PAN typed in chat is redacted and the customer is redirected.
+# RED-04/RED-05: customers often paste an OTP. The agent treats this as a security event (SEC-001 scam_victim check if it was shared with a third party).
+
+entities:
+
+- id: account_id
+  type: identifier
+  examples: ["SA-XXXX-XXXX-1234", "my savings account ending 1234"]
+  extraction: [regex, lookup]
+  validation: "Format SA-XXXX-XXXX-NNNN, check-digit validation, then ownership check against the authenticated customer's accounts. Reject accounts not owned by the customer without confirming that the account exists."
+  sensitivity: HIGH
+  handling: { store: masked, accept_full: false, display: "last 4 only" }
+  note: "Brief calls this HIGH-PII. A bare \"1234\" is read as last-4 only. Never echo a full number (rule 1)."
+
+- id: account_type
+  type: enum
+  values: [savings, fd, credit_card, loan, demat_or_mf, gold]
+  examples: ["savings", "mera FD account", "credit card"]
+  extraction: [lookup, llm]
+  validation: "Must be a product class in A13.1 that the customer holds; otherwise ask."
+  sensitivity: LOW
+  handling: { store: plain }
+
+- id: transaction_id
+  type: identifier
+  examples: ["TXN-20260412-00481"]
+  extraction: [regex, lookup]
+  validation: "Format check, then ledger lookup scoped to the customer. If only a description exists, resolve through search_txn and confirm with amount and date."
+  sensitivity: MEDIUM
+  handling: { store: plain }
+
+- id: txn_description
+  type: free_text
+  examples: ["Swiggy charge yesterday", "the Rs 480 charge"]
+  extraction: [ner, llm]
+  validation: "Resolved to one or more ledger candidates; more than one candidate triggers a pick-list (no free guessing)."
+  sensitivity: MEDIUM
+  handling: { store: plain }
+
+- id: amount
+  type: money
+  examples: ["1,500.00", "Rs 480", "5 lakh", "50k", "paanch hazaar", "$200"]
+  extraction: [regex, ner]
+  validation: "Currency detection (INR default, USD/AED and similar detected). Normalise lakh, crore, k, Hindi number words and Devanagari digits. Range check 0 < amount <= INR 10 crore equivalent; outside the range, ask to confirm. Compare with the ledger value where one exists; a mismatch is a contradiction (dialogue-management.md section 5.4)."
+  sensitivity: MEDIUM
+  handling: { store: plain }
+  note: "amount > INR 50,000 on a dispute marks ESC-005."
+
+- id: currency
+  type: enum
+  values: [INR, USD, AED, GBP, EUR, other]
+  examples: ["$", "dollars", "dirham"]
+  extraction: [regex, lookup]
+  validation: "ISO 4217 code or symbol or common word. Unknown codes are kept as other and trigger a clarify."
+  sensitivity: LOW
+  handling: { store: plain }
+
+- id: date
+  type: date
+  examples: ["12 April", "kal", "last Friday", "parso"]
+  extraction: [regex, ner, llm]
+  validation: "Resolved to an absolute IST date using the conversation clock. Future dates rejected for past events. Relative Hindi words (aaj, kal, parso) resolved with the clock."
+  sensitivity: LOW
+  handling: { store: plain }
+
+- id: date_range
+  type: date_range
+  examples: ["last 3 months", "April to June", "FY 2025-26"]
+  extraction: [regex, ner, llm]
+  validation: "start <= end, both in the past, span <= 24 months (longer spans go to the branch or email flow)."
+  sensitivity: LOW
+  handling: { store: plain }
+  default: "last 30 days"
+
+- id: statement_format
+  type: enum
+  values: [pdf, csv]
+  examples: ["PDF", "excel"]
+  extraction: [lookup, llm]
+  validation: "Map aliases (excel, sheet) to csv. Any other value falls back to pdf with a note."
+  sensitivity: LOW
+  handling: { store: plain }
+  default: pdf
+
+- id: field_to_update
+  type: enum
+  values: [phone, email, address, name, nominee, other]
+  examples: ["mobile number", "email id"]
+  extraction: [lookup, llm]
+  validation: "name, nominee and other are not self-serve and route to a human (ACC-006 or the branch)."
+  sensitivity: LOW
+  handling: { store: plain }
+
+- id: new_value
+  type: typed_by_field
+  examples: ["+91 98765 43210", "name@example.com"]
+  extraction: [regex, ner]
+  validation: "Validated by field_to_update: phone uses the phone_number rule; email uses RFC 5322 syntax plus a disposable-domain check. The value is stored as a pending change and applied only after OTP to both old and new contacts."
+  sensitivity: HIGH
+  handling: { store: masked, accept_full: true, note: "needed to perform the change; masked in logs" }
+
+- id: new_address
+  type: address
+  examples: ["Flat 12, Sector 5, Indore 452001"]
+  extraction: [ner, llm]
+  validation: "Six-digit PIN code plus city or state consistency check. Free text is stored only in the pending-change record, not in the dialogue summary."
+  sensitivity: HIGH
+  handling: { store: ref_only }
+
+- id: proof_document
+  type: file_reference
+  examples: ["utility_bill.pdf (uploaded in app)"]
+  extraction: [dialogue]
+  validation: "Uploaded through the secure in-app flow; the chat holds only the document reference. Allowed types are set by the KB entry for address proof."
+  sensitivity: CRITICAL
+  handling: { store: ref_only, accept_full: false }
+
+- id: kyc_document_type
+  type: enum
+  values: [aadhaar, pan, passport, voter_id, driving_licence, utility_bill, other]
+  examples: ["Aadhaar", "passport"]
+  extraction: [lookup, llm]
+  validation: "Only the document type is captured, never its number."
+  sensitivity: MEDIUM
+  handling: { store: plain }
+
+- id: close_reason
+  type: free_text_or_enum
+  values: [no_longer_needed, poor_service, better_offer, fees, relocating, other]
+  examples: ["service theek nahi hai"]
+  extraction: [llm, lookup]
+  validation: "Optional to answer. If the reason is a complaint, a CMP-001 is offered in addition."
+  sensitivity: LOW
+  handling: { store: plain }
+
+- id: nominee_name
+  type: person_name
+  examples: ["Sunita Verma"]
+  extraction: [ner]
+  validation: "Letters, spaces, dots. Not used to match anyone; checked only at the branch."
+  sensitivity: HIGH
+  handling: { store: ref_only }
+
+- id: relationship
+  type: enum
+  values: [spouse, parent, child, sibling, other_family, other]
+  examples: ["wife", "beta"]
+  extraction: [lookup, llm]
+  validation: "Hindi kin terms are mapped (beta, patni, pati, maa, papa)."
+  sensitivity: MEDIUM
+  handling: { store: plain }
+
+- id: id_proof_type
+  type: enum
+  values: [aadhaar, pan, passport, voter_id, driving_licence]
+  examples: ["Aadhaar card"]
+  extraction: [lookup]
+  validation: "Type only, never a number. Numbers go through the branch or the secure widget."
+  sensitivity: MEDIUM
+  handling: { store: plain }
+
+- id: current_account_type
+  type: enum
+  values: [savings]       # only NexSave Savings Account exists in A13.1; extend from the KB
+  examples: ["savings"]
+  extraction: [lookup]
+  validation: "Must match an account the customer holds."
+  sensitivity: LOW
+  handling: { store: plain }
+
+- id: desired_account_type
+  type: string
+  examples: ["premium savings", "zero balance"]
+  extraction: [llm, lookup]
+  validation: "Validated against KB account variants. If none matches, the intent falls to the kb_gap path (cannot confirm) and does not invent a variant."
+  sensitivity: LOW
+  handling: { store: plain }
+
+- id: upi_ref
+  type: identifier
+  examples: ["UPI ref 412800993346"]
+  extraction: [regex]
+  validation: "12-digit reference. Ledger lookup scoped to the customer. A UPI ref is not a transaction_id and is mapped through the ledger."
+  sensitivity: MEDIUM
+  handling: { store: plain }
+
+- id: upi_id
+  type: identifier
+  examples: ["user@bank"]
+  extraction: [regex]
+  validation: "Format handle@psp, handle resolved against the PSP list. A UPI ID is never used to look up or reveal another customer's data."
+  sensitivity: MEDIUM
+  handling: { store: masked }
+
+- id: beneficiary_name
+  type: person_or_business_name
+  examples: ["Ramesh Traders"]
+  extraction: [ner, lookup]
+  validation: "Fuzzy-match to the customer's saved beneficiaries; else free text for a ticket."
+  sensitivity: MEDIUM
+  handling: { store: plain }
+
+- id: beneficiary_bank
+  type: enum_or_ifsc
+  examples: ["HDFC", "IFSC code"]
+  extraction: [lookup, regex]
+  validation: "Bank name from the NPCI member list, or IFSC 4 letters + 0 + 6 characters."
+  sensitivity: LOW
+  handling: { store: plain }
+
+- id: neft_ref
+  type: identifier
+  examples: ["UTR number"]
+  extraction: [regex]
+  validation: "16 to 22 alphanumeric UTR; checked against the transfer ledger."
+  sensitivity: MEDIUM
+  handling: { store: plain }
+  note: "Brief lists this as ref_number (TXN-004)."
+
+- id: frequency
+  type: enum
+  values: [daily, weekly, monthly, quarterly, yearly]
+  examples: ["every month", "har mahine"]
+  extraction: [lookup, llm]
+  validation: "Map Hindi and Hinglish terms; reject unknown values."
+  sensitivity: LOW
+  handling: { store: plain }
+
+- id: destination_country
+  type: enum
+  examples: ["UAE", "USA"]
+  extraction: [lookup, ner]
+  validation: "ISO 3166 name or alias. Countries on the bank's restricted list are not discussed and trigger a human review through ESC-012."
+  sensitivity: MEDIUM
+  handling: { store: plain }
+
+- id: card_last4
+  type: identifier
+  examples: ["ending 5678"]
+  extraction: [regex, dialogue]
+  validation: "Exactly 4 digits; must match one of the customer's cards. Never request or accept more than 4 digits (rule 1). The brief calls this CRITICAL-PCI."
+  sensitivity: CRITICAL
+  handling: { store: masked, accept_full: false }
+
+- id: card_type
+  type: enum
+  values: [debit, credit_classic, credit_premium]
+  examples: ["credit card", "Premium card"]
+  extraction: [lookup, llm]
+  validation: "Must be a card the customer holds, using A13.1 product names."
+  sensitivity: LOW
+  handling: { store: plain }
+
+- id: block_reason
+  type: enum
+  values: [lost, stolen, damaged, expired, suspected_fraud, temporary_hold, other]
+  examples: ["kho gaya", "chori ho gaya"]
+  extraction: [lookup, llm]
+  validation: "suspected_fraud routes to SEC-001. lost and stolen with a replacement ask create a block first."
+  sensitivity: LOW
+  handling: { store: plain }
+
+- id: aadhaar_last4
+  type: identifier
+  examples: ["Aadhaar ending 4321"]
+  extraction: [regex]
+  validation: "Exactly 4 digits. A full 12-digit Aadhaar is never accepted: it is redacted by RED-03 and the customer is told why."
+  sensitivity: CRITICAL
+  handling: { store: masked, accept_full: false }
+
+- id: pan
+  type: identifier
+  examples: ["ABCDE1234F"]
+  extraction: [regex]
+  validation: "Format [A-Z]{5}[0-9]{4}[A-Z] plus NSDL verification, done only in the secure form widget (D-14). In chat the value is redacted by RED-06 and kept as ABCDE****F."
+  sensitivity: CRITICAL
+  handling: { store: masked, accept_full: false }
+
+- id: phone_number
+  type: phone
+  examples: ["+91 98765 43210", "98765 43210"]
+  extraction: [regex]
+  validation: "E.164 with country code +91 default; 10-digit Indian mobile starting 6-9; other countries validated by length. Matched to the registered number only to say yes or no, never read back in full."
+  sensitivity: HIGH
+  handling: { store: masked, display: "last 4 only" }
+
+- id: email
+  type: email
+  examples: ["name@example.com"]
+  extraction: [regex]
+  validation: "RFC 5322 syntax. Display as n***@example.com."
+  sensitivity: HIGH
+  handling: { store: masked }
+
+- id: merchant_name
+  type: organisation
+  examples: ["Amazon", "Swiggy", "Zomato"]
+  extraction: [lookup, ner]
+  validation: "Fuzzy match against the merchant DB (edit distance and phonetic match for Hinglish spellings). Unknown merchants are accepted as free text."
+  sensitivity: LOW
+  handling: { store: plain }
+
+- id: product_name
+  type: enum
+  values: [NexSave Savings Account, NexFD Fixed Deposit, NexCredit Card Classic, NexCredit Card Premium, NexHome Loan, NexPersonal Loan, NexProtect Term Insurance, NexInvest Mutual Funds, NexGold Digital Gold]
+  examples: ["FD", "home loan", "gold"]
+  extraction: [lookup, llm]
+  validation: "Resolved only to A13.1 product names. An unknown product (a competitor's or an invented product) is NOT mapped to the nearest match: the agent says it has no information on that product."
+  sensitivity: LOW
+  handling: { store: plain }
+
+- id: tenure
+  type: duration
+  examples: ["3 years", "18 months", "7 din"]
+  extraction: [regex, ner]
+  validation: "Convert to days. Product bounds from A13.1: NexFD 7 days to 10 years; NexHome Loan up to 30 years; NexPersonal Loan up to 5 years. Out-of-range values get the product limit, with no invented alternatives."
+  sensitivity: LOW
+  handling: { store: plain }
+
+- id: loan_type
+  type: enum
+  values: [home, personal]
+  examples: ["ghar ka loan", "personal loan"]
+  extraction: [lookup, llm]
+  validation: "Only the two loan products in A13.1. Other loans (car, education, gold loan) are out of catalogue."
+  sensitivity: LOW
+  handling: { store: plain }
+
+- id: loan_amount
+  type: money
+  examples: ["20L", "5 lakh"]
+  extraction: [regex, ner]
+  validation: "Same normalisation as amount. A salary or income figure is not collected for advice (see PRD-002 and PRD-005 notes)."
+  sensitivity: MEDIUM
+  handling: { store: plain }
+
+- id: complaint_category
+  type: enum
+  values: [service_quality, transaction_issue, card_issue, staff_conduct, app_technical, charges_and_fees, other]
+  examples: ["app crash", "extra charge"]
+  extraction: [llm, lookup]
+  validation: "Mapped to the CMP-001 tertiary list. When unclear, other, and a human reviewer recategorises."
+  sensitivity: LOW
+  handling: { store: plain }
+
+- id: complaint_text
+  type: free_text
+  examples: ["Refund promised 10 days ago, not received"]
+  extraction: [dialogue]
+  validation: "Max 2,000 characters; PII redaction applied before storage; kept verbatim for the ticket."
+  sensitivity: MEDIUM
+  handling: { store: plain, redaction: pii_scrubbed }
+
+- id: complaint_id
+  type: identifier
+  examples: ["CMP-20260410-0042"]
+  extraction: [regex, lookup]
+  validation: "Format check, then ownership check. May default from the customer's single open complaint."
+  sensitivity: MEDIUM
+  handling: { store: plain }
+
+- id: dispute_reason
+  type: enum
+  values: [merchant_error, duplicate_charge, unrecognised_charge, wrong_amount, refund_not_received, cash_not_dispensed, other]
+  examples: ["charged twice", "pehle bhi charge hua"]
+  extraction: [llm, lookup]
+  validation: "Maps one-to-one to the TXN-002 tertiary list."
+  sensitivity: LOW
+  handling: { store: plain }
+
+- id: callback_time
+  type: datetime
+  examples: ["tomorrow 4 pm", "kal shaam ko"]
+  extraction: [regex, ner, llm]
+  validation: "A future IST slot inside callback hours (hours are configuration, Day 12). Treated as a request, not a promise."
+  sensitivity: LOW
+  handling: { store: plain }
+
+- id: feedback_text
+  type: free_text
+  examples: ["Very helpful"]
+  extraction: [dialogue]
+  validation: "Max 1,000 characters; PII redaction applied."
+  sensitivity: LOW
+  handling: { store: plain }
+
+- id: rating
+  type: integer
+  examples: ["4", "five stars"]
+  extraction: [regex, llm]
+  validation: "1 to 5."
+  sensitivity: LOW
+  handling: { store: plain }
+
+- id: scam_channel
+  type: enum
+  values: [sms, email, phone_call, whatsapp, fake_app, fake_website, social_media, in_person, other]
+  examples: ["call aaya tha", "WhatsApp link"]
+  extraction: [lookup, llm]
+  validation: "One of the listed channels."
+  sensitivity: LOW
+  handling: { store: plain }
+
+- id: credential_type
+  type: enum
+  values: [login_password, mobile_pin, card_pin_info, transaction_password, device_binding]
+  examples: ["password bhool gaya", "app locked"]
+  extraction: [lookup, llm]
+  validation: "Only the type is captured. A credential value is never accepted (RED-04). card_pin_info is information on how to set a PIN, never a PIN value."
+  sensitivity: MEDIUM
+  handling: { store: plain }
+
+- id: alert_reference
+  type: identifier
+  examples: ["ALT-8841"]
+  extraction: [regex, dialogue]
+  validation: "Matches an open alert for this customer. When the customer opens the chat from the alert, the reference is injected by the channel adapter."
+  sensitivity: MEDIUM
+  handling: { store: plain }
+
+- id: language
+  type: enum
+  values: [en, hi, hinglish, ta, te, bn, mr, gu]
+  examples: ["Hindi mein baat karo", "தமிழ்"]
+  extraction: [lookup, llm]
+  validation: "Eight supported languages (A2.4). An unsupported language is acknowledged and the reply stays in English or Hinglish."
+  sensitivity: LOW
+  handling: { store: plain }
+
+- id: city
+  type: place
+  examples: ["Indore", "Surat"]
+  extraction: [ner, lookup]
+  validation: "Matched against an Indian city list."
+  sensitivity: LOW
+  handling: { store: plain }
+
+# Dialogue-act slots: filled from the customer's reply, not extracted from text (see entities.md section 5).
+dialogue_slots:
+  - { id: confirmation, type: boolean, values: [yes, no], validation: "Counts only as an answer to the open pending_confirmation, never pre-filled or inferred from silence." }

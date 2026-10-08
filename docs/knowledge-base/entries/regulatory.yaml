@@ -1,0 +1,320 @@
+# NexBank KB entries: category `regulatory` (11 entries). Schema: docs/knowledge-base/kb-schema.md
+# Grounded ONLY in the brief's regulatory text: A4.3, A13.1, A6 and the "Regulatory Reference Summary" appendix (pages 70-71).
+# The brief gives one-line relevance statements, so entries restate those and list what is NOT known as `not_in_brief`.
+# Regulatory questions with an uncertain answer go to ESC-008 (Compliance Helpdesk); see KB-ESC-008. Review cadence is the shortest TTL class (90 days) plus a fast-track on any circular (Day 8).
+
+anchors:
+  chain_reg: &chain_reg [Regulatory Compliance Manager, Chief Risk Officer]
+  eff: &eff 2026-10-01
+
+entries:
+
+- id: KB-REG-001
+  category: regulatory
+  format: structured
+  title: RBI Digital Lending Guidelines (September 2022)
+  body: The RBI Digital Lending Guidelines (September 2022) require fair practices for AI/ML models, mandatory disclosures, cooling-off periods and no high-pressure tactics. For NexBank this means every loan or card answer carries the interest rate, fees and terms, and no pressure is applied.
+  structured_fields:
+    issuer: Reserve Bank of India
+    instrument: Digital Lending Guidelines
+    dated: September 2022
+    obligations:
+      - mandatory disclosures (interest rates, fees, T&C) in all product information
+      - cooling-off period information for all new product sign-ups
+      - grievance redressal information within 2 turns of any complaint
+      - no high-pressure sales tactics or artificial urgency
+    applies_to_products: [KB-PRD-003, KB-PRD-004, KB-PRD-005, KB-PRD-006]
+    not_in_brief: [length of the cooling-off period, exact fee disclosure format, key fact statement layout]
+  regulatory_tags: [RBI_DIGITAL_LENDING]
+  auth_level_required: anonymous
+  audience: customer_facing
+  version: 1.0.0
+  effective_from: *eff
+  ttl_class: regulatory
+  ttl_days: 90
+  expires_at: 2026-12-30
+  owner: Regulatory Compliance Manager
+  approval_chain: *chain_reg
+  source_ref: A4.3; Appendix p71
+  languages: [en]
+  intents: [PRD-001, PRD-002, CRD-003, CRD-004]
+  escalation_triggers: [ESC-008]
+  status: published
+
+- id: KB-REG-002
+  category: regulatory
+  format: structured
+  title: Grievance redressal and the Banking Ombudsman Scheme
+  body: Grievance redressal information must be available within 2 turns of any complaint. The brief cites the Banking Ombudsman Scheme, 2006 (amended 2017) of the Reserve Bank of India for this duty. The agent gives the grievance route early and does not state ombudsman timelines or contacts, which are not in the brief.
+  structured_fields:
+    issuer: Reserve Bank of India
+    instrument: Banking Ombudsman Scheme, 2006 (amended 2017)
+    rule: grievance redressal mechanism available within 2 turns of any complaint
+    agent_behaviour:
+      - after a complaint is detected, give the grievance route (register complaint, supervisor callback, escalation) by the second turn
+      - empathy first, then the route (A9 Pattern 1)
+    reporting: quarterly customer complaint analysis per Banking Ombudsman requirements
+    not_in_brief: [ombudsman contact details, filing channels, time limits, award limits]
+    gap_entry: KB-ESC-019
+  regulatory_tags: [RBI_OMBUDSMAN, RBI_DIGITAL_LENDING]
+  auth_level_required: anonymous
+  audience: customer_facing
+  version: 1.0.0
+  effective_from: *eff
+  ttl_class: regulatory
+  ttl_days: 90
+  expires_at: 2026-12-30
+  owner: Regulatory Compliance Manager
+  approval_chain: *chain_reg
+  source_ref: A4.3; Appendix p71; A10.3 (regulatory reporting)
+  languages: [en]
+  intents: [CMP-001, CMP-003, CMP-002]
+  escalation_triggers: [ESC-008, ESC-002]
+  status: published
+
+- id: KB-REG-003
+  category: regulatory
+  format: semi_structured
+  title: PCI DSS v4.0 - card data in conversations
+  body: >-
+    PCI DSS v4.0 governs payment card data handling in conversational interfaces: masking, encryption and logging. NexBank rules from A4.3 are: card numbers masked in display and logs (last 4 digits only), CVV or CVC never requested, stored or displayed, and enhanced audit logging for payment-related conversations.
+  structured_fields:
+    issuer: PCI SSC
+    instrument: PCI DSS v4.0
+    rules:
+      masking: show only the last 4 digits of a card number in display and logging
+      cvv_cvc: never request, store or display
+      logging: enhanced audit logging for all payment-related conversations
+    customer_wording: "If a customer offers a full card number or CVV, ask them not to share it and use the last 4 digits only."
+    not_in_brief: [specific PCI DSS requirement numbers, scope assessment details]
+  regulatory_tags: [PCI_DSS]
+  auth_level_required: anonymous
+  audience: customer_facing
+  version: 1.0.0
+  effective_from: *eff
+  ttl_class: regulatory
+  ttl_days: 90
+  expires_at: 2026-12-30
+  owner: Regulatory Compliance Manager
+  approval_chain: *chain_reg
+  source_ref: A4.3; Appendix p71
+  languages: [en]
+  intents: [CRD-001, CRD-002, SEC-001, SEC-003]
+  status: published
+
+- id: KB-REG-004
+  category: regulatory
+  format: semi_structured
+  title: KYC, AML and PEP requirements
+  body: >-
+    KYC/AML rules require identity verification before account-specific information is given, flagging of suspicious transaction patterns to the AML team, refusal of requests that could facilitate money laundering, and enhanced due diligence when a PEP flag is present.
+    The agent never tells a customer that they are suspected of anything. It routes silently to AML Compliance (ESC-012) or Enhanced Due Diligence (ESC-015).
+  structured_fields:
+    rules:
+      - verify customer identity before account-specific information
+      - flag suspicious transaction patterns to the AML team
+      - never process requests that could facilitate money laundering
+      - PEP flags must trigger enhanced due diligence protocols
+    routes:
+      money_laundering_indicators: {trigger: ESC-012, priority: P0, queue: AML Compliance, sla: under 2 min}
+      pep_customer: {trigger: ESC-015, priority: P1, queue: Enhanced Due Diligence, sla: under 5 min}
+    products_with_kyc: [KB-PRD-001, KB-PRD-004, KB-PRD-008]
+    not_in_brief: [AML thresholds, KYC document list, re-KYC periodicity]
+  regulatory_tags: [KYC_AML]
+  auth_level_required: anonymous
+  audience: agent_internal
+  version: 1.0.0
+  effective_from: *eff
+  ttl_class: regulatory
+  ttl_days: 90
+  expires_at: 2026-12-30
+  owner: Regulatory Compliance Manager
+  approval_chain: *chain_reg
+  source_ref: A4.3; A6
+  languages: [en]
+  intents: [ACC-008, TXN-006, ACC-001]
+  escalation_triggers: [ESC-012, ESC-015]
+  status: published
+
+- id: KB-REG-005
+  category: regulatory
+  format: unstructured
+  title: SEBI robo-advisory guidelines (2024)
+  body: >-
+    The SEBI Guidelines on Robo-Advisory (2024) state that SEBI registration is required for personalised investment advice, and that information-only services are exempt.
+    NexBank's assistant stays on the information side. It may describe NexInvest and NexGold facts, risk disclosure and how a SIP works as a general feature, and it declines to say which fund, amount or timing suits a customer. For personalised advice it offers a SEBI-registered advisor through the Wealth Advisory queue (ESC-013).
+  structured_fields: {}
+  regulatory_tags: [SEBI_ROBO_ADVISORY]
+  auth_level_required: anonymous
+  audience: customer_facing
+  version: 1.0.0
+  effective_from: *eff
+  ttl_class: regulatory
+  ttl_days: 90
+  expires_at: 2026-12-30
+  owner: Regulatory Compliance Manager
+  approval_chain: *chain_reg
+  source_ref: Appendix p70; A4.1; A6 (ESC-013)
+  languages: [en]
+  intents: [PRD-005, PRD-001]
+  escalation_triggers: [ESC-013, ESC-008]
+  status: published
+
+- id: KB-REG-006
+  category: regulatory
+  format: unstructured
+  title: IRDAI guidelines on AI in insurance distribution (2024)
+  body: >-
+    The IRDAI Guidelines on AI in Insurance Distribution (2024) require human oversight for AI-recommended insurance products above specified thresholds. The brief does not state the thresholds.
+    NexProtect is IRDAI regulated. The assistant describes cover, the online-only pricing advantage and the medical check above 50L, and never recommends a policy for a person. Any question about thresholds, or a request for a recommendation, goes to a human (ESC-008 or ESC-013).
+  structured_fields: {}
+  regulatory_tags: [IRDAI_AI_DISTRIBUTION]
+  auth_level_required: anonymous
+  audience: customer_facing
+  version: 1.0.0
+  effective_from: *eff
+  ttl_class: regulatory
+  ttl_days: 90
+  expires_at: 2026-12-30
+  owner: Regulatory Compliance Manager
+  approval_chain: *chain_reg
+  source_ref: Appendix p70; A13.1
+  languages: [en]
+  intents: [PRD-004, PRD-005]
+  escalation_triggers: [ESC-008, ESC-013]
+  status: published
+
+- id: KB-REG-007
+  category: regulatory
+  format: structured
+  title: Data protection - DPDP Act 2023 and IT Reasonable Security Practices Rules 2011
+  body: The DPDP Act, 2023 sets data processing, consent management and data localisation requirements for customer-facing AI. The IT (Reasonable Security Practices) Rules, 2011 define sensitive personal data handling.
+  structured_fields:
+    instruments:
+      - {name: "Digital Personal Data Protection Act, 2023", issuer: Government of India, relevance: "data processing requirements, consent management, data localisation for customer-facing AI"}
+      - {name: "IT (Reasonable Security Practices) Rules, 2011", issuer: MeitY, relevance: "sensitive personal data handling requirements applicable to AI systems"}
+    jurisdiction: India
+    applies_to: customer-facing AI interactions
+    design_consequences: [India-region data residency, consent before optional data use, masked values in logs]
+    not_in_brief: [retention periods, consent artefact format, breach notification timelines]
+  regulatory_tags: [DPDP_ACT, IT_SPDI_RULES]
+  auth_level_required: anonymous
+  audience: customer_facing
+  version: 1.0.0
+  effective_from: *eff
+  ttl_class: regulatory
+  ttl_days: 90
+  expires_at: 2026-12-30
+  owner: Regulatory Compliance Manager
+  approval_chain: *chain_reg
+  source_ref: Appendix p70
+  languages: [en]
+  intents: [GEN-002]
+  escalation_triggers: [ESC-008]
+  status: published
+
+- id: KB-REG-008
+  category: regulatory
+  format: unstructured
+  title: RBI Master Direction on Digital Payment Security Controls (April 2024)
+  body: >-
+    The RBI Master Direction on Digital Payment Security Controls (April 2024) requires end-to-end encryption for all digital payment channels, including AI-assisted transactions. This entry states the regulatory requirement only.
+    The assistant may state what the direction requires, and that it will never ask for a PIN, password, CVV or full card number. It does not confirm or describe how NexBank's own channels meet the requirement, and does not describe cipher suites or internal architecture; a question about NexBank's own implementation goes to the Compliance Helpdesk (ESC-008).
+  structured_fields: {}
+  regulatory_tags: [RBI_DIGITAL_PAYMENT_SECURITY]
+  auth_level_required: anonymous
+  audience: customer_facing
+  version: 1.0.0
+  effective_from: *eff
+  ttl_class: regulatory
+  ttl_days: 90
+  expires_at: 2026-12-30
+  owner: Regulatory Compliance Manager
+  approval_chain: *chain_reg
+  source_ref: Appendix p70
+  languages: [en]
+  intents: [GEN-002, SEC-003]
+  escalation_triggers: [ESC-008]
+  status: published
+
+- id: KB-REG-009
+  category: regulatory
+  format: unstructured
+  title: RBI Responsible AI circular (draft, 2025) and EU AI Act transparency
+  body: >-
+    The draft RBI Circular on Responsible AI in Financial Services (2025) asks for explainability of AI decisions that affect customer outcomes and prohibits fully automated credit decisions. The brief also lists the EU AI Act high-risk requirements, which cover risk classification and transparency for customer-facing AI.
+    In practice the assistant never decides a credit application: it states published criteria, runs the deterministic EMI calculator, and hands the decision to the bank. It tells the customer it is an AI, and gives a plain reason when it declines a request. As the RBI circular is a draft, state it as draft if asked.
+  structured_fields: {}
+  regulatory_tags: [RBI_RESPONSIBLE_AI, EU_AI_ACT]
+  auth_level_required: anonymous
+  audience: customer_facing
+  version: 1.0.0
+  effective_from: *eff
+  ttl_class: regulatory
+  ttl_days: 90
+  expires_at: 2026-12-30
+  owner: Regulatory Compliance Manager
+  approval_chain: *chain_reg
+  source_ref: Appendix p70-71
+  languages: [en]
+  intents: [PRD-002, CRD-003, GEN-002]
+  escalation_triggers: [ESC-008]
+  status: published
+
+- id: KB-REG-010
+  category: regulatory
+  format: structured
+  title: DICGC deposit cover on NexSave
+  body: NexSave Savings Account deposits carry DICGC cover up to 5L, as listed in the product catalogue. KYC is mandatory for the account.
+  structured_fields:
+    product: NexSave Savings Account
+    cover_up_to: 5L
+    insurer: DICGC
+    kyc: mandatory
+    not_in_brief: [what exactly is covered, how cover is counted across accounts, claim process, premium]
+    product_entry: KB-PRD-001
+  regulatory_tags: [DICGC, KYC_AML]
+  auth_level_required: anonymous
+  audience: customer_facing
+  version: 1.0.0
+  effective_from: *eff
+  ttl_class: regulatory
+  ttl_days: 90
+  expires_at: 2026-12-30
+  owner: Regulatory Compliance Manager
+  approval_chain: *chain_reg
+  source_ref: A13.1; E3 resources
+  languages: [en]
+  intents: [PRD-001, ACC-007]
+  escalation_triggers: [ESC-008]
+  status: published
+
+- id: KB-REG-011
+  category: regulatory
+  format: semi_structured
+  title: Tax treatment of NexFD - Section 80C and TDS
+  body: >-
+    NexFD carries Section 80C benefits and TDS is applicable (A13.1). The brief's permissible example is "FDs offer tax benefits under Section 80C up to 1.5L". The assistant states this as a fact only.
+    Telling a customer to put more money into tax-saving FDs, or to plan their tax around an FD, is tax-planning advice and is declined (KB-POL-001).
+  structured_fields:
+    product: NexFD Fixed Deposit
+    section_80c: {benefit: applicable, brief_example_limit: 1.5L, source_ref: A4.1}
+    tds: applicable
+    boundary: state the fact; no advice on how much to invest or how to reduce tax
+    not_in_brief: [TDS rate, TDS threshold, Form 15G or 15H rules, tax slab effects]
+    product_entry: KB-PRD-002
+  regulatory_tags: [TAX_80C, TDS]
+  auth_level_required: anonymous
+  audience: customer_facing
+  version: 1.0.0
+  effective_from: *eff
+  ttl_class: regulatory
+  ttl_days: 90
+  expires_at: 2026-12-30
+  owner: Regulatory Compliance Manager
+  approval_chain: *chain_reg
+  source_ref: A13.1; A4.1
+  languages: [en]
+  intents: [PRD-003, PRD-005, ACC-002]
+  escalation_triggers: [ESC-013]
+  status: published

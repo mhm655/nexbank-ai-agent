@@ -1,0 +1,631 @@
+# NexBank KB entries: category `escalation` (21 entries). Schema: docs/knowledge-base/kb-schema.md
+# KB-ESC-001..010: escalation procedures that restate A6 and the project decisions, so retrieval can ground handoff wording.
+# KB-ESC-011..021: GAP-HANDLING entries (`gap_handling: true`). A13.1 and the regulatory text hold no data for these topics,
+# so each entry says what is unknown, gives a safe statement, names adjacent facts that ARE known, and offers a human. No figure is invented.
+# The authoritative trigger rules live in config/escalation_rules.yaml (Day 12); this file never overrides them.
+
+anchors:
+  chain_esc: &chain_esc [Customer Experience, Risk & Compliance, Chief Risk Officer]
+  eff: &eff 2026-10-01
+
+entries:
+
+# ------------------------------------------------------------ escalation procedures
+
+- id: KB-ESC-001
+  category: escalation
+  format: semi_structured
+  title: Handoff package contents
+  body: Every handoff to a human carries a package so the customer never has to repeat themselves. The package has eight elements (D-04).
+  structured_fields:
+    elements:
+      - customer ID (pseudonymised)
+      - auth level
+      - intent history
+      - entities collected
+      - conversation summary
+      - sentiment trajectory
+      - actions already taken
+      - escalation trigger and reason
+    customer_wording: "I am passing you to a colleague with the full details, so you will not need to repeat yourself."
+    never: [include full card number, CVV, PIN, full Aadhaar or password in the package]
+    missing_fields: fill from state and flag the package as incomplete
+  regulatory_tags: [DPDP_ACT, PCI_DSS]
+  auth_level_required: anonymous
+  audience: agent_internal
+  version: 1.0.0
+  effective_from: *eff
+  ttl_class: escalation_procedure
+  ttl_days: 365
+  expires_at: 2027-10-01
+  owner: Customer Experience
+  approval_chain: *chain_esc
+  source_ref: A6; D-04
+  languages: [en]
+  intents: [GEN-003, CMP-003, SEC-001, ACC-005]
+  status: published
+
+- id: KB-ESC-002
+  category: escalation
+  format: semi_structured
+  title: Fraud report handling (P0)
+  body: >-
+    A confirmed or suspected fraud report is the highest-priority path. Empathy first, no marketing, short sentences. The report is accepted at any auth level, and protective actions run only at otp_verified or above and only after explicit confirmation (D-16).
+  structured_fields:
+    triggers: [ESC-001 confirmed or suspected fraud, ESC-009 unauthorised account access reported]
+    priority: P0
+    queues: {ESC-001: Fraud Investigation, ESC-009: Security Operations}
+    sla: under 2 min
+    steps:
+      - acknowledge and reassure in one sentence
+      - offer to block the card, with a summary and explicit yes (KB-POL-006)
+      - if the customer is anonymous, run a fast OTP step; if OTP fails, hand off to a human at P0
+      - create the fraud record and hand off with the package (KB-ESC-001)
+      - tell the customer to change any compromised credential (KB-POL-011)
+    never: [cross-sell, ask the customer to forward credentials as evidence, accuse the customer, promise a refund]
+  regulatory_tags: [PCI_DSS, KYC_AML, RBI_DIGITAL_PAYMENT_SECURITY]
+  auth_level_required: anonymous
+  audience: agent_internal
+  version: 1.0.0
+  effective_from: *eff
+  ttl_class: escalation_procedure
+  ttl_days: 365
+  expires_at: 2027-10-01
+  owner: Customer Experience
+  approval_chain: *chain_esc
+  source_ref: A6 (ESC-001, ESC-009); A4.2 (rule 6); D-16
+  languages: [en]
+  intents: [SEC-001, SEC-004, SEC-002, CRD-001]
+  escalation_triggers: [ESC-001, ESC-009]
+  status: published
+
+- id: KB-ESC-003
+  category: escalation
+  format: semi_structured
+  title: Customer asks for a human agent
+  body: A request for a human is honoured. It is counted, never stalled, and does not require the customer to explain why. At the third request the Next Available Agent queue is triggered.
+  structured_fields:
+    trigger: ESC-006 (customer requests a human agent 3 or more times)
+    priority: P2
+    queue: Next Available Agent
+    sla: under 10 min
+    behaviour:
+      - acknowledge the request on the first ask and keep helping while arranging the handoff where possible
+      - increment human_request_count, including implicit requests such as "who can I talk to"
+      - at 3 or more requests hand off at once, with no further questions
+      - offer a callback request if no agent is free; the callback time is a request, not a guarantee
+    never: [argue, ask the customer to justify the request, pretend to be human]
+  regulatory_tags: [EU_AI_ACT]
+  auth_level_required: anonymous
+  audience: agent_internal
+  version: 1.0.0
+  effective_from: *eff
+  ttl_class: escalation_procedure
+  ttl_days: 365
+  expires_at: 2027-10-01
+  owner: Customer Experience
+  approval_chain: *chain_esc
+  source_ref: A6 (ESC-006); A3.3 (GEN-003)
+  languages: [en]
+  intents: [GEN-003, CMP-005]
+  escalation_triggers: [ESC-006]
+  status: published
+
+- id: KB-ESC-004
+  category: escalation
+  format: unstructured
+  title: Distress, self-harm or emergency disclosure
+  body: >-
+    If a customer mentions self-harm, threats or an emergency, stop the banking task at once. Respond with a calm, caring crisis message, encourage the customer to contact emergency services or someone they trust, and hand off to the Crisis Response queue immediately (ESC-011, P0).
+    Do not continue the previous task in the same turn, do not offer products, and do not ask for account details. The Input Guard screens for this independently before NLU, and the safety-critical wording comes from pre-reviewed templates in the customer's language.
+  structured_fields: {}
+  regulatory_tags: []
+  auth_level_required: anonymous
+  audience: agent_internal
+  version: 1.0.0
+  effective_from: *eff
+  ttl_class: escalation_procedure
+  ttl_days: 365
+  expires_at: 2027-10-01
+  owner: Customer Experience
+  approval_chain: *chain_esc
+  source_ref: A6 (ESC-011); A3.3 (GEN-007)
+  languages: [en]
+  intents: [GEN-007]
+  escalation_triggers: [ESC-011]
+  status: published
+
+- id: KB-ESC-005
+  category: escalation
+  format: semi_structured
+  title: Legal threats and unresolved complaints
+  body: A complaint that is repeated, unresolved, angry or legal in tone moves to a human. Empathy first, then the route. The grievance route is given within 2 turns of any complaint (KB-REG-002).
+  structured_fields:
+    triggers:
+      ESC-002: {condition: customer threatens legal action, priority: P1, queue: Senior Resolution Mgr, sla: under 5 min}
+      ESC-004: {condition: sentiment score below -0.7 for 2 or more turns, priority: P1, queue: Customer Retention, sla: under 5 min}
+      ESC-010: {condition: conversation exceeds 15 turns without resolution, priority: P2, queue: Supervisor Review, sla: under 15 min}
+    legal_threat_rule: on legal_threat escalate immediately; do not argue, admit liability or comment on the law
+    never: [debate the complaint, promise an outcome]
+  regulatory_tags: [RBI_OMBUDSMAN]
+  auth_level_required: anonymous
+  audience: agent_internal
+  version: 1.0.0
+  effective_from: *eff
+  ttl_class: escalation_procedure
+  ttl_days: 365
+  expires_at: 2027-10-01
+  owner: Customer Experience
+  approval_chain: *chain_esc
+  source_ref: A6 (ESC-002, ESC-004, ESC-010)
+  languages: [en]
+  intents: [CMP-001, CMP-003, CMP-005]
+  escalation_triggers: [ESC-002, ESC-004, ESC-010]
+  status: published
+
+- id: KB-ESC-006
+  category: escalation
+  format: structured
+  title: Dispute above INR 50,000
+  body: A dispute with an amount above INR 50,000 goes to the Dispute Resolution queue as P1 with an SLA of under 5 minutes.
+  structured_fields:
+    trigger: ESC-005
+    condition: dispute exceeding INR 50,000
+    priority: P1
+    queue: Dispute Resolution
+    sla: under 5 min
+    intake_first: [transaction_id, dispute_reason, amount]
+    never: [promise a refund, state a resolution date]
+  regulatory_tags: [RBI_DIGITAL_PAYMENT_SECURITY]
+  auth_level_required: anonymous
+  audience: agent_internal
+  version: 1.0.0
+  effective_from: *eff
+  ttl_class: escalation_procedure
+  ttl_days: 365
+  expires_at: 2027-10-01
+  owner: Customer Experience
+  approval_chain: *chain_esc
+  source_ref: A6 (ESC-005)
+  languages: [en]
+  intents: [TXN-002]
+  escalation_triggers: [ESC-005]
+  status: published
+
+- id: KB-ESC-007
+  category: escalation
+  format: structured
+  title: Account closure for a high-value customer
+  body: A closure request for an account above 5L goes to the Relationship Manager queue as P1 with an SLA of under 5 minutes. The agent does not try to retain the customer.
+  structured_fields:
+    trigger: ESC-007
+    condition: account closure for a high-value customer (more than 5L)
+    priority: P1
+    queue: Relationship Manager
+    sla: under 5 min
+    agent_action: record the reason and hand off; retention is a human conversation
+    required_auth: full_kyc
+    never: [argue, pressure the customer, offer incentives]
+  regulatory_tags: [KYC_AML]
+  auth_level_required: full_kyc
+  audience: agent_internal
+  version: 1.0.0
+  effective_from: *eff
+  ttl_class: escalation_procedure
+  ttl_days: 365
+  expires_at: 2027-10-01
+  owner: Customer Experience
+  approval_chain: *chain_esc
+  source_ref: A6 (ESC-007); A3.1 (ACC-005)
+  languages: [en]
+  intents: [ACC-005]
+  escalation_triggers: [ESC-007]
+  status: published
+
+- id: KB-ESC-008
+  category: escalation
+  format: semi_structured
+  title: Regulatory question with an uncertain answer, and advisory requests
+  body: >-
+    When a customer asks a regulatory question and retrieval confidence is below the threshold, the agent does not guess. It says it is not certain and hands off to the Compliance Helpdesk (ESC-008, P1). When a customer needs personalised investment advice, the route is the Wealth Advisory queue (ESC-013, P1).
+  structured_fields:
+    triggers:
+      ESC-008: {condition: regulatory question with uncertain answer, priority: P1, queue: Compliance Helpdesk, sla: under 10 min}
+      ESC-013: {condition: investment advisory requiring SEBI advisor, priority: P1, queue: Wealth Advisory, sla: under 10 min}
+    retrieval_threshold_ref: config/parameters.yaml retrieval_confidence_threshold
+    never: [quote a regulation from memory, state a figure that is not in the KB]
+    related_entries: [KB-REG-001, KB-REG-005, KB-REG-006, KB-POL-001]
+  regulatory_tags: [SEBI_ROBO_ADVISORY, RBI_DIGITAL_LENDING]
+  auth_level_required: anonymous
+  audience: agent_internal
+  version: 1.0.0
+  effective_from: *eff
+  ttl_class: escalation_procedure
+  ttl_days: 365
+  expires_at: 2027-10-01
+  owner: Customer Experience
+  approval_chain: *chain_esc
+  source_ref: A6 (ESC-008, ESC-013); A2.3
+  languages: [en]
+  intents: [PRD-001, PRD-004, PRD-005, CMP-003]
+  escalation_triggers: [ESC-008, ESC-013]
+  status: published
+
+- id: KB-ESC-009
+  category: escalation
+  format: unstructured
+  title: AML indicators and PEP customers
+  body: >-
+    If a conversation shows possible money-laundering indicators, the agent does not tell the customer they are under suspicion. It declines anything that could facilitate laundering and routes the case to AML Compliance (ESC-012, P0, under 2 minutes).
+    If the customer is flagged as a Politically Exposed Person, the case goes to Enhanced Due Diligence (ESC-015, P1, under 5 minutes). The agent keeps the tone neutral and does not reveal the flag.
+  structured_fields: {}
+  regulatory_tags: [KYC_AML]
+  auth_level_required: anonymous
+  audience: agent_internal
+  version: 1.0.0
+  effective_from: *eff
+  ttl_class: escalation_procedure
+  ttl_days: 365
+  expires_at: 2027-10-01
+  owner: Customer Experience
+  approval_chain: *chain_esc
+  source_ref: A6 (ESC-012, ESC-015); A4.3
+  languages: [en]
+  intents: [TXN-006, ACC-008]
+  escalation_triggers: [ESC-012, ESC-015]
+  status: published
+
+- id: KB-ESC-010
+  category: escalation
+  format: structured
+  title: Escalation trigger and queue table (A6)
+  body: The fifteen escalation triggers with priority, target queue and SLA, copied from the brief.
+  structured_fields:
+    triggers:
+      - {id: ESC-001, condition: confirmed or suspected fraud, priority: P0, queue: Fraud Investigation, sla: under 2 min}
+      - {id: ESC-002, condition: customer threatens legal action, priority: P1, queue: Senior Resolution Mgr, sla: under 5 min}
+      - {id: ESC-003, condition: confidence below 40% for 3 or more consecutive turns, priority: P2, queue: General Support, sla: under 10 min}
+      - {id: ESC-004, condition: sentiment score below -0.7 for 2 or more turns, priority: P1, queue: Customer Retention, sla: under 5 min}
+      - {id: ESC-005, condition: "dispute exceeding INR 50,000", priority: P1, queue: Dispute Resolution, sla: under 5 min}
+      - {id: ESC-006, condition: customer requests human agent 3 or more times, priority: P2, queue: Next Available Agent, sla: under 10 min}
+      - {id: ESC-007, condition: account closure for high-value customer (more than 5L), priority: P1, queue: Relationship Manager, sla: under 5 min}
+      - {id: ESC-008, condition: regulatory question with uncertain answer, priority: P1, queue: Compliance Helpdesk, sla: under 10 min}
+      - {id: ESC-009, condition: unauthorised account access reported, priority: P0, queue: Security Operations, sla: under 2 min}
+      - {id: ESC-010, condition: conversation exceeds 15 turns without resolution, priority: P2, queue: Supervisor Review, sla: under 15 min}
+      - {id: ESC-011, condition: "customer mentions self-harm, threats or emergency", priority: P0, queue: Crisis Response, sla: IMMEDIATE}
+      - {id: ESC-012, condition: potential money laundering indicators, priority: P0, queue: AML Compliance, sla: under 2 min}
+      - {id: ESC-013, condition: investment advisory requiring SEBI advisor, priority: P1, queue: Wealth Advisory, sla: under 10 min}
+      - {id: ESC-014, condition: system error preventing data access, priority: P2, queue: Technical Support, sla: under 10 min}
+      - {id: ESC-015, condition: customer is a Politically Exposed Person, priority: P1, queue: Enhanced Due Diligence, sla: under 5 min}
+    count: 15
+    priorities: [P0, P1, P2]
+    source: A6
+    note: A conflict between this table and config/escalation_rules.yaml is resolved in favour of the config file (single source of truth).
+  regulatory_tags: [KYC_AML]
+  auth_level_required: anonymous
+  audience: agent_internal
+  version: 1.0.0
+  effective_from: *eff
+  ttl_class: escalation_procedure
+  ttl_days: 365
+  expires_at: 2027-10-01
+  owner: Customer Experience
+  approval_chain: *chain_esc
+  source_ref: A6
+  languages: [en]
+  intents: [GEN-003, SEC-001, CMP-003, TXN-002, ACC-005, PRD-005, GEN-007]
+  escalation_triggers: [ESC-001, ESC-002, ESC-003, ESC-004, ESC-005, ESC-006, ESC-007, ESC-008, ESC-009, ESC-010, ESC-011, ESC-012, ESC-013, ESC-014, ESC-015]
+  status: published
+
+# ------------------------------------------------------------ GAP handling (kb_gap topics: A13.1 has no data)
+
+- id: KB-ESC-011
+  category: escalation
+  format: semi_structured
+  title: GAP - Recurring deposit (RD) is not in the catalogue
+  body: A13.1 lists no recurring deposit product. If a customer asks for RD rates or terms, the agent must not invent a product, a rate or a tenure.
+  gap_handling: true
+  gap_for: [PRD-003]
+  structured_fields:
+    unknown: [existence of an RD product, RD rate, RD tenure, RD minimum instalment]
+    safe_statement: "I can't confirm a recurring deposit product from the information I have. I can tell you about NexFD, or connect you with a team member."
+    known_adjacent_facts: [KB-PRD-002, KB-FAQ-008]
+    offer: [explain NexFD, human handoff, callback request]
+    never: [state any RD rate, say that NexBank offers or does not offer RD as a fact beyond "I can't confirm"]
+  regulatory_tags: [RBI_DIGITAL_LENDING]
+  auth_level_required: anonymous
+  audience: customer_facing
+  version: 1.0.0
+  effective_from: *eff
+  ttl_class: escalation_procedure
+  ttl_days: 365
+  expires_at: 2027-10-01
+  owner: Customer Experience
+  approval_chain: *chain_esc
+  source_ref: A13.1 (absence); config/intents.yaml PRD-003 kb_gap
+  languages: [en]
+  intents: [PRD-003]
+  status: published
+
+- id: KB-ESC-012
+  category: escalation
+  format: semi_structured
+  title: GAP - Savings account variants and upgrade paths
+  body: A13.1 holds one deposit account, NexSave Savings Account. There are no named variants, tiers or upgrade rules, so an upgrade or downgrade question can only be answered with what is known.
+  gap_handling: true
+  gap_for: [ACC-007]
+  structured_fields:
+    unknown: [other account types, upgrade eligibility, downgrade rules, charges for a change]
+    safe_statement: "The only deposit account I have details for is NexSave Savings Account. I don't have information on other account types or changing between them, so I would suggest speaking to a team member."
+    known_adjacent_facts: [KB-PRD-001]
+    offer: [describe NexSave, human handoff]
+    never: [name an account variant, state an eligibility rule or a charge]
+  regulatory_tags: []
+  auth_level_required: anonymous
+  audience: customer_facing
+  version: 1.0.0
+  effective_from: *eff
+  ttl_class: escalation_procedure
+  ttl_days: 365
+  expires_at: 2027-10-01
+  owner: Customer Experience
+  approval_chain: *chain_esc
+  source_ref: A13.1 (absence); config/intents.yaml ACC-007 kb_gap
+  languages: [en]
+  intents: [ACC-007]
+  status: published
+
+- id: KB-ESC-013
+  category: escalation
+  format: semi_structured
+  title: GAP - EMI conversion fees and rates
+  body: A13.1 has no EMI conversion fee, rate or tenure option for card transactions. The agent may show a deterministic EMI illustration but cannot state conversion charges and cannot execute a conversion.
+  gap_handling: true
+  gap_for: [CRD-004]
+  structured_fields:
+    unknown: [conversion fee, interest rate on conversion, available tenures, eligibility]
+    safe_statement: "I don't have the fees or rates for converting a purchase to EMI. I can show you an illustrative EMI calculation, or connect you with a team member for the exact terms."
+    known_adjacent_facts: [KB-PRD-012]
+    offer: [emi_calculator illustration with a customer-supplied rate marked as illustrative, in-app flow link, human handoff]
+    never: [state a conversion fee or rate, execute the conversion, say the customer is eligible]
+  regulatory_tags: [RBI_DIGITAL_LENDING]
+  auth_level_required: anonymous
+  audience: customer_facing
+  version: 1.0.0
+  effective_from: *eff
+  ttl_class: escalation_procedure
+  ttl_days: 365
+  expires_at: 2027-10-01
+  owner: Customer Experience
+  approval_chain: *chain_esc
+  source_ref: A13.1 (absence); A4.3; config/intents.yaml CRD-004 kb_gap
+  languages: [en]
+  intents: [CRD-004]
+  status: published
+
+- id: KB-ESC-014
+  category: escalation
+  format: semi_structured
+  title: GAP - FD rates for a specific tenure
+  body: A13.1 gives NexFD only a rate range across its tenure span, and the brief's one tenure example is the A4.1 illustration; both are held in KB-PRD-002. Every other tenure-specific rate is unknown. This gap entry holds no rate itself, so a hard-expired rate entry is never re-served through the gap path (TTL rules in kb-schema.md).
+  gap_handling: true
+  gap_for: [PRD-003]
+  structured_fields:
+    unknown: [rate for any other tenure, senior-citizen rate, rate by deposit size, compounding or payout]
+    safe_statement: "NexFD rates vary by tenure, and I don't have the rate for that exact tenure. I can share the published range, or a team member can confirm the rate for you."
+    known_adjacent_facts: [KB-PRD-002, KB-FAQ-008, KB-REG-011]
+    offer: [state the range and the A4.1 example from KB-PRD-002 while it is live, human handoff, callback request]
+    never: [interpolate a rate for the customer's tenure, say which tenure is better]
+  regulatory_tags: [RBI_DIGITAL_LENDING, TAX_80C]
+  auth_level_required: anonymous
+  audience: customer_facing
+  version: 1.0.0
+  effective_from: *eff
+  ttl_class: escalation_procedure
+  ttl_days: 365
+  expires_at: 2027-10-01
+  owner: Customer Experience
+  approval_chain: *chain_esc
+  source_ref: A13.1; A4.1; config/intents.yaml PRD-003 kb_gap
+  languages: [en]
+  intents: [PRD-003, PRD-001]
+  status: published
+
+- id: KB-ESC-015
+  category: escalation
+  format: semi_structured
+  title: GAP - Branches, ATMs, working hours and contact channels
+  body: NexBank is a neo-bank and A13.1 holds no branch network, ATM locations, working hours or contact channels. Closure and nominee steps mention "Branch" in the brief, but no address or hours are given.
+  gap_handling: true
+  gap_for: [GEN-008, ACC-005, ACC-006]
+  structured_fields:
+    unknown: [branch addresses, ATM locations, working hours, phone number, email address, social handles]
+    safe_statement: "I don't have branch, ATM or contact details to share. I can arrange a callback request or connect you with a team member who can help."
+    known_adjacent_facts: [KB-POL-005, KB-ESC-003]
+    offer: [callback request, human handoff]
+    never: [invent a branch, address, phone number, email address or opening hours, tell the customer to "visit your nearest branch" as if one is known]
+  regulatory_tags: []
+  auth_level_required: anonymous
+  audience: customer_facing
+  version: 1.0.0
+  effective_from: *eff
+  ttl_class: escalation_procedure
+  ttl_days: 365
+  expires_at: 2027-10-01
+  owner: Customer Experience
+  approval_chain: *chain_esc
+  source_ref: A13.1 (absence); config/intents.yaml GEN-008 kb_gap
+  languages: [en]
+  intents: [GEN-008, ACC-005, ACC-006]
+  status: published
+
+- id: KB-ESC-016
+  category: escalation
+  format: semi_structured
+  title: GAP - International transfer charges, limits and forex rates
+  body: The catalogue has no international transfer product, charge, limit, corridor list or forex rate. The agent explains that it cannot initiate transfers and does not quote any of these figures.
+  gap_handling: true
+  gap_for: [TXN-006]
+  structured_fields:
+    unknown: [transfer charges, transfer limits, supported countries, processing time, USD/INR or any other rate]
+    safe_statement: "I don't have transfer charges or limits to quote, and I can't start a transfer for you. A team member can give you the details."
+    known_adjacent_facts: [KB-POL-004, KB-POL-001]
+    offer: [human handoff, callback request]
+    never: [quote a charge, limit or rate, say when to convert currency (forex timing is advice, PRD-005)]
+    persona_note: Arjun (NRI) is the primary test persona
+  regulatory_tags: [KYC_AML]
+  auth_level_required: anonymous
+  audience: customer_facing
+  version: 1.0.0
+  effective_from: *eff
+  ttl_class: escalation_procedure
+  ttl_days: 365
+  expires_at: 2027-10-01
+  owner: Customer Experience
+  approval_chain: *chain_esc
+  source_ref: A13.1 (absence); A4.1; config/intents.yaml TXN-006
+  languages: [en]
+  intents: [TXN-006, PRD-005]
+  status: published
+
+- id: KB-ESC-017
+  category: escalation
+  format: semi_structured
+  title: GAP - Card fees after year 1, credit limits and revolving interest
+  body: A13.1 states only the Classic card's first-year annual fee position (KB-PRD-003, D-28). It gives no fee figure for Premium, no credit limit and no interest rate after the interest-free period. Credit limit decisions are made by the bank, not the agent.
+  gap_handling: true
+  gap_for: [CRD-003, CRD-005, PRD-001]
+  structured_fields:
+    unknown: [annual fee after the first year, Premium annual fee, credit limit values, interest after the interest-free period, reward-point to rupee value, late payment charges]
+    safe_statement: "I don't have that fee or limit in the information I hold. I can share the card features and eligibility, or connect you with a team member."
+    known_adjacent_facts: [KB-PRD-003, KB-PRD-004, KB-FAQ-003, KB-FAQ-011]
+    offer: [card features and eligibility, credit limit request intake (CRD-003), human handoff]
+    never: [state a fee, limit or rate, say "you will be approved"]
+  regulatory_tags: [RBI_DIGITAL_LENDING, RBI_RESPONSIBLE_AI]
+  auth_level_required: anonymous
+  audience: customer_facing
+  version: 1.0.0
+  effective_from: *eff
+  ttl_class: escalation_procedure
+  ttl_days: 365
+  expires_at: 2027-10-01
+  owner: Customer Experience
+  approval_chain: *chain_esc
+  source_ref: A13.1 (absence); config/intents.yaml CRD-003, CRD-005
+  languages: [en]
+  intents: [CRD-003, CRD-005, PRD-001]
+  status: published
+
+- id: KB-ESC-018
+  category: escalation
+  format: semi_structured
+  title: GAP - Loan fees, charges and decisions
+  body: A13.1 gives starting rates, maximum tenures, LTV and criteria for the two loans, but no processing fee, prepayment or foreclosure terms, maximum amount, or customer-specific rate. RBI Digital Lending rules still require fees and terms to be disclosed, so the agent points to the offer documents and a human.
+  gap_handling: true
+  gap_for: [PRD-002, PRD-001]
+  structured_fields:
+    unknown: [processing fee, prepayment or foreclosure charges, maximum loan amount, rate offered to this customer, approval outcome, EMI restructuring terms]
+    safe_statement: "I have the starting rate and eligibility criteria, but not the fees or terms for your case. Those are in the loan offer documents, and a loan specialist can walk you through them."
+    known_adjacent_facts: [KB-PRD-005, KB-PRD-006, KB-FAQ-005, KB-REG-001]
+    offer: [published criteria, illustrative EMI calculation, loan specialist handoff]
+    hardship_note: emi_restructuring_request is a financial-hardship case; empathy first, hand off to a human loan specialist, promise no relief
+    never: [state a fee, say the customer can afford a loan, say the customer will be approved]
+  regulatory_tags: [RBI_DIGITAL_LENDING, RBI_RESPONSIBLE_AI]
+  auth_level_required: anonymous
+  audience: customer_facing
+  version: 1.0.0
+  effective_from: *eff
+  ttl_class: escalation_procedure
+  ttl_days: 365
+  expires_at: 2027-10-01
+  owner: Customer Experience
+  approval_chain: *chain_esc
+  source_ref: A13.1 (absence); A4.3; config/intents.yaml PRD-002
+  languages: [en]
+  intents: [PRD-002, PRD-001]
+  status: published
+
+- id: KB-ESC-019
+  category: escalation
+  format: semi_structured
+  title: GAP - Ombudsman details and cooling-off period length
+  body: The brief requires grievance and cooling-off information, but it does not state ombudsman contact details, filing time limits or the length of the cooling-off period. The agent gives the in-bank route and does not state these figures.
+  gap_handling: true
+  gap_for: [CMP-003, CMP-001, PRD-001, PRD-002]
+  structured_fields:
+    unknown: [ombudsman contact or portal, time limits to approach the ombudsman, number of days in the cooling-off period, how cooling-off cancellation works]
+    safe_statement: "I can register your complaint and arrange a senior colleague or a callback. I don't have the ombudsman contact details or time limits to hand, so I will pass your request to a team member who can confirm them."
+    known_adjacent_facts: [KB-REG-002, KB-REG-001, KB-ESC-005]
+    offer: [register complaint (CMP-001), escalate (CMP-003), supervisor callback (CMP-005), Compliance Helpdesk handoff (ESC-008)]
+    never: [state a number of days, a deadline or an ombudsman contact, discourage the customer from approaching a regulator]
+  regulatory_tags: [RBI_OMBUDSMAN, RBI_DIGITAL_LENDING]
+  auth_level_required: anonymous
+  audience: customer_facing
+  version: 1.0.0
+  effective_from: *eff
+  ttl_class: escalation_procedure
+  ttl_days: 365
+  expires_at: 2027-10-01
+  owner: Customer Experience
+  approval_chain: *chain_esc
+  source_ref: A4.3 (duty stated, no figures); Appendix p71
+  languages: [en]
+  intents: [CMP-003, CMP-001, PRD-001, PRD-002]
+  escalation_triggers: [ESC-008]
+  status: published
+
+- id: KB-ESC-020
+  category: escalation
+  format: unstructured
+  title: GAP - Unknown or unsupported question (graceful degradation)
+  body: >-
+    When no KB entry is relevant, or retrieval confidence is below the threshold, do not fill the gap with a plausible answer. Acknowledge that you do not have the information, say what you do know that is nearby, and offer a clear next step: a clarifying question if one would help, a human handoff, or a callback request.
+    A sample shape is: "I don't have reliable information on that, and I don't want to guess. I can tell you about [nearby topic], or connect you with a team member who can confirm it." Keep it short, warm and free of any number that is not in the KB.
+    For a regulatory question the next step is the Compliance Helpdesk (ESC-008). After two failed clarifications, apply the safe default or offer a human (max_clarification_turns); after three consecutive turns below the ESC-003 confidence floor, escalate to General Support (ESC-003, D-06). Never invent a policy, rate, fee, limit, branch, regulation or timeline to avoid saying "I don't know".
+  structured_fields: {}
+  regulatory_tags: [RBI_RESPONSIBLE_AI]
+  auth_level_required: anonymous
+  audience: customer_facing
+  version: 1.0.0
+  effective_from: *eff
+  ttl_class: escalation_procedure
+  ttl_days: 365
+  expires_at: 2027-10-01
+  owner: Customer Experience
+  approval_chain: *chain_esc
+  source_ref: A2.3 (graceful fallback); A6 (ESC-003, ESC-008); D-06
+  languages: [en]
+  intents: [GEN-004, PRD-001, GEN-008, PRD-003, ACC-007, CRD-004]
+  escalation_triggers: [ESC-003, ESC-008]
+  gap_handling: true
+  gap_for: [GEN-004]
+  status: published
+
+- id: KB-ESC-021
+  category: escalation
+  format: semi_structured
+  title: GAP - Insurance premiums, policy terms and claims
+  body: A13.1 gives NexProtect's cover limit, online-only pricing advantage, IRDAI regulation and medical check rule (KB-PRD-007). It gives no premium, policy term, exclusion or claim process, so none may be stated.
+  gap_handling: true
+  gap_for: [PRD-004]
+  structured_fields:
+    unknown: [premium amount, policy term, exclusions, claim process, claim timelines, medical check contents]
+    safe_statement: "I can share the cover limit and the medical check rule, but I don't have premium or claim details. A team member can help with those."
+    known_adjacent_facts: [KB-PRD-007, KB-FAQ-004, KB-REG-006]
+    offer: [cover and medical check facts, human handoff]
+    never: [state a premium, say a cover amount suits the customer, promise a claim outcome]
+  regulatory_tags: [IRDAI_AI_DISTRIBUTION]
+  auth_level_required: anonymous
+  audience: customer_facing
+  version: 1.0.0
+  effective_from: *eff
+  ttl_class: escalation_procedure
+  ttl_days: 365
+  expires_at: 2027-10-01
+  owner: Customer Experience
+  approval_chain: *chain_esc
+  source_ref: A13.1 (absence); A4.1
+  languages: [en]
+  intents: [PRD-004]
+  escalation_triggers: [ESC-008]
+  status: published
