@@ -1,0 +1,310 @@
+# NexBank KB entries: category `troubleshooting` (10 entries). Schema: docs/knowledge-base/kb-schema.md
+# Diagnostic guidance built from the taxonomy (config/intents.yaml) and A4.2. No settlement or reversal timelines appear here:
+# a timeline may be quoted only if the status tool returns it in the same turn (D-09). Synthetic data only.
+
+anchors:
+  chain_trb: &chain_trb [Product Engineering, Customer Experience, Risk & Compliance]
+  eff: &eff 2026-10-01
+
+entries:
+
+- id: KB-TRB-001
+  category: troubleshooting
+  format: semi_structured
+  title: UPI payment debited but not credited
+  body: The customer's account shows a debit but the beneficiary has not received the money. The agent reads the status, explains it plainly and opens a ticket. It cannot reverse or retry the payment.
+  structured_fields:
+    intent_tertiary: debited_not_credited
+    collect: [upi_ref, beneficiary_name, amount, date]
+    steps:
+      - confirm the details with the customer and mask the account
+      - call the transaction status tool once, with one retry on failure
+      - if the tool returns a status, state it and any timeline the tool returns
+      - if no timeline is returned, say the team will review and update the customer; promise no refund and no date
+      - offer to open a ticket (soft confirmation)
+    never: [reverse or retry the payment, promise recovery, ask for the PIN]
+    on_tool_failure: KB-TRB-009
+  regulatory_tags: [RBI_DIGITAL_PAYMENT_SECURITY]
+  auth_level_required: otp_verified
+  audience: customer_facing
+  version: 1.0.0
+  effective_from: *eff
+  ttl_class: faq_troubleshooting
+  ttl_days: 120
+  expires_at: 2027-01-29
+  owner: Product Engineering
+  approval_chain: *chain_trb
+  source_ref: A3.2 (TXN-003); A4.2; D-09
+  languages: [en]
+  intents: [TXN-003, TXN-001]
+  escalation_triggers: [ESC-014]
+  status: published
+
+- id: KB-TRB-002
+  category: troubleshooting
+  format: semi_structured
+  title: UPI payment pending or declined
+  body: A UPI payment shows pending or declined. The agent reads the status, tells the customer which state it is in, and does not retry the payment for them.
+  structured_fields:
+    intent_tertiary: [payment_pending, payment_declined]
+    steps:
+      - read the status with the tool and report it in plain words
+      - for pending, do not state a clearing time unless the tool returns one
+      - for declined, give the reason only if the tool returns one; do not guess
+      - suggest the customer checks the details themselves before trying again (customer action, not an agent action)
+      - offer a ticket if the status looks wrong to the customer
+    never: [retry or reverse the payment, tell the customer the money is safe unless the tool says so]
+  regulatory_tags: [RBI_DIGITAL_PAYMENT_SECURITY]
+  auth_level_required: otp_verified
+  audience: customer_facing
+  version: 1.0.0
+  effective_from: *eff
+  ttl_class: faq_troubleshooting
+  ttl_days: 120
+  expires_at: 2027-01-29
+  owner: Product Engineering
+  approval_chain: *chain_trb
+  source_ref: A3.2 (TXN-003); D-09
+  languages: [en]
+  intents: [TXN-003]
+  escalation_triggers: [ESC-014]
+  status: published
+
+- id: KB-TRB-003
+  category: troubleshooting
+  format: unstructured
+  title: Money sent to the wrong beneficiary
+  body: >-
+    When a customer says they paid the wrong person, respond with empathy first. Explain that the bank cannot reverse a completed payment from this chat, and that a ticket can be opened so the team looks into it.
+    Do not promise that the money will come back, and do not give a recovery timeline. Collect the reference, the beneficiary name, the amount and the date, then open the ticket after the customer confirms.
+    If the customer thinks they were tricked into paying, treat it as a scam report and move to the fraud flow (KB-ESC-002).
+  structured_fields: {}
+  regulatory_tags: [RBI_DIGITAL_PAYMENT_SECURITY]
+  auth_level_required: otp_verified
+  audience: customer_facing
+  version: 1.0.0
+  effective_from: *eff
+  ttl_class: faq_troubleshooting
+  ttl_days: 120
+  expires_at: 2027-01-29
+  owner: Product Engineering
+  approval_chain: *chain_trb
+  source_ref: A3.2 (TXN-003); A4.2 (rule 3); D-09
+  languages: [en]
+  intents: [TXN-003, SEC-001]
+  escalation_triggers: [ESC-001]
+  status: published
+
+- id: KB-TRB-004
+  category: troubleshooting
+  format: semi_structured
+  title: NEFT or RTGS status check
+  body: The customer wants to know where an NEFT or RTGS transfer is. The agent needs the reference and the beneficiary bank, reads the status, and quotes timelines only if the tool returns them.
+  structured_fields:
+    intent_tertiary: [neft, rtgs]
+    collect: [neft_ref, beneficiary_bank]
+    optional: [amount, date]
+    steps:
+      - look up the status with the tool
+      - report the status as returned and any timeline the tool returns
+      - if nothing is found, check the reference with the customer once, then offer a ticket
+    never: [state a general NEFT or RTGS settlement time, promise a credit time]
+  regulatory_tags: [RBI_DIGITAL_PAYMENT_SECURITY]
+  auth_level_required: otp_verified
+  audience: customer_facing
+  version: 1.0.0
+  effective_from: *eff
+  ttl_class: faq_troubleshooting
+  ttl_days: 120
+  expires_at: 2027-01-29
+  owner: Product Engineering
+  approval_chain: *chain_trb
+  source_ref: A3.2 (TXN-004); D-09
+  languages: [en]
+  intents: [TXN-004, TXN-001]
+  escalation_triggers: [ESC-014]
+  status: published
+
+- id: KB-TRB-005
+  category: troubleshooting
+  format: semi_structured
+  title: Unrecognised or duplicate charge - dispute or fraud?
+  body: A customer reports a charge they do not recognise or a charge that appears twice. The first job is to tell a merchant error from fraud, because the routes differ.
+  structured_fields:
+    decision:
+      - if the customer says they did not make the transaction and suspects misuse, treat it as SEC-001 and block the card first (KB-POL-006)
+      - if the customer made the purchase but the amount, duplicate or merchant is wrong, treat it as TXN-002 and collect transaction_id, dispute_reason and amount
+      - 'if it is unclear, ask one question "Did you make this purchase yourself?" (disambiguation pair 5)'
+    escalation: ESC-005 when the dispute amount exceeds INR 50,000
+    never: [accuse the customer, promise a refund or a date]
+    tertiary: [unrecognised_charge, duplicate_charge, merchant_error, wrong_amount]
+  regulatory_tags: [PCI_DSS, KYC_AML]
+  auth_level_required: otp_verified
+  audience: customer_facing
+  version: 1.0.0
+  effective_from: *eff
+  ttl_class: faq_troubleshooting
+  ttl_days: 120
+  expires_at: 2027-01-29
+  owner: Product Engineering
+  approval_chain: *chain_trb
+  source_ref: A3.2 (TXN-002); A3.4; A6 (ESC-005)
+  languages: [en]
+  intents: [TXN-002, SEC-001, TXN-001]
+  escalation_triggers: [ESC-005, ESC-001]
+  status: published
+
+- id: KB-TRB-006
+  category: troubleshooting
+  format: unstructured
+  title: Refund not received
+  body: >-
+    A customer says a refund they were expecting has not arrived. Treat it as a dispute intake (TXN-002, refund_not_received). Collect the transaction reference, the reason and the amount, read what the system shows, and open a ticket after confirmation.
+    State only the status or timeline that the system returns. If none is returned, say the team will review and update the customer. Never say that the refund will be credited by a date, and never say the dispute will be decided in the customer's favour.
+    If the amount is above INR 50,000 the case also goes to the Dispute Resolution queue (ESC-005).
+  structured_fields: {}
+  regulatory_tags: [RBI_DIGITAL_PAYMENT_SECURITY]
+  auth_level_required: otp_verified
+  audience: customer_facing
+  version: 1.0.0
+  effective_from: *eff
+  ttl_class: faq_troubleshooting
+  ttl_days: 120
+  expires_at: 2027-01-29
+  owner: Product Engineering
+  approval_chain: *chain_trb
+  source_ref: A3.2 (TXN-002); A6 (ESC-005); D-09
+  languages: [en]
+  intents: [TXN-002, TXN-001]
+  escalation_triggers: [ESC-005]
+  status: published
+
+- id: KB-TRB-007
+  category: troubleshooting
+  format: semi_structured
+  title: Locked out or forgot the password or PIN
+  body: The customer cannot log in or has forgotten a credential. The agent never sets, reads or receives a password, PIN or CVV. It can only trigger a reset link to the registered contact after verification.
+  structured_fields:
+    steps:
+      - ask which credential is affected (credential_type)
+      - verify the customer at otp_verified
+      - confirm explicitly, then trigger send_credential_reset_link to the registered channel only
+      - tell the customer the link goes to their registered contact, and that no one from the bank will ask for the code or password
+    never: [accept the new password in chat, send the link to a new address]
+  regulatory_tags: [PCI_DSS, RBI_DIGITAL_PAYMENT_SECURITY]
+  auth_level_required: anonymous
+  audience: customer_facing
+  version: 1.0.1
+  effective_from: *eff
+  ttl_class: faq_troubleshooting
+  ttl_days: 120
+  expires_at: 2027-01-29
+  owner: Product Engineering
+  approval_chain: *chain_trb
+  source_ref: A3.3 (SEC-003); A4.2 (rules 1 and 5)
+  languages: [en]
+  intents: [SEC-003]
+  status: published
+
+- id: KB-TRB-008
+  category: troubleshooting
+  format: semi_structured
+  title: Card was blocked and the customer wants it unblocked
+  body: Unblocking a card is a step-up action. The agent confirms why the card was blocked and, if the block was after fraud, does not unblock it without a human.
+  structured_fields:
+    required_auth: biometric_verified
+    confirmation: explicit
+    steps:
+      - ask why the card was blocked (block_reason)
+      - if blocked after a fraud report, do not unblock; hand off to Fraud Investigation
+      - otherwise step up to biometric_verified, summarise, and get an explicit yes
+    never: [ask for the CVV, PIN or full card number]
+    related_entries: [KB-POL-006]
+  regulatory_tags: [PCI_DSS]
+  auth_level_required: biometric_verified
+  audience: customer_facing
+  version: 1.0.0
+  effective_from: *eff
+  ttl_class: faq_troubleshooting
+  ttl_days: 120
+  expires_at: 2027-01-29
+  owner: Product Engineering
+  approval_chain: *chain_trb
+  source_ref: A3.3 (CRD-001); A4.2
+  languages: [en]
+  intents: [CRD-001]
+  escalation_triggers: [ESC-001]
+  status: published
+
+- id: KB-TRB-009
+  category: troubleshooting
+  format: unstructured
+  title: A lookup tool is not responding
+  body: >-
+    When a read tool such as transaction status times out or errors, retry once. If it still fails, tell the customer plainly that the information is not available right now, do not guess a value, and offer a technical-support handoff (ESC-014) or a callback.
+    Write actions are never retried automatically and failures are reported honestly with no promise about the outcome. A cached figure is never presented as current.
+  structured_fields: {}
+  regulatory_tags: []
+  auth_level_required: anonymous
+  audience: agent_internal
+  version: 1.0.0
+  effective_from: *eff
+  ttl_class: faq_troubleshooting
+  ttl_days: 120
+  expires_at: 2027-01-29
+  owner: Product Engineering
+  approval_chain: *chain_trb
+  source_ref: A6 (ESC-014); docs/architecture/component-interfaces.md (Tool/Action Orchestrator)
+  languages: [en]
+  intents: [TXN-001, TXN-003, TXN-004, CMP-002]
+  escalation_triggers: [ESC-014]
+  status: published
+
+- id: KB-TRB-010
+  category: troubleshooting
+  format: unstructured
+  title: Statement did not arrive
+  body: >-
+    If a requested statement has not arrived, first confirm the request went to the registered email address. Statements are never sent to a new address in the same turn. If the customer wants a different address, the contact detail must be updated first through the secure flow with stronger authentication (ACC-003).
+    Offer the in-app download as another option, or a new request with a different date range or format. Do not read out account details in chat.
+  structured_fields: {}
+  regulatory_tags: [DPDP_ACT, KYC_AML]
+  auth_level_required: otp_verified
+  audience: customer_facing
+  version: 1.0.0
+  effective_from: *eff
+  ttl_class: faq_troubleshooting
+  ttl_days: 120
+  expires_at: 2027-01-29
+  owner: Product Engineering
+  approval_chain: *chain_trb
+  source_ref: A3.1 (ACC-002, ACC-003); A4.2 (rule 2)
+  languages: [en]
+  intents: [ACC-002, ACC-003]
+  status: published
+
+- id: KB-TRB-011
+  category: troubleshooting
+  format: semi_structured
+  title: Credential reset after a recent contact-details change (internal check)
+  body: Internal check for credential-reset requests (SEC-003), applied after the customer is verified. A reset request shortly after a change of registered contact details is an account-takeover pattern. The agent does not send the reset link, does not tell the customer that a pattern was detected, and hands off to Security Operations (ESC-009). Customer-facing guidance for forgotten credentials stays in KB-TRB-007.
+  structured_fields:
+    trigger: reset request after a recent change to the registered phone number or email (ACC-003 history)
+    action: [do not call send_credential_reset_link, hand off to Security Operations (ESC-009) with the contact-change context in the handoff package]
+    customer_wording: neutral only, for example "I need a specialist to help with this request"; no mention of detection rules or why
+    never: [reveal the detection rule or its window, send the link to the new contact, tell the customer the account looks compromised, accept a new credential in chat]
+  regulatory_tags: [PCI_DSS, RBI_DIGITAL_PAYMENT_SECURITY]
+  auth_level_required: otp_verified
+  audience: agent_internal
+  version: 1.0.0
+  effective_from: *eff
+  ttl_class: faq_troubleshooting
+  ttl_days: 120
+  expires_at: 2027-01-29
+  owner: Product Engineering
+  approval_chain: *chain_trb
+  source_ref: A3.3 (SEC-003); A4.2 (rules 1 and 5); A6 (ESC-009)
+  languages: [en]
+  intents: [SEC-003]
+  escalation_triggers: [ESC-009]
+  status: published

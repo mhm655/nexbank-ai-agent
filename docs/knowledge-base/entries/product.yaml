@@ -1,0 +1,353 @@
+# NexBank KB entries: category `product` (12 entries). Schema: docs/knowledge-base/kb-schema.md
+# All figures are copied from A13.1 (page 35 of the brief) unless source_ref says otherwise. Synthetic data only.
+# Anything A13.1 does not state is listed under `not_in_catalogue` and must never be quoted (see KB-ESC gap entries).
+
+anchors:
+  chain_product: &chain_product [Product Engineering, Risk & Compliance, Regulatory Compliance Manager]
+  eff: &eff 2026-10-01
+
+entries:
+
+- id: KB-PRD-001
+  category: product
+  format: structured
+  title: NexSave Savings Account
+  body: NexSave Savings Account is a deposit product with 4.5% interest, zero balance and instant UPI. KYC is mandatory and DICGC cover applies up to 5L.
+  structured_fields:
+    product_name: NexSave Savings Account
+    catalogue_category: Deposit
+    interest_rate_pct: 4.5
+    minimum_balance: zero
+    upi: instant
+    kyc: mandatory
+    dicgc_cover_up_to: 5L
+    not_in_catalogue: [interest payout frequency, account variants, fees, transaction limits]
+  regulatory_tags: [KYC_AML, DICGC]
+  auth_level_required: anonymous
+  audience: customer_facing
+  version: 1.0.0
+  effective_from: *eff
+  ttl_class: rates
+  ttl_days: 90
+  expires_at: 2026-12-30
+  owner: Product Engineering
+  approval_chain: *chain_product
+  source_ref: A13.1
+  languages: [en]
+  intents: [PRD-001, ACC-007]
+  status: published
+
+- id: KB-PRD-002
+  category: product
+  format: structured
+  title: NexFD Fixed Deposit
+  body: NexFD is a fixed deposit with rates of 6.0 to 7.25 percent and tenures from 7 days to 10 years. Section 80C benefits and TDS apply.
+  structured_fields:
+    product_name: NexFD Fixed Deposit
+    catalogue_category: Investment
+    rate_range_pct: {min: 6.0, max: 7.25}
+    tenure: {min: 7 days, max: 10 years}
+    tax: [Section 80C benefits, TDS applicable]
+    quotable_example: {tenure: 1 year, rate_pct: 6.5, source_ref: A4.1}   # the brief's own permissible-information example; any other tenure-wise rate is a gap
+    not_in_catalogue: [tenure-wise rate table, rate for any tenure other than the A4.1 example, premature withdrawal terms, minimum deposit, payout options]
+  regulatory_tags: [TAX_80C, TDS]
+  auth_level_required: anonymous
+  audience: customer_facing
+  version: 1.0.0
+  effective_from: *eff
+  ttl_class: rates
+  ttl_days: 90
+  expires_at: 2026-12-30
+  owner: Product Engineering
+  approval_chain: *chain_product
+  source_ref: A13.1; A4.1
+  languages: [en]
+  intents: [PRD-001, PRD-003]
+  status: published
+
+- id: KB-PRD-003
+  category: product
+  format: structured
+  title: NexCredit Card - Classic
+  body: NexCredit Card Classic offers 40-day interest-free, 2% cashback and no annual fee in year 1. Income proof and a credit score check are required.
+  structured_fields:
+    product_name: NexCredit Card - Classic
+    catalogue_category: Card
+    interest_free_days: 40
+    cashback_pct: 2
+    annual_fee: "none in Y1 (A13.1 wording: no annual fee Y1)"
+    requirements: [income proof, credit score check]
+    not_in_catalogue: [annual fee after year 1, interest rate on revolved balance, credit limit, joining fee, forex markup]
+  regulatory_tags: [RBI_DIGITAL_LENDING, PCI_DSS]
+  auth_level_required: anonymous
+  audience: customer_facing
+  version: 1.0.0
+  effective_from: *eff
+  ttl_class: rates
+  ttl_days: 90
+  expires_at: 2026-12-30
+  owner: Product Engineering
+  approval_chain: *chain_product
+  source_ref: A13.1
+  languages: [en]
+  intents: [PRD-001, CRD-005, CRD-003]
+  status: published
+
+- id: KB-PRD-004
+  category: product
+  format: structured
+  title: NexCredit Card - Premium
+  body: NexCredit Card Premium offers 50-day interest-free, lounge access and 5x rewards. Minimum income is 10 LPA and enhanced KYC is required.
+  structured_fields:
+    product_name: NexCredit Card - Premium
+    catalogue_category: Card
+    interest_free_days: 50
+    benefits: [lounge access, 5x rewards]
+    requirements: [min income 10 LPA, enhanced KYC]
+    not_in_catalogue: [annual fee, lounge visit count, rewards-to-rupee conversion, credit limit, forex markup]
+  regulatory_tags: [RBI_DIGITAL_LENDING, PCI_DSS, KYC_AML]
+  auth_level_required: anonymous
+  audience: customer_facing
+  version: 1.0.0
+  effective_from: *eff
+  ttl_class: rates
+  ttl_days: 90
+  expires_at: 2026-12-30
+  owner: Product Engineering
+  approval_chain: *chain_product
+  source_ref: A13.1
+  languages: [en]
+  intents: [PRD-001, CRD-005, CRD-003]
+  status: published
+
+- id: KB-PRD-005
+  category: product
+  format: structured
+  title: NexHome Loan
+  body: NexHome Loan starts at 8.25% with tenure up to 30 years and up to 90% LTV. It needs CIBIL above 700, property valuation and a legal check.
+  structured_fields:
+    product_name: NexHome Loan
+    catalogue_category: Loan
+    interest_rate_pct_from: 8.25
+    max_tenure_years: 30
+    ltv_pct_max: 90
+    requirements: [CIBIL >700, property valuation, legal check]
+    disclosure_note: "RBI Digital Lending requires interest rate, fees and T&C to be disclosed. Fees and T&C are not in the catalogue, so say they are in the offer documents and offer a human."
+    not_in_catalogue: [processing fee, prepayment terms, maximum loan amount, rate for a given customer, approval decision]
+  regulatory_tags: [RBI_DIGITAL_LENDING, RBI_RESPONSIBLE_AI]
+  auth_level_required: anonymous
+  audience: customer_facing
+  version: 1.0.0
+  effective_from: *eff
+  ttl_class: rates
+  ttl_days: 90
+  expires_at: 2026-12-30
+  owner: Product Engineering
+  approval_chain: *chain_product
+  source_ref: A13.1; A4.3
+  languages: [en]
+  intents: [PRD-001, PRD-002]
+  status: published
+
+- id: KB-PRD-006
+  category: product
+  format: structured
+  title: NexPersonal Loan
+  body: NexPersonal Loan starts at 10.5% with tenure up to 5 years and instant disbursal. It needs CIBIL above 650 and income verification.
+  structured_fields:
+    product_name: NexPersonal Loan
+    catalogue_category: Loan
+    interest_rate_pct_from: 10.5
+    max_tenure_years: 5
+    disbursal: instant
+    requirements: [CIBIL >650, income verification]
+    disclosure_note: "Fees and T&C are not in the catalogue; point to the offer documents and offer a human."
+    not_in_catalogue: [processing fee, prepayment terms, maximum loan amount, rate for a given customer, approval decision]
+  regulatory_tags: [RBI_DIGITAL_LENDING, RBI_RESPONSIBLE_AI]
+  auth_level_required: anonymous
+  audience: customer_facing
+  version: 1.0.0
+  effective_from: *eff
+  ttl_class: rates
+  ttl_days: 90
+  expires_at: 2026-12-30
+  owner: Product Engineering
+  approval_chain: *chain_product
+  source_ref: A13.1; A4.3
+  languages: [en]
+  intents: [PRD-001, PRD-002]
+  status: published
+
+- id: KB-PRD-007
+  category: product
+  format: structured
+  title: NexProtect Term Insurance
+  body: NexProtect Term Insurance gives cover up to 1 Cr with an online-only pricing advantage. It is IRDAI regulated and a medical check applies above 50L.
+  structured_fields:
+    product_name: NexProtect Term Insurance
+    catalogue_category: Insurance
+    max_cover: 1 Cr
+    pricing: online-only pricing advantage
+    regulator: IRDAI
+    medical_check_above: 50L
+    not_in_catalogue: [premium amounts, policy term, exclusions, claim settlement ratio, claim timelines, suitability for any person]
+  regulatory_tags: [IRDAI_AI_DISTRIBUTION]
+  auth_level_required: anonymous
+  audience: customer_facing
+  version: 1.0.0
+  effective_from: *eff
+  ttl_class: rates
+  ttl_days: 90
+  expires_at: 2026-12-30
+  owner: Product Engineering
+  approval_chain: *chain_product
+  source_ref: A13.1
+  languages: [en]
+  intents: [PRD-004, PRD-001]
+  status: published
+
+- id: KB-PRD-008
+  category: product
+  format: structured
+  title: NexInvest Mutual Funds
+  body: NexInvest is a direct mutual fund platform with SIP from INR 100. It is SEBI regulated, KYC is mandatory and a risk disclosure applies.
+  structured_fields:
+    product_name: NexInvest Mutual Funds
+    catalogue_category: Investment
+    model: direct MF platform
+    sip_from_inr: 100
+    requirements: [KYC mandatory, risk disclosure]
+    regulator: SEBI
+    not_in_catalogue: [fund list, expected returns, expense ratios, exit loads, which fund suits a customer]
+  regulatory_tags: [SEBI_ROBO_ADVISORY, KYC_AML]
+  auth_level_required: anonymous
+  audience: customer_facing
+  version: 1.0.0
+  effective_from: *eff
+  ttl_class: rates
+  ttl_days: 90
+  expires_at: 2026-12-30
+  owner: Product Engineering
+  approval_chain: *chain_product
+  source_ref: A13.1
+  languages: [en]
+  intents: [PRD-001, PRD-005]
+  status: published
+
+- id: KB-PRD-009
+  category: product
+  format: structured
+  title: NexGold Digital Gold
+  body: NexGold sells 24K gold from INR 10 with a physical delivery option. It runs on an MMTC-PAMP partnership and physical gold is held in a locker.
+  structured_fields:
+    product_name: NexGold Digital Gold
+    catalogue_category: Investment
+    purity: 24K
+    min_purchase_inr: 10
+    physical_delivery: option available
+    partner: MMTC-PAMP
+    storage: locker for physical
+    not_in_catalogue: [gold price, making or delivery charges, locker fee, buy-back terms]
+  regulatory_tags: []
+  auth_level_required: anonymous
+  audience: customer_facing
+  version: 1.0.0
+  effective_from: *eff
+  ttl_class: rates
+  ttl_days: 90
+  expires_at: 2026-12-30
+  owner: Product Engineering
+  approval_chain: *chain_product
+  source_ref: A13.1
+  languages: [en]
+  intents: [PRD-001]
+  status: published
+
+- id: KB-PRD-010
+  category: product
+  format: semi_structured
+  title: NexBank product catalogue overview
+  body: The simulated NexBank catalogue holds nine products across Deposit, Investment, Card, Loan and Insurance categories. Use this entry to answer "what do you offer" and to route to the product entry. It is not a recommendation list.
+  structured_fields:
+    products:
+      - {name: NexSave Savings Account, category: Deposit, entry: KB-PRD-001}
+      - {name: NexFD Fixed Deposit, category: Investment, entry: KB-PRD-002}
+      - {name: NexCredit Card - Classic, category: Card, entry: KB-PRD-003}
+      - {name: NexCredit Card - Premium, category: Card, entry: KB-PRD-004}
+      - {name: NexHome Loan, category: Loan, entry: KB-PRD-005}
+      - {name: NexPersonal Loan, category: Loan, entry: KB-PRD-006}
+      - {name: NexProtect Term Insurance, category: Insurance, entry: KB-PRD-007}
+      - {name: NexInvest Mutual Funds, category: Investment, entry: KB-PRD-008}
+      - {name: NexGold Digital Gold, category: Investment, entry: KB-PRD-009}
+    presentation_rule: list names and one-line features only; never rank or suggest which product suits the customer (KB-POL-001)
+  regulatory_tags: [RBI_DIGITAL_LENDING]
+  auth_level_required: anonymous
+  audience: customer_facing
+  version: 1.0.0
+  effective_from: *eff
+  ttl_class: product_features
+  ttl_days: 180
+  expires_at: 2027-03-30
+  owner: Product Engineering
+  approval_chain: *chain_product
+  source_ref: A13.1
+  languages: [en]
+  intents: [PRD-001, GEN-008]
+  status: published
+
+- id: KB-PRD-011
+  category: product
+  format: semi_structured
+  title: Credit card factual comparison - Classic vs Premium
+  body: A factual side-by-side of the two NexCredit cards, built only from the catalogue. It states differences and does not say which card is better for the customer.
+  structured_fields:
+    columns: [Classic, Premium]
+    rows:
+      interest_free_days: [40, 50]
+      rewards: [2% cashback, 5x rewards]
+      lounge_access: [not listed in catalogue, listed]
+      annual_fee: [none in Y1, not listed in catalogue]
+      eligibility: [income proof and credit score check, min income 10 LPA and enhanced KYC]
+    entries_compared: [KB-PRD-003, KB-PRD-004]
+    boundary: factual_comparison only (taxonomy PRD-001 tertiary); a request for "which is better for me" becomes PRD-005 (KB-POL-001)
+  regulatory_tags: [RBI_DIGITAL_LENDING]
+  auth_level_required: anonymous
+  audience: customer_facing
+  version: 1.0.0
+  effective_from: *eff
+  ttl_class: rates
+  ttl_days: 90
+  expires_at: 2026-12-30
+  owner: Product Engineering
+  approval_chain: *chain_product
+  source_ref: A13.1
+  languages: [en]
+  intents: [PRD-001, CRD-005]
+  status: published
+
+- id: KB-PRD-012
+  category: product
+  format: semi_structured
+  title: Illustrative EMI calculation (brief example)
+  body: >-
+    The brief itself gives one worked example: a 20L home loan at 8.5% for 20 years has an EMI of about INR 17,356 per month. The agent may quote it as an illustration of the deterministic emi_calculator, never as an offer or an affordability judgement.
+    The 8.5% rate is part of the example only and is not a NexHome rate; the catalogue rate is "8.25% onwards" (KB-PRD-005).
+  structured_fields:
+    method: standard reducing-balance EMI computed by the deterministic emi_calculator tool (not by the LLM)
+    example: {principal: 20L, annual_rate_pct: 8.5, tenure_years: 20, emi_inr_approx: 17356}
+    must_say: [illustration only, actual rate and fees depend on the offer documents]
+    must_not_say: [you can afford this loan, you should take this loan, you will be approved]
+  regulatory_tags: [RBI_DIGITAL_LENDING, RBI_RESPONSIBLE_AI]
+  auth_level_required: anonymous
+  audience: customer_facing
+  version: 1.0.0
+  effective_from: *eff
+  ttl_class: rates
+  ttl_days: 90
+  expires_at: 2026-12-30
+  owner: Product Engineering
+  approval_chain: *chain_product
+  source_ref: A4.1
+  languages: [en]
+  intents: [PRD-002, CRD-004]
+  status: published

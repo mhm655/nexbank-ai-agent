@@ -1,0 +1,85 @@
+erDiagram
+    KB_ENTRY {
+        string id PK "KB-CAT-NNN"
+        string category "product|policy|regulatory|faq|troubleshooting|escalation"
+        string format "structured|semi_structured|unstructured"
+        string title
+        text body
+        json structured_fields
+        string audience "customer_facing|agent_internal"
+        string auth_level_required FK
+        string version "semver"
+        date effective_from
+        string ttl_class FK
+        int ttl_days
+        date expires_at
+        string owner FK
+        string source_ref
+        string status "draft|in_review|approved|published|deprecated|expired"
+        boolean gap_handling
+    }
+    KB_ENTRY_VERSION {
+        string entry_id FK
+        string version PK
+        string content_hash
+        string status
+        date published_at
+        date superseded_at
+        string change_reason
+    }
+    LOCALISED_BODY {
+        string entry_id FK
+        string language PK "en|hi|hinglish|ta|te|bn|mr|gu"
+        text body
+        string review_status
+    }
+    INTENT {
+        string id PK "config/intents.yaml"
+        boolean kb_gap
+        string generic_info_auth
+    }
+    REGULATORY_TAG {
+        string tag PK
+        string authority
+        string brief_source
+    }
+    AUTH_LEVEL {
+        string level PK "anonymous|otp_verified|biometric_verified|full_kyc"
+        int rank
+    }
+    OWNER_ROLE {
+        string role PK
+    }
+    APPROVAL_STEP {
+        string entry_id FK
+        int position
+        string role FK
+    }
+    TTL_CLASS {
+        string name PK
+        int days
+        string on_expiry "hard|soft"
+    }
+    ESCALATION_TRIGGER {
+        string id PK "ESC-001..015"
+        string queue
+    }
+    TURN_LOG {
+        string conversation_id
+        int turn_index
+        string kb_entry_ids
+    }
+
+    KB_ENTRY ||--o{ KB_ENTRY_VERSION : "has versions"
+    KB_ENTRY ||--|{ LOCALISED_BODY : "has bodies"
+    KB_ENTRY }o--|{ INTENT : "answers"
+    KB_ENTRY }o--o{ INTENT : "gap for"
+    KB_ENTRY }o--o{ REGULATORY_TAG : "tagged with"
+    KB_ENTRY }o--|| AUTH_LEVEL : "requires at least"
+    KB_ENTRY }o--|| OWNER_ROLE : "owned by"
+    KB_ENTRY ||--|{ APPROVAL_STEP : "approved through"
+    KB_ENTRY }o--|| TTL_CLASS : "governed by"
+    KB_ENTRY }o--o{ ESCALATION_TRIGGER : "supports"
+    KB_ENTRY }o--o{ KB_ENTRY : "related to"
+    APPROVAL_STEP }o--|| OWNER_ROLE : "performed by"
+    TURN_LOG }o--o{ KB_ENTRY_VERSION : "cites"

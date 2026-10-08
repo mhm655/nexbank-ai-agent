@@ -1,0 +1,280 @@
+# NexBank KB entries: category `faq` (11 entries). Schema: docs/knowledge-base/kb-schema.md
+# Short customer-facing answers. Facts come only from A13.1 (and A4.1 where stated in source_ref). Synthetic data only.
+# `body_i18n` carries Hindi (hi) and Hinglish (hinglish) wording for a few high-traffic answers (review simulated; native-speaker check pending); other languages are served via the pivot in docs/architecture/multilingual.md.
+
+anchors:
+  chain_faq: &chain_faq [Customer Experience, Risk & Compliance]
+  eff: &eff 2026-10-01
+
+entries:
+
+- id: KB-FAQ-001
+  category: faq
+  format: unstructured
+  title: Is my NexSave deposit insured?
+  body: >-
+    Yes, within limits. NexSave Savings Account deposits have DICGC cover up to 5L, as listed in the NexBank product catalogue.
+    For anything beyond that figure, such as how the cover is counted, I would need to connect you with a team member.
+  body_i18n:
+    hi: NexSave बचत खाते की जमा राशि पर DICGC कवर 5 लाख रुपये तक उपलब्ध है, जैसा कि NexBank की उत्पाद सूची में दिया गया है। इससे आगे की जानकारी के लिए आपको हमारी टीम से जोड़ा जा सकता है।
+    hinglish: NexSave Savings Account ki deposit par DICGC cover 5L tak hai, jaisa NexBank product catalogue mein diya gaya hai. Isse aage ki jaankari ke liye aapko team se connect kiya ja sakta hai.
+  structured_fields: {}
+  regulatory_tags: [DICGC]
+  auth_level_required: anonymous
+  audience: customer_facing
+  version: 1.0.0
+  effective_from: *eff
+  ttl_class: rates
+  ttl_days: 90
+  expires_at: 2026-12-30
+  owner: Customer Experience
+  approval_chain: *chain_faq
+  source_ref: A13.1
+  languages: [en, hi, hinglish]
+  intents: [PRD-001, ACC-007]
+  status: published
+
+- id: KB-FAQ-002
+  category: faq
+  format: unstructured
+  title: Do I need a minimum balance in NexSave?
+  body: >-
+    No. NexSave Savings Account is a zero balance account, so there is no minimum balance to maintain. It also gives instant UPI, and KYC is mandatory to open it.
+  body_i18n:
+    hi: NexSave बचत खाता जीरो बैलेंस खाता है। इसमें तुरंत UPI की सुविधा मिलती है और खाते के लिए KYC अनिवार्य है।
+    hinglish: NexSave Savings Account zero balance account hai. Isme instant UPI milta hai aur KYC mandatory hai.
+  structured_fields: {}
+  regulatory_tags: [KYC_AML]
+  auth_level_required: anonymous
+  audience: customer_facing
+  version: 1.0.0
+  effective_from: *eff
+  ttl_class: faq_troubleshooting
+  ttl_days: 120
+  expires_at: 2027-01-29
+  owner: Customer Experience
+  approval_chain: *chain_faq
+  source_ref: A13.1
+  languages: [en, hi, hinglish]
+  intents: [PRD-001, ACC-007]
+  status: published
+
+- id: KB-FAQ-003
+  category: faq
+  format: unstructured
+  title: How long is the interest-free period on NexCredit cards?
+  body: >-
+    The NexCredit Classic card offers 40-day interest-free and the NexCredit Premium card offers 50-day interest-free. I do not have the interest rate that applies after that period, so I cannot quote one.
+  structured_fields: {}
+  regulatory_tags: [RBI_DIGITAL_LENDING]
+  auth_level_required: anonymous
+  audience: customer_facing
+  version: 1.0.0
+  effective_from: *eff
+  ttl_class: rates
+  ttl_days: 90
+  expires_at: 2026-12-30
+  owner: Customer Experience
+  approval_chain: *chain_faq
+  source_ref: A13.1
+  languages: [en]
+  intents: [PRD-001, CRD-005]
+  status: published
+
+- id: KB-FAQ-004
+  category: faq
+  format: unstructured
+  title: Is NexProtect regulated, and when is a medical check needed?
+  body: >-
+    NexProtect Term Insurance is IRDAI regulated. A medical check applies for cover above 50L, and cover goes up to 1 Cr. It also has an online-only pricing advantage.
+    I can share these facts, but I cannot say whether a particular cover amount is right for you.
+  structured_fields: {}
+  regulatory_tags: [IRDAI_AI_DISTRIBUTION]
+  auth_level_required: anonymous
+  audience: customer_facing
+  version: 1.0.0
+  effective_from: *eff
+  ttl_class: rates
+  ttl_days: 90
+  expires_at: 2026-12-30
+  owner: Customer Experience
+  approval_chain: *chain_faq
+  source_ref: A13.1
+  languages: [en]
+  intents: [PRD-004]
+  status: published
+
+- id: KB-FAQ-005
+  category: faq
+  format: semi_structured
+  title: Loan eligibility quick answers
+  body: Published criteria for the two NexBank loans. These are the stated requirements, not an approval decision, and the assistant never says a customer will be approved.
+  structured_fields:
+    qa:
+      - q: What do I need for a NexHome Loan?
+        a: CIBIL above 700, property valuation and a legal check. The loan starts at 8.25%, runs up to 30 years and goes up to 90% LTV.
+      - q: What do I need for a NexPersonal Loan?
+        a: CIBIL above 650 and income verification. The loan starts at 10.5%, runs up to 5 years and has instant disbursal.
+      - q: Will I get the loan?
+        a: I cannot decide that. The bank assesses each application against the criteria above.
+    entries: [KB-PRD-005, KB-PRD-006]
+  regulatory_tags: [RBI_DIGITAL_LENDING, RBI_RESPONSIBLE_AI]
+  auth_level_required: anonymous
+  audience: customer_facing
+  version: 1.0.0
+  effective_from: *eff
+  ttl_class: rates
+  ttl_days: 90
+  expires_at: 2026-12-30
+  owner: Customer Experience
+  approval_chain: *chain_faq
+  source_ref: A13.1
+  languages: [en]
+  intents: [PRD-002]
+  status: published
+
+- id: KB-FAQ-006
+  category: faq
+  format: structured
+  title: Smallest amounts for SIP and digital gold
+  body: A SIP on NexInvest starts from INR 100. NexGold digital gold starts from INR 10.
+  structured_fields:
+    sip: {product: NexInvest Mutual Funds, from_inr: 100}
+    digital_gold: {product: NexGold Digital Gold, from_inr: 10, purity: 24K}
+    catalogue_category: Investment
+    source: A13.1
+    boundary: facts only; which fund or how much to buy is advice and is declined
+  regulatory_tags: [SEBI_ROBO_ADVISORY]
+  auth_level_required: anonymous
+  audience: customer_facing
+  version: 1.0.0
+  effective_from: *eff
+  ttl_class: rates
+  ttl_days: 90
+  expires_at: 2026-12-30
+  owner: Customer Experience
+  approval_chain: *chain_faq
+  source_ref: A13.1
+  languages: [en]
+  intents: [PRD-001, PRD-005]
+  status: published
+
+- id: KB-FAQ-007
+  category: faq
+  format: unstructured
+  title: Can I take physical gold?
+  body: >-
+    NexGold has a physical delivery option. The gold is 24K and the product runs on a partnership with MMTC-PAMP, with a locker for physical gold. I do not have delivery charges or locker fees, so I cannot quote them.
+  structured_fields: {}
+  regulatory_tags: []
+  auth_level_required: anonymous
+  audience: customer_facing
+  version: 1.0.0
+  effective_from: *eff
+  ttl_class: faq_troubleshooting
+  ttl_days: 120
+  expires_at: 2027-01-29
+  owner: Customer Experience
+  approval_chain: *chain_faq
+  source_ref: A13.1
+  languages: [en]
+  intents: [PRD-001]
+  status: published
+
+- id: KB-FAQ-008
+  category: faq
+  format: unstructured
+  title: What tenure and tax treatment does NexFD have?
+  body: >-
+    NexFD tenures run from 7 days to 10 years, with rates in the range of 6.0 to 7.25 percent. Section 80C benefits are listed for it and TDS is applicable.
+    I do not hold a tenure-by-tenure rate table, so for a specific tenure I would connect you with a team member.
+  body_i18n:
+    hi: NexFD की अवधि 7 दिन से 10 वर्ष तक है और दरें 6.0 से 7.25 प्रतिशत के दायरे में हैं। Section 80C लाभ लागू हैं और TDS लागू होता है। किसी खास अवधि की दर के लिए आपको हमारी टीम से जोड़ा जा सकता है।
+    hinglish: NexFD ki tenure 7 din se 10 saal tak hai aur rates 6.0 se 7.25 percent ke range mein hain. Section 80C benefits milte hain aur TDS applicable hai. Kisi specific tenure ke rate ke liye aapko team se connect kiya ja sakta hai.
+  structured_fields: {}
+  regulatory_tags: [TAX_80C, TDS]
+  auth_level_required: anonymous
+  audience: customer_facing
+  version: 1.0.0
+  effective_from: *eff
+  ttl_class: rates
+  ttl_days: 90
+  expires_at: 2026-12-30
+  owner: Customer Experience
+  approval_chain: *chain_faq
+  source_ref: A13.1
+  languages: [en, hi, hinglish]
+  intents: [PRD-003, PRD-001]
+  status: published
+
+- id: KB-FAQ-009
+  category: faq
+  format: unstructured
+  title: Am I talking to a human?
+  body: >-
+    You are talking to NexBank's AI assistant, not a human. I can help with many questions, and if you would like a human agent you can ask at any time and I will arrange it.
+  body_i18n:
+    hi: मैं NexBank का AI असिस्टेंट हूँ, इंसान नहीं। आप जब चाहें, मानव एजेंट से बात करने के लिए कह सकते हैं और उसकी व्यवस्था की जाएगी।
+    hinglish: Main NexBank ka AI assistant hoon, insaan nahi. Aap jab chahein human agent ke liye bol sakte hain, uska arrangement kiya jayega.
+  structured_fields: {}
+  regulatory_tags: [EU_AI_ACT, DPDP_ACT]
+  auth_level_required: anonymous
+  audience: customer_facing
+  version: 1.0.0
+  effective_from: *eff
+  ttl_class: faq_troubleshooting
+  ttl_days: 120
+  expires_at: 2027-01-29
+  owner: Customer Experience
+  approval_chain: *chain_faq
+  source_ref: A4.2; Appendix p71
+  languages: [en, hi, hinglish]
+  intents: [GEN-002, GEN-003]
+  status: published
+
+- id: KB-FAQ-010
+  category: faq
+  format: semi_structured
+  title: How do I get my account statement?
+  body: A statement request needs otp_verified. Defaults are the last 30 days, PDF, sent to the registered email only. The assistant never sends a statement to a new email address in the same turn.
+  structured_fields:
+    required_auth: otp_verified
+    defaults: {date_range: last 30 days, format: PDF, destination: registered email only}
+    options: [in-app download, email statement, mini statement of last N transactions, interest certificate]
+    never: [send to an unverified new address, include full account number in chat]
+  regulatory_tags: [KYC_AML, DPDP_ACT]
+  auth_level_required: otp_verified
+  audience: customer_facing
+  version: 1.0.0
+  effective_from: *eff
+  ttl_class: faq_troubleshooting
+  ttl_days: 120
+  expires_at: 2027-01-29
+  owner: Customer Experience
+  approval_chain: *chain_faq
+  source_ref: A3.1 (ACC-002); A4.2; config/intents.yaml ACC-002 notes (statement defaults are a project dialogue default, not a brief figure)
+  languages: [en]
+  intents: [ACC-002]
+  status: published
+
+- id: KB-FAQ-011
+  category: faq
+  format: unstructured
+  title: What rewards do the NexCredit cards give?
+  body: >-
+    The NexCredit Classic card gives 2% cashback. The NexCredit Premium card gives 5x rewards and lounge access. The catalogue does not state how reward points convert to rupees, so I cannot give a conversion value.
+  structured_fields: {}
+  regulatory_tags: []
+  auth_level_required: anonymous
+  audience: customer_facing
+  version: 1.0.0
+  effective_from: *eff
+  ttl_class: rates
+  ttl_days: 90
+  expires_at: 2026-12-30
+  owner: Customer Experience
+  approval_chain: *chain_faq
+  source_ref: A13.1
+  languages: [en]
+  intents: [CRD-005, PRD-001]
+  status: published
