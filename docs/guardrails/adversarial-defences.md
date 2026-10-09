@@ -70,15 +70,17 @@ Template names (text is a Day 13 deliverable, English, Hindi and Hinglish): `TPL
 
 ### 3.4 Session adversarial score and safe mode (GR-ATK-04, D-72)
 
-The Policy Engine keeps a per-session count of distinct flagged turns (any hit from GR-ATK-01, 02, 03, 05, 06, 07 or a Day 9 safety refusal that looks adversarial, such as a repeated R4 probe). Flags are counted per distinct attempt, not per repeated byte, so a frustrated customer re-sending the same question is not escalated.
+The Policy Engine keeps a per-session count of distinct flagged turns (any hit from GR-ATK-01, 02, 03, 05, 06, 07, 10 or a Day 9 safety refusal that looks adversarial, such as a repeated R4 probe). Flags are counted per distinct attempt, not per repeated byte, so a frustrated customer re-sending the same question is not escalated.
 
 | Session state | Trigger (proposal) | Effect |
 |---|---|---|
 | normal | fewer than `atk_adversarial_flags_safe_mode` (3) flagged turns | ordinary handling plus the neutral redirect on each flagged turn |
 | safe mode | 3 or more distinct flagged turns | templates only (no free-form generation, GR-SYS-01 ladder rung), the human option is stated, a security review flag is written to the audit bus, benign requests are still served from templates |
-| escalated | an authority claim with a request (GR-ATK-05, D-60), or the second flagged turn in the session that asks for account data, a credential, an override or a transaction | ESC-001, with the handoff package; protective steps first, as in R6 |
+| escalated | an authority claim with a request (GR-ATK-05, D-60), or the second flagged turn in the session with a data target (defined below) | ESC-001, with the handoff package; protective steps first, as in R6 |
 
 The first flagged turn with a data target is neutralised and logged, as in Case Study 4 (injection neutralised, normal flow resumed, incident logged) and is not escalated by itself. The brief asks for "auto escalation" under Jailbreak Attempts. The 15 triggers in A6 contain no "adversarial user" trigger and none is invented here (D-72): the escalation target for a pure jailbreak with no data or action target is safe mode plus a review flag, and a repeated attempt at a data or action target goes to ESC-001, and Day 12 decides whether a dedicated trigger is needed. Safe mode never blocks the safety intents SEC-001, GEN-007 and GEN-003.
+
+Data target (D-91). A flagged turn has a data target, and so counts toward escalation, only when it asks for another person's data (A4.2 rule 4), credentials or secrets, the system prompt or admin access, or an override or a transaction. A verified customer asking for their own data in a form A4.2 rule 1 forbids (for example the full card number, even to the owner) is masked and redirected to the last 4 or the in-app secure view; the turn counts toward the safe-mode counter but never escalates to ESC-001 by itself (cases GR-ATK-04-02, GR-ATK-07-02: expected action mask, no ESC). GR-ATK-10 hits (identity claims, injected verification) are flagged turns for the counter (D-92); a failed identity challenge escalates through D-16 (failed OTP, P0 handoff), not through the counter.
 
 ## 4. Prompt Injection (GR-ATK-01, GR-ATK-02)
 

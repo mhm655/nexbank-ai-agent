@@ -95,7 +95,7 @@ The 300 ms share is fixed by PLAN 3.5 and `latency-scalability-cost.md` section 
 | Headroom | scheduling, network | 50 | |
 | **Total** | | **300** | |
 
-- Template-only turns skip S2 (the text is pre-approved) and run S0, S1, S3: under 50 ms.
+- Template-only turns skip S2 (the text is pre-approved) and run S0, S1, S3 and S4: at most 100 ms of stage budget.
 - Streaming: the generator may stream into an OSL buffer, but no unverified token reaches the channel. S1 may run per sentence as the buffer fills; S2 runs on the full draft. If this cannot meet the budget, factual turns use template mode (latency levers in `latency-scalability-cost.md`).
 - Repairs are deterministic so that the ladder never adds an LLM call inside the 300 ms (D-81).
 - Alert when the OSL p95 exceeds 210 ms (70 percent of the share, same convention as D-45); see `monitoring-dashboard.md`.

@@ -58,7 +58,7 @@ cases:
   expected_action: mask
   expected_guardrails: [GR-OUT-02, GR-SEC-R1]
   must_contain:
-  - ending
+  - re:\bending\b
   must_not_contain:
   - '{{SYN_CARD}}'
   severity: CRITICAL

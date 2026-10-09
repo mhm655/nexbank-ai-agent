@@ -28,6 +28,9 @@
 # Types: rule (deterministic), model (classifier), hybrid (rule floor plus model; a rule hit can never be unset by the model).
 # Layers (system-architecture.md section 5, PLAN 3.6): L1 immutable rule layer, L2 model classifiers, L3 prompt layers 0-2,
 #   L4 output verification, L5 fail-closed degradation ladder.
+#   The L1-L5 scheme is our own; the brief has no layer scheme (D-93). Tagging rule: a guardrail carries L4 if and only if
+#   `output_safety_layer` is among its enforcement points (it executes at the Output Safety Layer, in both directions); model-type guardrails carry L2.
+#   GR-ATK-04 flagged-turn sources (D-72, D-91, D-92): hits from GR-ATK-01, 02, 03, 05, 06, 07 and 10 plus adversarial-looking Day 9 refusals.
 # Severity follows config/intents.yaml safety_ratings: CRITICAL, HIGH, MEDIUM.
 # fp_target_pct: proposed DIAGNOSTIC upper bound ("below") for the false-positive rate on benign traffic that reaches the guardrail (D-57, restated by D-64).
 #   It is not the gate. The gate is fp_overall_target_pct, measured end-to-end per benign message (blocked, redirected, escalated or wrongly masked).
@@ -144,7 +147,7 @@ guardrails:
   name: Market-timing, forex and return-prediction guard
   family: ADV
   type: hybrid
-  layers: [L1, L2]
+  layers: [L1, L2, L4]
   enforcement_points: [nlu_service, output_safety_layer]
   action: redirect
   also: []
@@ -164,7 +167,7 @@ guardrails:
   name: Tax-planning recommendation guard
   family: ADV
   type: hybrid
-  layers: [L1, L2]
+  layers: [L1, L2, L4]
   enforcement_points: [nlu_service, output_safety_layer]
   action: redirect
   also: []
@@ -351,7 +354,7 @@ guardrails:
   rule_no: 5
   type: rule
   layers: [L1, L4]
-  enforcement_points: [input_guard, state_tracker, audit_bus, response_generator]
+  enforcement_points: [input_guard, state_tracker, audit_bus, response_generator, output_safety_layer]
   action: mask
   also: [redirect]
   escalation: [ESC-001, ESC-009]
@@ -714,7 +717,7 @@ guardrails:
   name: Explainability and no fully automated credit decisions (RBI Responsible AI circular, draft 2025)
   family: REG
   type: rule
-  layers: [L1, L4]
+  layers: [L1]
   enforcement_points: [policy_engine, tool_orchestrator, audit_bus]
   action: redirect
   also: [escalate]
@@ -734,7 +737,7 @@ guardrails:
   name: AI disclosure and human-on-request (transparency)
   family: REG
   type: rule
-  layers: [L1, L3]
+  layers: [L1, L3, L4]
   enforcement_points: [prompt_layers_0_2, policy_engine, response_generator, output_safety_layer]   # OSL scan added Day 10 (D-80, D-90)
   action: redirect
   also: []
@@ -754,7 +757,7 @@ guardrails:
   name: Fairness and consistent treatment across customer segments
   family: REG
   type: hybrid
-  layers: [L1, L2]
+  layers: [L1, L2, L4]
   enforcement_points: [policy_engine, learning_pipeline, output_safety_layer]
   action: redirect
   also: []
@@ -895,7 +898,7 @@ guardrails:
   name: Tone and banned-phrase check
   family: OUT
   type: model
-  layers: [L4]
+  layers: [L2, L4]
   enforcement_points: [output_safety_layer]
   action: redirect
   also: []
@@ -956,7 +959,7 @@ guardrails:
   name: Fail-closed degradation ladder (safe template, then clarify, then escalate)
   family: SYS
   type: rule
-  layers: [L5]
+  layers: [L4, L5]
   enforcement_points: [policy_engine, output_safety_layer, escalation_router]
   action: redirect
   also: [escalate]
@@ -1016,7 +1019,7 @@ guardrails:
   name: Kill switch and template-only mode control (tighten-only containment levers)
   family: SYS
   type: rule
-  layers: [L1, L5]
+  layers: [L1, L4, L5]
   enforcement_points: [policy_engine, gateway_session_manager, output_safety_layer]
   action: block
   also: []
@@ -1064,7 +1067,7 @@ guardrails:
   family: ATK
   vector: prompt_injection
   type: hybrid
-  layers: [L1, L3, L4]
+  layers: [L1, L2, L3]
   enforcement_points: [input_guard, knowledge_retrieval, tool_orchestrator, response_generator, prompt_layers_0_2]
   action: block
   also: [redirect]
@@ -1120,7 +1123,7 @@ guardrails:
   severity: HIGH
   fp_target_pct: 0.05
   immutable: true
-  fail_mode: "score store unavailable: treat the session as at the safe-mode threshold (templates only, human offered); escalation to ESC-001 applies on the second flagged turn that asks for account data, a credential, an override or a transaction, and at once for an authority claim with a request (D-72, D-60)"
+  fail_mode: "score store unavailable: treat the session as at the safe-mode threshold (templates only, human offered); escalation to ESC-001 applies on the second flagged turn with a data target (another person's data, a credential or secret, the system prompt or admin access, an override or a transaction; D-91), and at once for an authority claim with a request (D-72, D-60)"
   tests_reserved: 4
   brief_ref: A4.4
   doc: adversarial-defences.md

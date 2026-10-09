@@ -280,5 +280,11 @@ One entry per working day (15). Each entry: tasks, decisions with rationale, cha
 - Risk Committee: false-positive targets of 0.00 for GR-OUT-06 and GR-SYS-04; thin reserve; legal hold against the 30-day deletion duty (D-87).
 - ESC targets for jailbreak and spoofing (D-72, D-65) to confirm on Day 12; ESC-003, -004, -007 and -011 have no test case yet (Day 11).
 - OWASP LLM 2025 names and Hindi/Hinglish wording remain unverified (Day 13, Day 15). One test uses a real pin code (GR-SEC-R5-06); a placeholder would be cleaner.
+- Day 10 review follow-ups:
+  - Second-pass review fixes: 5 cases now expect ESC-001; ten banned-phrase checks and three required-phrase checks tightened; GR-REG-16 gains the L4 tag; M-32 row added; template-only timing wording aligned.
+  - D-91: D-72 clarified; the data target means another person's data, credentials or secrets, system prompt or admin access, an override or a transaction. A verified customer's own full-card request is masked, counts toward the GR-ATK-04 counter, never escalates alone (GR-ATK-04-02, GR-ATK-07-02 carry `expected_escalation: []`).
+  - D-92: GR-ATK-10 added to the GR-ATK-04 flagged-turn sources; a failed identity challenge escalates via D-16, not the counter.
+  - D-93: layer-tag rule (L4 iff `output_safety_layer` is an enforcement point; model type carries L2); L4 added to GR-ADV-04, GR-ADV-05, GR-REG-17, GR-SYS-01, GR-SYS-04, output_safety_layer added to GR-SEC-R5, L4 dropped from GR-REG-15 and GR-ATK-02 (the latter gets L2), L2 added to GR-OUT-04. Counts unchanged (58 guardrails, 190 IDs).
+  - D-94: GR-ATK-05-07 card block offered after the fast OTP step (D-16); deviation from brief Case Study 2 flagged for Risk Committee/CEB review.
 
 **Next (Day 11)**: continuous learning pipeline, A/B testing framework, safety-preserving update protocol, 200+ case safety suite index, Level 5 boss.

@@ -115,7 +115,7 @@ The agent never recommends an insurance product at any value, so its behaviour d
 
 | Ref | Obligation | Guardrails | Components | KB entries | Tests |
 |---|---|---|---|---|---|
-| M-32 | EU AI Act transparency mandate and A11.3: customers are told they talk to an AI, the agent never denies it, human assistance is available on request | GR-REG-16 | prompt layers 0-2, Policy Engine | KB-POL-009, KB-FAQ-009, KB-ESC-003, KB-REG-009 | GR-REG-16-01, GR-REG-16-02 |
+| M-32 | EU AI Act transparency mandate and A11.3: customers are told they talk to an AI, the agent never denies it, human assistance is available on request | GR-REG-16 | prompt layers 0-2, Policy Engine, Output Safety Layer | KB-POL-009, KB-FAQ-009, KB-ESC-003, KB-REG-009 | GR-REG-16-01, GR-REG-16-02 |
 | M-33 | EU AI Act risk classification (dependency G-09) and consistent treatment across segments (A11.3) | GR-REG-17 | Policy Engine, Learning Pipeline gate | KB-REG-009 | GR-REG-17-01, GR-REG-17-02 |
 | M-34 | NIST AI RMF 1.0: risk identification, assessment, mitigation: severity, false-positive target and fail mode per guardrail in the registry; control change gates | GR-SYS-02, GR-SYS-03, GR-SYS-01 | Learning Pipeline gate, Policy Engine | KB-POL-002 | GR-SYS-01-01, GR-SYS-02-01, GR-SYS-03-01 |
 | M-35 | OWASP LLM Top 10 (2025): cross-reference in section 4; attack tests Day 10 | GR-SEC-R1, GR-SEC-R3, GR-SEC-R4, GR-OUT-03 (Day 9); GR-ATK-* (Day 10) | see section 4 | KB-POL-002 | see section 4 |
