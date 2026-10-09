@@ -25,9 +25,9 @@ Status: `todo` / `draft` / `done`. Brief sections refer to the ZeTheta PDF. Upda
 | R-19 | Utterance library (300+) | D | 2 | `docs/intent-taxonomy/utterances.csv`, `tests/nlu/README.md` | 6 | done |
 | R-20 | 50+ KB entries, schema, versioning, TTL, access control | A2.3 | 3 | `docs/knowledge-base/kb-schema.md`, `docs/knowledge-base/entries/*.yaml`, `docs/knowledge-base/README.md`, `diagrams/kb-er-model.mmd`, `tests/kb/validate_kb_entries.py` | 7 | done |
 | R-21 | Retrieval pipeline (hybrid, rerank, p95 < 200 ms) | A2.3 | 3 | `docs/knowledge-base/retrieval-pipeline.md`, `diagrams/retrieval-pipeline.mmd` | 8 | done |
-| R-22 | Financial advice boundary | A4 | 4 | `docs/guardrails/financial-advice.md` | 9 | todo |
-| R-23 | 8 account-security rules | A4.2 | 4 | `docs/guardrails/account-security.md` | 9 | todo |
-| R-24 | RBI / PCI DSS / KYC-AML mapping | A4 | 4 | `docs/guardrails/regulatory-mapping.md` | 9 | todo |
+| R-22 | Financial advice boundary | A4.1 | 4 | `docs/guardrails/financial-advice.md`, `config/guardrails.yaml` (GR-ADV-01..09) | 9 | done |
+| R-23 | 8 account-security rules | A4.2 | 4 | `docs/guardrails/account-security.md`, `config/guardrails.yaml` (GR-SEC-R1..R8) | 9 | done |
+| R-24 | RBI / PCI DSS / KYC-AML / SEBI / IRDAI / DPDP / Ombudsman mapping | A4.3, appendix | 4 | `docs/guardrails/regulatory-mapping.md`, `config/guardrails.yaml` (GR-REG-01..20) | 9 | done |
 | R-25 | 6 adversarial vectors and 50+ tests | A4 | 4 | `docs/guardrails/adversarial-defences.md`, `tests/adversarial/` | 10 | todo |
 | R-26 | Continuous learning pipeline and safety preservation (200-case suite) | A5 | 5 | `docs/learning-pipeline/`, `tests/safety-suite/` | 11 | todo |
 | R-27 | 15 escalation triggers (ESC-001..015), routing, handoff | A6 | 6 | `docs/escalation/`, `config/escalation_rules.yaml` | 12 | todo |
@@ -40,5 +40,6 @@ Status: `todo` / `draft` / `done`. Brief sections refer to the ZeTheta PDF. Upda
 | R-34 | Cross-reference audit, transfer to `@ZethetaIntern` | F | 7 | n/a | 15 | todo |
 | R-35 | Graceful fallback when no relevant knowledge is found; gap handling | A2.3 | 3 | `docs/knowledge-base/retrieval-pipeline.md` sections 9-10, `docs/knowledge-base/entries/escalation.yaml` | 7, 8 | done (template text Day 13) |
 | R-36 | KB maintenance workflow, regulatory fast-track, staleness alerts; access matrix by auth level; Level 3 boss (5 queries, 3+ entries) | A2.3, B | 3 | `docs/knowledge-base/maintenance-workflow.md`, `docs/knowledge-base/access-control-matrix.md`, `tests/kb/boss-level3.yaml`, `tests/kb/README.md` | 8 | done |
+| R-37 | Guardrail registry: implementation type (rule, model, hybrid), enforcement point, action, immutability and false-positive target per guardrail; defence-in-depth diagram | A4, PLAN Phase 4 items 1-5 | 4 | `config/guardrails.yaml`, `diagrams/guardrail-layers.mmd` | 9 | done |
 
 Note: R-29 is partly covered on Day 3 by the persona and conversation-pattern content in `response-generation.md`; it is finalised on Day 13.

@@ -2,7 +2,7 @@
 
 A specification-first design for a production-grade, self-improving AI customer service system for **NexBank**, a fictional Indian neo-bank (2.7M customers, ~18,000 interactions/day).
 
-> Status: **Day 8 of 15** (Level 1 architecture, Level 2 NLU and Level 3 knowledge base and retrieval complete). Most folders are placeholders that later days fill in. See [CHANGELOG.md](CHANGELOG.md).
+> Status: **Day 9 of 15** (Level 1 architecture, Level 2 NLU and Level 3 knowledge base and retrieval complete; Level 4 guardrails: advice, account security and regulatory mapping done, adversarial defences and tests on Day 10). Most folders are placeholders that later days fill in. See [CHANGELOG.md](CHANGELOG.md).
 
 ## Targets
 
@@ -24,7 +24,7 @@ A specification-first design for a production-grade, self-improving AI customer 
 | `docs/architecture/` | System architecture, dialogue management, response generation | Days 1-3 |
 | `docs/intent-taxonomy/` | Intents, entities, disambiguation, sentiment, `utterances.csv`, `language-detection.md` | Days 4-6 |
 | `docs/knowledge-base/` | KB schema and ER model, 77 entries in `entries/` ([index](docs/knowledge-base/README.md), Day 7); retrieval pipeline, maintenance workflow and access matrix (Day 8) | Days 7-8 |
-| `docs/guardrails/` | Advice boundary, security rules, adversarial defences | Days 9-10 |
+| `docs/guardrails/` | Advice boundary (`financial-advice.md`), 8 security rules (`account-security.md`), regulatory mapping (`regulatory-mapping.md`) on Day 9; adversarial defences on Day 10. Registry: `config/guardrails.yaml` (45 guardrails). Layers: `diagrams/guardrail-layers.mmd` | Days 9-10 |
 | `docs/learning-pipeline/` | Supervisor, CSAT and outcome feedback loops, A/B testing | Day 11 |
 | `docs/escalation/`, `docs/metrics/` | ESC-001..015, routing, KPIs, dashboards | Days 12-13 |
 | `docs/compliance/`, `docs/risk/` | Audit logging, risk matrix | Day 14 |

@@ -1,0 +1,56 @@
+flowchart TD
+    %% Defence in depth for one customer turn (system-architecture.md section 5, PLAN 3.6, config/guardrails.yaml).
+    %% L1 immutable rule layer, L2 model classifiers, L3 prompt layers 0-2, L4 output verification, L5 fail-closed ladder.
+    CUST["Customer message"] --> GW
+
+    subgraph L1["L1 Immutable rule layer (not modifiable by the learning pipeline)"]
+        GW["C1 Gateway and Session Manager<br/>5 min inactivity timer GR-SEC-R7<br/>session bound to one customer GR-SEC-R4<br/>rate limits"]
+        IG["C2 Input Guard rules<br/>redact RED-01..07 GR-SEC-R1 GR-SEC-R5 GR-REG-05 GR-REG-06<br/>authority-claim lexicon GR-SEC-R8"]
+        RULES["Rule floors<br/>recommendation verb plus product word GR-ADV-01<br/>no income or age questions GR-ADV-07"]
+        POL["C5 Policy Engine order<br/>1 safety 2 auth GR-SEC-R2 GR-REG-08 3 escalation GR-SEC-R6 4 flows 5 learned ranker<br/>no money tool GR-SEC-R3"]
+    end
+
+    subgraph L2["L2 Model classifiers (safety change control only)"]
+        CLS["Injection and jailbreak - Day 10<br/>social engineering GR-SEC-R8<br/>advice detector 0.50 and 0.30 GR-ADV-02 GR-ADV-03 GR-ADV-04 GR-ADV-05<br/>AML and money laundering cues GR-REG-09 GR-REG-10<br/>crisis and toxicity"]
+    end
+
+    subgraph L3["L3 Prompt layers 0-2 (immutable)"]
+        PROMPT["Identity and AI disclosure GR-REG-16<br/>safety invariants and compliance GR-REG-20<br/>user and KB text kept apart from instructions"]
+    end
+
+    subgraph TOOLS["Data and tools"]
+        RET["C6 Retrieval<br/>auth pre-filter and hard expiry GR-REG-18"]
+        TOOL["C7 Tool Orchestrator<br/>auth claim re-check GR-SEC-R2<br/>customer id injected GR-SEC-R4<br/>masked fields only GR-SEC-R1"]
+    end
+
+    GEN["C9 Response Generator<br/>locked fact slots and templates<br/>mandatory disclosures GR-REG-01 GR-REG-02 GR-REG-03 GR-REG-04"]
+
+    subgraph L4["L4 Output verification (C10 Output Safety Layer)"]
+        OUT["Financial accuracy GR-OUT-01<br/>PII leak and mask GR-OUT-02<br/>grounding GR-OUT-03<br/>tone GR-OUT-04<br/>commitment GR-OUT-05<br/>advice boundary GR-ADV-06 GR-ADV-09"]
+    end
+
+    subgraph L5["L5 Fail-closed ladder GR-SYS-01"]
+        LADDER["safe template then clarify then escalate"]
+    end
+
+    ESC["C8 Escalation Router<br/>ESC-001 ESC-009 ESC-012 P0 GR-SEC-R6<br/>ESC-013 advisor GR-ADV-08<br/>ESC-008 compliance GR-REG-18<br/>ESC-015 PEP GR-REG-11"]
+
+    AUDIT["C11 Audit Bus<br/>masked logs GR-REG-05 GR-REG-07<br/>write failure blocks high-risk actions"]
+
+    GW --> IG --> RULES --> CLS --> POL
+    POL --> PROMPT --> GEN
+    POL -- "needs facts" --> RET --> GEN
+    POL -- "needs account data" --> TOOL --> GEN
+    GEN --> OUT
+    OUT -- "pass" --> REPLY["Reply to customer"]
+    OUT -- "fail" --> LADDER
+    LADDER -- "template or clarify" --> REPLY
+    LADDER -- "cannot be fixed" --> ESC
+    POL -- "trigger fired" --> ESC
+    ESC --> HUMAN["Human queue with 8-element handoff package"]
+    REPLY -.-> AUDIT
+    ESC -.-> AUDIT
+
+    LEARN["C12 Learning Pipeline"]
+    LEARN -. "may update KB, prompt layers 3-5, thresholds outside the registry" .-> GEN
+    LEARN -. "blocked GR-SYS-02 GR-SYS-03" .-x L1

@@ -1,0 +1,976 @@
+# NexBank guardrail registry (Day 9). Machine-readable source of truth for guardrail IDs, types, enforcement points and actions.
+# Brief refs: A4.1 (advice), A4.2 (8 account-security rules), A4.3 (regulatory), A4.4 (adversarial, Day 10), A9/A11/A12, Regulatory Reference Summary.
+# Docs: docs/guardrails/financial-advice.md, account-security.md, regulatory-mapping.md. Diagram: diagrams/guardrail-layers.mmd.
+# Checker (scratchpad, not in repo) verifies: YAML parses; every GR ID in the docs exists here and vice versa; linked intent, ESC and KB IDs exist; 8 security rules present.
+#
+# ID scheme
+#   Guardrail ID : GR-<FAMILY>-<key>   FAMILY = ADV (advice), SEC (account security, key R1..R8 = A4.2 rules 1..8),
+#                                      REG (regulatory), OUT (response safety), SYS (cross-cutting). Day 10 adds GR-ATK-* for the six A4.4 vectors.
+#   Test ID      : <guardrail ID>-<NN>   NN = two digits starting at 01, for example GR-SEC-R1-01. Day 10 writes the cases in tests/guardrails/ and
+#                  tests/adversarial/; Day 11 re-uses them in the fixed safety suite. `tests_reserved` is the number of IDs reserved (01..N); a
+#                  guardrail may not ship with fewer written cases than 1, and the Day 10 total must reach the PLAN 55+ minimum.
+#
+# Action vocabulary (what the guardrail does when it triggers)
+#   block     : refuse or stop the request or the draft; nothing about it is executed or delivered
+#   redirect  : replace the draft or route the turn to a safe template or flow (information-only wording, auth flow, in-app link)
+#   escalate  : hand the conversation to a human queue (ESC IDs in `escalation`) with the handoff package
+#   mask      : redact or mask data (placeholder or last-4 form) and continue
+# `also` lists secondary actions that always accompany the primary one (log is implicit for every guardrail).
+#
+# Types: rule (deterministic), model (classifier), hybrid (rule floor plus model; a rule hit can never be unset by the model).
+# Layers (system-architecture.md section 5, PLAN 3.6): L1 immutable rule layer, L2 model classifiers, L3 prompt layers 0-2,
+#   L4 output verification, L5 fail-closed degradation ladder.
+# Severity follows config/intents.yaml safety_ratings: CRITICAL, HIGH, MEDIUM.
+# fp_target_pct: proposed DIAGNOSTIC upper bound ("below") for the false-positive rate on benign traffic that reaches the guardrail (D-57, restated by D-64).
+#   It is not the gate. The gate is fp_overall_target_pct, measured end-to-end per benign message (blocked, redirected, escalated or wrongly masked).
+#   Class bounds are sized so that a typical path (10 rule + 6 hybrid + 2 model guardrails) sums to 2.5 percent, leaving 0.5 points of reserve
+#   (docs/guardrails/financial-advice.md section 10).
+# immutable: true for every guardrail (D-58): the learning pipeline can neither edit the rule or threshold nor relax the action. Classifier weights
+#   of `model` and `hybrid` guardrails change only through the safety change-control path (HITL, Risk Committee approval, 100% fixed suite), never by learning.
+
+schema_version: "1.0"
+registry_status: draft_day9
+
+components:               # system-architecture.md section 2 (12 components) plus the prompt layer
+  gateway_session_manager: 1
+  input_guard: 2
+  nlu_service: 3
+  state_tracker: 4
+  policy_engine: 5
+  knowledge_retrieval: 6
+  tool_orchestrator: 7
+  escalation_router: 8
+  response_generator: 9
+  output_safety_layer: 10
+  audit_bus: 11
+  learning_pipeline: 12
+  prompt_layers_0_2: 0
+
+parameters:               # values restated from other docs; governed copy is config/parameters.yaml (Day 13)
+  guardrail_strictness_level: HIGH          # A12.3 default; range MEDIUM/HIGH/CRITICAL; Risk Committee approval; this registry assumes HIGH or above
+  session_timeout_minutes: 5                # A4.2 rule 7 and A12.3 default
+  session_timeout_ceiling_minutes: 5        # proposal D-56: A12.3 range is 3-15 but rule 7 fixes 5; the guardrail value may be lowered to 3, never raised
+  advice_boundary_act: 0.50                 # disambiguation.md section 3; flow_entry_overrides PRD-005 in config/intents.yaml
+  advice_boundary_flag: 0.30                # disambiguation.md section 3 (adds a boundary sentence)
+  grievance_info_max_turns: 2               # A4.3
+  fp_overall_target_pct: 3                  # GATE: measured end-to-end per benign message, below 3 percent (FMEA #4, PLAN 3.6, D-64)
+  fp_class_bounds_pct: { rule: 0.1, hybrid: 0.15, model: 0.3 }   # proposal D-64 (supersedes the D-57 figures 1, 2, 3); diagnostics, not the gate
+  fp_typical_path: { rule: 10, hybrid: 6, model: 2 }              # proposal D-64: 10*0.1 + 6*0.15 + 2*0.3 = 2.5 percent
+  fp_reserve_pct: 0.5                                             # proposal D-64: 3.0 - 2.5, for the L5 ladder, interactions and unmodelled paths
+
+guardrails:
+
+# ------------------------------------------------------------------ ADVICE (A4.1)
+- id: GR-ADV-01
+  name: Recommendation-verb and product-word rule
+  family: ADV
+  type: rule
+  layers: [L1]
+  enforcement_points: [nlu_service, policy_engine]
+  action: redirect
+  also: []
+  escalation: [ESC-013]
+  intents: [PRD-005, PRD-001, PRD-002, PRD-003, PRD-004, TXN-006]
+  kb_entries: [KB-POL-001, KB-REG-005]
+  regulatory_tags: [SEBI_ROBO_ADVISORY]
+  severity: CRITICAL
+  fp_target_pct: 0.1
+  immutable: true
+  fail_mode: "rule layer is local and has no dependency; if the NLU service is down the Input Guard copy of the verb list forces PRD-005 handling"
+  tests_reserved: 4
+  brief_ref: A4.1
+  doc: financial-advice.md
+
+- id: GR-ADV-02
+  name: Advice-intent classifier (input side)
+  family: ADV
+  type: model
+  layers: [L2]
+  enforcement_points: [nlu_service]
+  action: redirect
+  also: []
+  escalation: [ESC-013]
+  intents: [PRD-005, PRD-001, PRD-002, PRD-003, PRD-004, TXN-006]
+  kb_entries: [KB-POL-001]
+  regulatory_tags: [SEBI_ROBO_ADVISORY]
+  severity: CRITICAL
+  fp_target_pct: 0.3
+  immutable: true
+  fail_mode: "classifier timeout or outage: treat any product word with an evaluative cue as score 0.50 (boundary behaviour); never downgrade to information-only"
+  tests_reserved: 3
+  brief_ref: A4.1
+  doc: financial-advice.md
+
+- id: GR-ADV-03
+  name: Personal-circumstance suitability and affordability guard
+  family: ADV
+  type: hybrid
+  layers: [L1, L2]
+  enforcement_points: [nlu_service, policy_engine]
+  action: redirect
+  also: []
+  escalation: [ESC-013]
+  intents: [PRD-005, PRD-002, PRD-004]
+  kb_entries: [KB-POL-001, KB-PRD-012, KB-FAQ-005, KB-PRD-005, KB-PRD-006, KB-PRD-007]
+  regulatory_tags: [SEBI_ROBO_ADVISORY, IRDAI_AI_DISTRIBUTION, RBI_RESPONSIBLE_AI]
+  severity: CRITICAL
+  fp_target_pct: 0.15
+  immutable: true
+  fail_mode: "when the rule hit and the model disagree the stricter result (boundary behaviour) is used"
+  tests_reserved: 4
+  brief_ref: A4.1
+  doc: financial-advice.md
+
+- id: GR-ADV-04
+  name: Market-timing, forex and return-prediction guard
+  family: ADV
+  type: hybrid
+  layers: [L1, L2]
+  enforcement_points: [nlu_service, output_safety_layer]
+  action: redirect
+  also: []
+  escalation: [ESC-013]
+  intents: [PRD-005, TXN-006, PRD-003]
+  kb_entries: [KB-POL-001, KB-ESC-016, KB-ESC-014]
+  regulatory_tags: [SEBI_ROBO_ADVISORY]
+  severity: HIGH
+  fp_target_pct: 0.15
+  immutable: true
+  fail_mode: "no prediction or timing statement is ever generated by the LLM; the fallback is the forex_timing template"
+  tests_reserved: 3
+  brief_ref: A4.1
+  doc: financial-advice.md
+
+- id: GR-ADV-05
+  name: Tax-planning recommendation guard
+  family: ADV
+  type: hybrid
+  layers: [L1, L2]
+  enforcement_points: [nlu_service, output_safety_layer]
+  action: redirect
+  also: []
+  escalation: [ESC-013]
+  intents: [PRD-005, PRD-003, PRD-001]
+  kb_entries: [KB-POL-001, KB-REG-011, KB-FAQ-008]
+  regulatory_tags: [SEBI_ROBO_ADVISORY, TAX_80C, TDS]
+  severity: HIGH
+  fp_target_pct: 0.15
+  immutable: true
+  fail_mode: "the tax answer is a locked fact slot from KB-REG-011 or KB-FAQ-008; the LLM cannot add 'you should' wording around it"
+  tests_reserved: 3
+  brief_ref: A4.1
+  doc: financial-advice.md
+
+- id: GR-ADV-06
+  name: Output advice-boundary check
+  family: ADV
+  type: hybrid
+  layers: [L4]
+  enforcement_points: [output_safety_layer]
+  action: redirect
+  also: []
+  escalation: [ESC-013]
+  intents: [PRD-005, PRD-001, PRD-002, PRD-003, PRD-004, TXN-006]
+  kb_entries: [KB-POL-001]
+  regulatory_tags: [SEBI_ROBO_ADVISORY]
+  severity: CRITICAL
+  fp_target_pct: 0.15
+  immutable: true
+  fail_mode: "check unavailable or inconclusive: use the safe template (L5), never deliver the draft"
+  tests_reserved: 4
+  brief_ref: A4.1
+  doc: financial-advice.md
+
+- id: GR-ADV-07
+  name: No eliciting of income, age, portfolio or goals
+  family: ADV
+  type: rule
+  layers: [L1, L3]
+  enforcement_points: [policy_engine, response_generator, prompt_layers_0_2]
+  action: block
+  also: []
+  escalation: []
+  intents: [PRD-005, PRD-001, PRD-002, PRD-004]
+  kb_entries: [KB-POL-001]
+  regulatory_tags: [SEBI_ROBO_ADVISORY, DPDP_ACT]
+  severity: HIGH
+  fp_target_pct: 0.1
+  immutable: true
+  fail_mode: "a draft that asks for income, age, savings, risk appetite or goals is dropped and replaced by the boundary template"
+  tests_reserved: 3
+  brief_ref: A4.1
+  doc: financial-advice.md
+
+- id: GR-ADV-08
+  name: Wealth Advisory route (ESC-013) and regulatory route (ESC-008)
+  family: ADV
+  type: rule
+  layers: [L1, L5]
+  enforcement_points: [policy_engine, escalation_router]
+  action: escalate
+  also: []
+  escalation: [ESC-013, ESC-008]
+  intents: [PRD-005, PRD-004, TXN-006, PRD-001]
+  kb_entries: [KB-ESC-008, KB-ESC-010, KB-REG-005, KB-REG-006]
+  regulatory_tags: [SEBI_ROBO_ADVISORY, IRDAI_AI_DISTRIBUTION]
+  severity: HIGH
+  fp_target_pct: 0.1
+  immutable: true
+  fail_mode: "advisor queue unavailable: next queue or callback (Escalation Router fallback); the customer is told honestly, no advice is given as a substitute"
+  tests_reserved: 3
+  brief_ref: A4.1, A6
+  doc: financial-advice.md
+
+- id: GR-ADV-09
+  name: Factual-comparison neutrality
+  family: ADV
+  type: hybrid
+  layers: [L1, L4]
+  enforcement_points: [response_generator, output_safety_layer]
+  action: redirect
+  also: []
+  escalation: [ESC-013]
+  intents: [PRD-001, PRD-005]
+  kb_entries: [KB-PRD-011, KB-POL-001]
+  regulatory_tags: [SEBI_ROBO_ADVISORY]
+  severity: MEDIUM
+  fp_target_pct: 0.15
+  immutable: true
+  fail_mode: "a comparison draft that ranks, scores or uses 'better', 'best' or 'worth it' is rewritten to a side-by-side of published features"
+  tests_reserved: 3
+  brief_ref: A4.1
+  doc: financial-advice.md
+
+# ------------------------------------------------------------------ ACCOUNT SECURITY (A4.2 rules 1-8, numbered by order of appearance in the brief)
+- id: GR-SEC-R1
+  name: Never display, read out or transmit full account, card, CVV, PIN, password or Aadhaar numbers
+  family: SEC
+  rule_no: 1
+  type: rule
+  layers: [L1, L4]
+  enforcement_points: [input_guard, tool_orchestrator, output_safety_layer, audit_bus]
+  action: mask
+  also: [block]
+  escalation: []
+  intents: [ACC-001, ACC-002, CRD-001, CRD-002, CRD-005, SEC-001, SEC-003, TXN-001]
+  kb_entries: [KB-POL-002, KB-REG-003, KB-POL-011, KB-TRB-007]
+  regulatory_tags: [PCI_DSS, DPDP_ACT, IT_SPDI_RULES]
+  severity: CRITICAL
+  fp_target_pct: 0.1
+  immutable: true
+  fail_mode: "validator error or outage: mask the whole numeric run; if the value is a credential the draft is blocked and replaced by the secure-channel template"
+  tests_reserved: 6
+  brief_ref: A4.2
+  doc: account-security.md
+
+- id: GR-SEC-R2
+  name: No account modification without the required authentication level
+  family: SEC
+  rule_no: 2
+  type: rule
+  layers: [L1]
+  enforcement_points: [policy_engine, tool_orchestrator, knowledge_retrieval]
+  action: redirect
+  also: [block]
+  escalation: [ESC-009]
+  intents: [ACC-003, ACC-004, ACC-005, ACC-006, ACC-008, TXN-005, CRD-001, CRD-002, CRD-003, SEC-003]
+  kb_entries: [KB-POL-003, KB-POL-002, KB-POL-004]
+  regulatory_tags: [KYC_AML, RBI_DIGITAL_PAYMENT_SECURITY]
+  severity: CRITICAL
+  fp_target_pct: 0.1
+  immutable: true
+  fail_mode: "auth service or token validation unavailable: fail closed, no modification, offer a human; three failed OTP attempts lock the flow (auth-flow.mmd)"
+  tests_reserved: 5
+  brief_ref: A4.2
+  doc: account-security.md
+
+- id: GR-SEC-R3
+  name: Never initiate, approve or facilitate a fund transfer, payment or transaction
+  family: SEC
+  rule_no: 3
+  type: hybrid
+  layers: [L1, L2, L4]
+  enforcement_points: [tool_orchestrator, policy_engine, output_safety_layer]
+  action: block
+  also: [redirect]
+  escalation: [ESC-001, ESC-012]
+  intents: [TXN-003, TXN-005, TXN-006, PRD-005]
+  kb_entries: [KB-POL-004, KB-POL-002, KB-TRB-003]
+  regulatory_tags: [RBI_DIGITAL_PAYMENT_SECURITY, KYC_AML]
+  severity: CRITICAL
+  fp_target_pct: 0.15
+  immutable: true
+  fail_mode: "no tool that moves money exists in the registry, so the rule holds even if every classifier fails; the output check catches 'I have sent/paid/transferred' claims"
+  tests_reserved: 5
+  brief_ref: A4.2
+  doc: account-security.md
+
+- id: GR-SEC-R4
+  name: No disclosure of one customer's account to another (family and power-of-attorney claims included)
+  family: SEC
+  rule_no: 4
+  type: hybrid
+  layers: [L1, L2, L4]
+  enforcement_points: [gateway_session_manager, tool_orchestrator, state_tracker, output_safety_layer]
+  action: block
+  also: [redirect]
+  escalation: [ESC-001]
+  intents: [ACC-001, ACC-002, TXN-001, CMP-002, GEN-004, SEC-002]
+  kb_entries: [KB-POL-010, KB-POL-002]
+  regulatory_tags: [DPDP_ACT, KYC_AML]
+  severity: CRITICAL
+  fp_target_pct: 0.15
+  immutable: true
+  fail_mode: "customer_id is bound to the authenticated session and injected by the Tool Orchestrator, so a cross-customer query is not expressible; an output draft naming another customer's identifier is blocked and logged as a P0 incident"
+  tests_reserved: 5
+  brief_ref: A4.2, A11.3
+  doc: account-security.md
+
+- id: GR-SEC-R5
+  name: Never accept or store credentials; instruct the customer to change compromised ones
+  family: SEC
+  rule_no: 5
+  type: rule
+  layers: [L1, L4]
+  enforcement_points: [input_guard, state_tracker, audit_bus, response_generator]
+  action: mask
+  also: [redirect]
+  escalation: [ESC-001, ESC-009]
+  intents: [SEC-003, SEC-001, SEC-002, SEC-004, ACC-003]
+  kb_entries: [KB-POL-011, KB-POL-002, KB-TRB-007, KB-TRB-011, KB-REG-003]
+  regulatory_tags: [PCI_DSS, DPDP_ACT, RBI_DIGITAL_PAYMENT_SECURITY]
+  severity: CRITICAL
+  fp_target_pct: 0.1
+  immutable: true
+  fail_mode: "Input Guard failure: the State Tracker and the log writer run the same redaction patterns (second line), and the Output Safety Layer blocks any echo of a credential"
+  tests_reserved: 6
+  brief_ref: A4.2
+  doc: account-security.md
+
+- id: GR-SEC-R6
+  name: Never bypass the escalation protocol for security-critical intents
+  family: SEC
+  rule_no: 6
+  type: rule
+  layers: [L1, L5]
+  enforcement_points: [policy_engine, escalation_router]
+  action: escalate
+  also: []
+  escalation: [ESC-001, ESC-009, ESC-012]
+  intents: [SEC-001, SEC-002, SEC-003, SEC-004, CRD-001, TXN-002, TXN-006]
+  kb_entries: [KB-ESC-002, KB-ESC-010, KB-POL-002, KB-ESC-009]
+  regulatory_tags: [KYC_AML, RBI_DIGITAL_PAYMENT_SECURITY]
+  severity: CRITICAL
+  fp_target_pct: 0.1
+  immutable: true
+  fail_mode: "queue unavailable: next queue and callback; a missed trigger is backstopped by the escalation proximity score and replay audits; escalation is never skipped because a model or the customer prefers to continue"
+  tests_reserved: 4
+  brief_ref: A4.2, A6
+  doc: account-security.md
+
+- id: GR-SEC-R7
+  name: Five-minute inactivity timeout with re-authentication
+  family: SEC
+  rule_no: 7
+  type: rule
+  layers: [L1]
+  enforcement_points: [gateway_session_manager, state_tracker, tool_orchestrator]
+  action: redirect
+  also: [block]
+  escalation: []
+  intents: [ACC-001, ACC-002, ACC-003, ACC-004, ACC-005, ACC-006, ACC-008, TXN-001, TXN-002, TXN-005, CRD-001, CRD-002, CRD-003, SEC-003]
+  kb_entries: [KB-POL-003, KB-POL-002]
+  regulatory_tags: [RBI_DIGITAL_PAYMENT_SECURITY]
+  severity: HIGH
+  fp_target_pct: 0.1
+  immutable: true
+  fail_mode: "session store outage: treat auth as expired and require re-authentication (FMEA #1)"
+  tests_reserved: 4
+  brief_ref: A4.2, A12.3
+  doc: account-security.md
+
+- id: GR-SEC-R8
+  name: Detect and refuse social engineering (staff, regulator and law-enforcement impersonation)
+  family: SEC
+  rule_no: 8
+  type: hybrid
+  layers: [L1, L2, L3]
+  enforcement_points: [input_guard, policy_engine, prompt_layers_0_2]
+  action: block
+  also: [escalate]
+  escalation: [ESC-001]
+  intents: [GEN-004, SEC-001, SEC-002, ACC-001, ACC-003]
+  kb_entries: [KB-POL-010, KB-POL-002]
+  regulatory_tags: [KYC_AML]
+  severity: CRITICAL
+  fp_target_pct: 0.15
+  immutable: true
+  fail_mode: "classifier outage: the authority-claim lexicon (rule floor) still blocks; authority claims never change auth or data access whatever the classifier says"
+  tests_reserved: 5
+  brief_ref: A4.2, A4.4
+  doc: account-security.md
+
+# ------------------------------------------------------------------ REGULATORY (A4.3 and the Regulatory Reference Summary)
+- id: GR-REG-01
+  name: Mandatory disclosures in product information (rates, fees, T&C)
+  family: REG
+  type: hybrid
+  layers: [L1, L4]
+  enforcement_points: [response_generator, output_safety_layer]
+  action: redirect
+  also: []
+  escalation: [ESC-008]
+  intents: [PRD-001, PRD-002, PRD-003, PRD-004, CRD-004, CRD-003]
+  kb_entries: [KB-REG-001, KB-POL-008, KB-PRD-003, KB-PRD-004, KB-PRD-005, KB-PRD-006, KB-ESC-017, KB-ESC-018, KB-ESC-013]
+  regulatory_tags: [RBI_DIGITAL_LENDING]
+  severity: HIGH
+  fp_target_pct: 0.15
+  immutable: true
+  fail_mode: "disclosure slot missing from the KB entry: say what is not held and point to the offer documents or a human (gap entries), never invent a figure"
+  tests_reserved: 2
+  brief_ref: A4.3
+  doc: regulatory-mapping.md
+
+- id: GR-REG-02
+  name: Cooling-off period information for new product sign-ups
+  family: REG
+  type: rule
+  layers: [L1, L4]
+  enforcement_points: [policy_engine, response_generator, output_safety_layer]
+  action: redirect
+  also: [escalate]
+  escalation: [ESC-008]
+  intents: [PRD-001, PRD-002, PRD-003, ACC-007, CRD-004]
+  kb_entries: [KB-REG-001, KB-ESC-019, KB-POL-008]
+  regulatory_tags: [RBI_DIGITAL_LENDING]
+  severity: HIGH
+  fp_target_pct: 0.1
+  immutable: true
+  fail_mode: "the length of the cooling-off period is not in the brief or the KB (KB-ESC-019): the agent states the obligation, says the length is not held and offers ESC-008; it never states a number (G-01)"
+  tests_reserved: 2
+  brief_ref: A4.3
+  doc: regulatory-mapping.md
+
+- id: GR-REG-03
+  name: Grievance redressal information within 2 turns of any complaint
+  family: REG
+  type: rule
+  layers: [L1, L4]
+  enforcement_points: [policy_engine, state_tracker, output_safety_layer]
+  action: redirect
+  also: []
+  escalation: [ESC-002, ESC-004, ESC-010]
+  intents: [CMP-001, CMP-003, CMP-005, CMP-002]
+  kb_entries: [KB-REG-002, KB-ESC-005, KB-ESC-019]
+  regulatory_tags: [RBI_OMBUDSMAN, RBI_DIGITAL_LENDING]
+  severity: HIGH
+  fp_target_pct: 0.1
+  immutable: true
+  fail_mode: "turn counter lives in the State Tracker; if state is unavailable the grievance sentence is added to the next reply unconditionally"
+  tests_reserved: 3
+  brief_ref: A4.3
+  doc: regulatory-mapping.md
+
+- id: GR-REG-04
+  name: No high-pressure sales tactics or artificial urgency
+  family: REG
+  type: hybrid
+  layers: [L1, L2, L4]
+  enforcement_points: [output_safety_layer, response_generator, policy_engine]
+  action: redirect
+  also: []
+  escalation: []
+  intents: [PRD-001, PRD-002, PRD-003, PRD-004, CRD-004, CRD-003, ACC-007]
+  kb_entries: [KB-POL-008, KB-REG-001]
+  regulatory_tags: [RBI_DIGITAL_LENDING]
+  severity: HIGH
+  fp_target_pct: 0.15
+  immutable: true
+  fail_mode: "banned-phrase list (urgency, scarcity, guilt) is a rule floor; the tone classifier adds to it; no cross-sell turn is generated in fraud, distress or complaint conversations"
+  tests_reserved: 2
+  brief_ref: A4.3, A9
+  doc: regulatory-mapping.md
+
+- id: GR-REG-05
+  name: Card numbers masked in display and logging (last 4 digits only)
+  family: REG
+  type: rule
+  layers: [L1, L4]
+  enforcement_points: [input_guard, output_safety_layer, audit_bus]
+  action: mask
+  also: []
+  escalation: []
+  intents: [CRD-001, CRD-002, CRD-005, SEC-001, TXN-002]
+  kb_entries: [KB-REG-003, KB-POL-002, KB-POL-006, KB-ESC-001]
+  regulatory_tags: [PCI_DSS]
+  severity: CRITICAL
+  fp_target_pct: 0.1
+  immutable: true
+  fail_mode: "log writer masks any Luhn-valid 13-19 digit run before persistence; if masking fails the log record is dropped and an alert is raised, never written raw"
+  tests_reserved: 2
+  brief_ref: A4.3
+  doc: regulatory-mapping.md
+
+- id: GR-REG-06
+  name: CVV/CVC never requested, stored or displayed
+  family: REG
+  type: rule
+  layers: [L1, L3, L4]
+  enforcement_points: [input_guard, response_generator, output_safety_layer, audit_bus, prompt_layers_0_2]
+  action: block
+  also: [mask]
+  escalation: []
+  intents: [CRD-001, CRD-002, SEC-001, SEC-003]
+  kb_entries: [KB-REG-003, KB-POL-002, KB-POL-011]
+  regulatory_tags: [PCI_DSS]
+  severity: CRITICAL
+  fp_target_pct: 0.1
+  immutable: true
+  fail_mode: "no template or slot asks for a CVV; a draft containing a CVV request is blocked; a CVV in the input is redacted by RED-02 and the customer is told not to share it"
+  tests_reserved: 2
+  brief_ref: A4.3
+  doc: regulatory-mapping.md
+
+- id: GR-REG-07
+  name: Enhanced audit logging for payment-related conversations
+  family: REG
+  type: rule
+  layers: [L1]
+  enforcement_points: [audit_bus, policy_engine]
+  action: redirect
+  also: []
+  escalation: []
+  intents: [TXN-002, TXN-003, TXN-005, CRD-001, CRD-002, CRD-004, SEC-001, SEC-004]
+  kb_entries: [KB-REG-003, KB-ESC-001, KB-POL-007]
+  regulatory_tags: [PCI_DSS, RBI_DIGITAL_PAYMENT_SECURITY]
+  severity: HIGH
+  fp_target_pct: 0.1
+  immutable: true
+  fail_mode: "audit write fails for a payment-related turn: block the high-risk action until the write succeeds (FMEA #21)"
+  tests_reserved: 1
+  brief_ref: A4.3
+  doc: regulatory-mapping.md
+
+- id: GR-REG-08
+  name: Identity verified before account-specific information (KYC)
+  family: REG
+  type: rule
+  layers: [L1]
+  enforcement_points: [policy_engine, tool_orchestrator, knowledge_retrieval]
+  action: redirect
+  also: []
+  escalation: []
+  intents: [ACC-001, ACC-002, TXN-001, TXN-004, CMP-002, CRD-005]
+  kb_entries: [KB-REG-004, KB-POL-003, KB-POL-002]
+  regulatory_tags: [KYC_AML]
+  severity: HIGH
+  fp_target_pct: 0.1
+  immutable: true
+  fail_mode: "same fail-closed behaviour as GR-SEC-R2: no account-specific data without the intent's auth level"
+  tests_reserved: 2
+  brief_ref: A4.3
+  doc: regulatory-mapping.md
+
+- id: GR-REG-09
+  name: Flag suspicious transaction patterns to the AML team
+  family: REG
+  type: hybrid
+  layers: [L1, L2]
+  enforcement_points: [policy_engine, escalation_router]
+  action: escalate
+  also: []
+  escalation: [ESC-012]
+  intents: [TXN-006, SEC-001, TXN-002]
+  kb_entries: [KB-REG-004, KB-ESC-009, KB-ESC-010]
+  regulatory_tags: [KYC_AML]
+  severity: CRITICAL
+  fp_target_pct: 0.15
+  immutable: true
+  fail_mode: "indicator definitions beyond those in the brief are an AML-team input (G-03 in regulatory-mapping.md); the agent flags quietly and does not tell the customer a suspicion was raised"
+  tests_reserved: 2
+  brief_ref: A4.3, A6
+  doc: regulatory-mapping.md
+
+- id: GR-REG-10
+  name: Never process requests that could facilitate money laundering
+  family: REG
+  type: hybrid
+  layers: [L1, L2]
+  enforcement_points: [input_guard, policy_engine]
+  action: block
+  also: [escalate]
+  escalation: [ESC-012]
+  intents: [TXN-006, TXN-005, GEN-004]
+  kb_entries: [KB-REG-004, KB-ESC-009, KB-POL-004]
+  regulatory_tags: [KYC_AML]
+  severity: CRITICAL
+  fp_target_pct: 0.15
+  immutable: true
+  fail_mode: "refusal wording is neutral and does not reveal the detection logic; combined with GR-SEC-R3 (no transactions) the agent has no capability to launder funds"
+  tests_reserved: 2
+  brief_ref: A4.3
+  doc: regulatory-mapping.md
+
+- id: GR-REG-11
+  name: PEP flag triggers enhanced due diligence
+  family: REG
+  type: rule
+  layers: [L1]
+  enforcement_points: [policy_engine, escalation_router, state_tracker]
+  action: escalate
+  also: []
+  escalation: [ESC-015]
+  intents: [ACC-008, TXN-006, ACC-005]
+  kb_entries: [KB-REG-004, KB-ESC-009, KB-ESC-010]
+  regulatory_tags: [KYC_AML]
+  severity: HIGH
+  fp_target_pct: 0.1
+  immutable: true
+  fail_mode: "the PEP flag is a customer-record attribute read through a tool; the agent never infers PEP status from conversation (A11.3), and never tells the customer the flag exists"
+  tests_reserved: 2
+  brief_ref: A4.3, A6
+  doc: regulatory-mapping.md
+
+- id: GR-REG-12
+  name: Human oversight of AI-recommended insurance products (IRDAI)
+  family: REG
+  type: hybrid
+  layers: [L1, L2, L4]
+  enforcement_points: [policy_engine, output_safety_layer, escalation_router]
+  action: escalate
+  also: [redirect]
+  escalation: [ESC-013, ESC-008]
+  intents: [PRD-004, PRD-005]
+  kb_entries: [KB-REG-006, KB-FAQ-004, KB-PRD-007, KB-ESC-021]
+  regulatory_tags: [IRDAI_AI_DISTRIBUTION]
+  severity: HIGH
+  fp_target_pct: 0.15
+  immutable: true
+  fail_mode: "the brief's 'specified thresholds' are not given (G-02); the agent never recommends an insurance product at any value, so no threshold is needed and every recommendation request goes to a human"
+  tests_reserved: 2
+  brief_ref: Regulatory Reference Summary
+  doc: regulatory-mapping.md
+
+- id: GR-REG-13
+  name: Personal-data handling (DPDP Act 2023 and IT Reasonable Security Practices Rules 2011)
+  family: REG
+  type: hybrid
+  layers: [L1, L2, L4]
+  enforcement_points: [input_guard, state_tracker, audit_bus, output_safety_layer, learning_pipeline]
+  action: mask
+  also: []
+  escalation: []
+  intents: [GEN-002, ACC-003, ACC-008, CMP-001]
+  kb_entries: [KB-REG-007, KB-POL-002, KB-POL-003, KB-FAQ-009, KB-FAQ-010, KB-POL-009]
+  regulatory_tags: [DPDP_ACT, IT_SPDI_RULES]
+  severity: HIGH
+  fp_target_pct: 0.15
+  immutable: true
+  fail_mode: "sensitive-attribute inference (religion, politics, health) is never stored; if a classifier produces one it is discarded at the State Tracker; consent, residency and deletion mechanics are specified in Day 11 and Day 14 documents (G-05)"
+  tests_reserved: 2
+  brief_ref: A11.3, A10, Regulatory Reference Summary
+  doc: regulatory-mapping.md
+
+- id: GR-REG-14
+  name: Payment channel security (RBI Master Direction on Digital Payment Security Controls, April 2024)
+  family: REG
+  type: rule
+  layers: [L1]
+  enforcement_points: [gateway_session_manager, tool_orchestrator]
+  action: block
+  also: []
+  escalation: []
+  intents: [TXN-003, TXN-005, CRD-001, SEC-003]
+  kb_entries: [KB-REG-008, KB-POL-004, KB-POL-003]
+  regulatory_tags: [RBI_DIGITAL_PAYMENT_SECURITY]
+  severity: HIGH
+  fp_target_pct: 0.1
+  immutable: true
+  fail_mode: "a channel without the required transport protection is not served for payment-related intents; claims about NexBank's own implementation go to ESC-008 (D-34)"
+  tests_reserved: 1
+  brief_ref: Regulatory Reference Summary
+  doc: regulatory-mapping.md
+
+- id: GR-REG-15
+  name: Explainability and no fully automated credit decisions (RBI Responsible AI circular, draft 2025)
+  family: REG
+  type: rule
+  layers: [L1, L4]
+  enforcement_points: [policy_engine, tool_orchestrator, audit_bus]
+  action: redirect
+  also: [escalate]
+  escalation: [ESC-008]
+  intents: [PRD-002, CRD-003, PRD-005]
+  kb_entries: [KB-REG-009, KB-ESC-017, KB-ESC-018, KB-FAQ-005, KB-POL-001]
+  regulatory_tags: [RBI_RESPONSIBLE_AI]
+  severity: HIGH
+  fp_target_pct: 0.1
+  immutable: true
+  fail_mode: "the agent has no approve or decline tool for credit; the draft status of the circular is stated when a customer asks (KB-REG-009); unknown detail goes to ESC-008"
+  tests_reserved: 2
+  brief_ref: Regulatory Reference Summary
+  doc: regulatory-mapping.md
+
+- id: GR-REG-16
+  name: AI disclosure and human-on-request (transparency)
+  family: REG
+  type: rule
+  layers: [L1, L3]
+  enforcement_points: [prompt_layers_0_2, policy_engine, response_generator]
+  action: redirect
+  also: []
+  escalation: [ESC-006]
+  intents: [GEN-001, GEN-002, GEN-003]
+  kb_entries: [KB-POL-009, KB-FAQ-009, KB-ESC-003, KB-REG-009]
+  regulatory_tags: [EU_AI_ACT, RBI_RESPONSIBLE_AI]
+  severity: HIGH
+  fp_target_pct: 0.1
+  immutable: true
+  fail_mode: "the AI disclosure is part of the opening template; the agent never denies being AI; a human request is honoured on the second ask at the latest (dialogue-management.md)"
+  tests_reserved: 2
+  brief_ref: A11.3, Regulatory Reference Summary
+  doc: regulatory-mapping.md
+
+- id: GR-REG-17
+  name: Fairness and consistent treatment across customer segments
+  family: REG
+  type: hybrid
+  layers: [L1, L2]
+  enforcement_points: [policy_engine, learning_pipeline, output_safety_layer]
+  action: redirect
+  also: []
+  escalation: []
+  intents: [PRD-001, PRD-002, PRD-005, CMP-003]
+  kb_entries: [KB-REG-001, KB-REG-009, KB-POL-001, KB-POL-009]
+  regulatory_tags: [RBI_DIGITAL_LENDING, RBI_RESPONSIBLE_AI, EU_AI_ACT]
+  severity: HIGH
+  fp_target_pct: 0.15
+  immutable: true
+  fail_mode: "escalation thresholds and guardrail thresholds are segment-independent constants; counterfactual persona swaps (PLAN 6.1) are a release gate; statistical fairness testing is specified in Day 11 and Day 14"
+  tests_reserved: 2
+  brief_ref: A11.3, Regulatory Reference Summary
+  doc: regulatory-mapping.md
+
+- id: GR-REG-18
+  name: "Regulatory uncertainty: no guess, no quotation from memory, route to ESC-008"
+  family: REG
+  type: hybrid
+  layers: [L1, L4, L5]
+  enforcement_points: [knowledge_retrieval, policy_engine, output_safety_layer]
+  action: escalate
+  also: [redirect]
+  escalation: [ESC-008]
+  intents: [PRD-001, PRD-004, CMP-003, GEN-002, GEN-004]
+  kb_entries: [KB-ESC-008, KB-ESC-019, KB-ESC-020, KB-ESC-021, KB-REG-001, KB-REG-002]
+  regulatory_tags: [RBI_DIGITAL_LENDING, RBI_OMBUDSMAN, IRDAI_AI_DISTRIBUTION]
+  severity: HIGH
+  fp_target_pct: 0.15
+  immutable: true
+  fail_mode: "retrieval confidence below 0.65, a known-gap hit or a hard-expired regulatory entry all end in ESC-008 (D-43); no regulatory statement is generated from model memory"
+  tests_reserved: 2
+  brief_ref: A6, A9.2
+  doc: regulatory-mapping.md
+
+- id: GR-REG-19
+  name: Complaint and Ombudsman record-keeping for quarterly reporting
+  family: REG
+  type: rule
+  layers: [L1]
+  enforcement_points: [audit_bus, escalation_router]
+  action: redirect
+  also: []
+  escalation: [ESC-002, ESC-010]
+  intents: [CMP-001, CMP-003, CMP-002]
+  kb_entries: [KB-REG-002, KB-ESC-005]
+  regulatory_tags: [RBI_OMBUDSMAN]
+  severity: MEDIUM
+  fp_target_pct: 0.1
+  immutable: true
+  fail_mode: "every complaint ticket carries a category and timestamps so the quarterly analysis (A10) can be produced; report generation itself is specified in Day 12 and Day 14 (G-04)"
+  tests_reserved: 1
+  brief_ref: A10 (Regulatory Reporting), Regulatory Reference Summary
+  doc: regulatory-mapping.md
+
+- id: GR-REG-20
+  name: "Information-only perimeter (SEBI): no personalised advice, no claim of advisory registration"
+  family: REG
+  type: hybrid
+  layers: [L1, L3, L4]
+  enforcement_points: [prompt_layers_0_2, output_safety_layer, policy_engine]
+  action: redirect
+  also: []
+  escalation: [ESC-013]
+  intents: [PRD-005, PRD-001, PRD-004]
+  kb_entries: [KB-REG-005, KB-POL-001, KB-ESC-008]
+  regulatory_tags: [SEBI_ROBO_ADVISORY]
+  severity: CRITICAL
+  fp_target_pct: 0.15
+  immutable: true
+  fail_mode: "registered-advice work is done only by the human advisor reached through ESC-013; the agent never describes itself as an advisor or as registered"
+  tests_reserved: 2
+  brief_ref: Regulatory Reference Summary, A4.1
+  doc: regulatory-mapping.md
+
+# ------------------------------------------------------------------ RESPONSE SAFETY (A9.2 AUTO-FAIL items; full spec Day 10)
+- id: GR-OUT-01
+  name: "Financial accuracy: figures match tool or KB values"
+  family: OUT
+  type: hybrid
+  layers: [L4]
+  enforcement_points: [output_safety_layer]
+  action: redirect
+  also: []
+  escalation: []
+  intents: [PRD-001, PRD-002, PRD-003, ACC-001]
+  kb_entries: [KB-PRD-010, KB-PRD-012, KB-POL-007]
+  regulatory_tags: [RBI_DIGITAL_LENDING]
+  severity: CRITICAL
+  fp_target_pct: 0.15
+  immutable: true
+  fail_mode: "mismatch: replace the figure with the template version; a non-existent product or rate is the A9.2 AUTO-FAIL item"
+  tests_reserved: 2
+  brief_ref: A9.2, response-generation.md section 5
+  doc: regulatory-mapping.md
+
+- id: GR-OUT-02
+  name: PII leak detection and masking on output
+  family: OUT
+  type: rule
+  layers: [L4]
+  enforcement_points: [output_safety_layer]
+  action: mask
+  also: [block]
+  escalation: []
+  intents: [ACC-001, ACC-002, CRD-005, SEC-001]
+  kb_entries: [KB-POL-002, KB-REG-003]
+  regulatory_tags: [PCI_DSS, DPDP_ACT]
+  severity: CRITICAL
+  fp_target_pct: 0.1
+  immutable: true
+  fail_mode: "mask; if the leaked item is a credential, block"
+  tests_reserved: 2
+  brief_ref: A4.2, A4.3
+  doc: account-security.md
+
+- id: GR-OUT-03
+  name: Grounding and hallucination check
+  family: OUT
+  type: hybrid
+  layers: [L4, L5]
+  enforcement_points: [output_safety_layer, response_generator]
+  action: redirect
+  also: [escalate]
+  escalation: [ESC-008]
+  intents: [PRD-001, PRD-003, PRD-004, GEN-004]
+  kb_entries: [KB-ESC-020, KB-ESC-008, KB-PRD-010]
+  regulatory_tags: [RBI_RESPONSIBLE_AI]
+  severity: CRITICAL
+  fp_target_pct: 0.15
+  immutable: true
+  fail_mode: "ungrounded claim removed; clarify then escalate (no clarify rung for PRD-005 pair 2 or contain-first safety flows, pair 6: escalate directly)"
+  tests_reserved: 2
+  brief_ref: A9.2
+  doc: regulatory-mapping.md
+
+- id: GR-OUT-04
+  name: Tone and banned-phrase check
+  family: OUT
+  type: model
+  layers: [L4]
+  enforcement_points: [output_safety_layer]
+  action: redirect
+  also: []
+  escalation: []
+  intents: [GEN-001, CMP-001, PRD-001]
+  kb_entries: [KB-POL-008]
+  regulatory_tags: [RBI_DIGITAL_LENDING]
+  severity: MEDIUM
+  fp_target_pct: 0.3
+  immutable: true
+  fail_mode: "rewrite once, else template"
+  tests_reserved: 2
+  brief_ref: A9.3
+  doc: regulatory-mapping.md
+
+- id: GR-OUT-05
+  name: Commitment detection (no unbacked promises or timelines)
+  family: OUT
+  type: hybrid
+  layers: [L4]
+  enforcement_points: [output_safety_layer]
+  action: redirect
+  also: []
+  escalation: []
+  intents: [TXN-002, TXN-003, TXN-004, CMP-002, CMP-005]
+  kb_entries: [KB-POL-007]
+  regulatory_tags: [RBI_RESPONSIBLE_AI]
+  severity: HIGH
+  fp_target_pct: 0.15
+  immutable: true
+  fail_mode: "rephrase as a hedged range or remove (D-09); A9.2 False Confidence"
+  tests_reserved: 2
+  brief_ref: A9.2
+  doc: regulatory-mapping.md
+
+# ------------------------------------------------------------------ CROSS-CUTTING
+- id: GR-SYS-01
+  name: Fail-closed degradation ladder (safe template, then clarify, then escalate)
+  family: SYS
+  type: rule
+  layers: [L5]
+  enforcement_points: [policy_engine, output_safety_layer, escalation_router]
+  action: redirect
+  also: [escalate]
+  escalation: [ESC-003, ESC-014]
+  intents: [GEN-004]
+  kb_entries: [KB-ESC-020, KB-TRB-009]
+  regulatory_tags: [RBI_RESPONSIBLE_AI]
+  severity: HIGH
+  fp_target_pct: 0.1
+  immutable: true
+  fail_mode: "if every rung fails, the static status message and the human line are used (FMEA #24); the clarify rung is skipped where clarify is not allowed (PRD-005 pair 2; contain-first safety flows, pair 6, D-19)"
+  tests_reserved: 2
+  brief_ref: A4.4, PLAN 3.6
+  doc: regulatory-mapping.md
+
+- id: GR-SYS-02
+  name: Immutable safety layer (not modifiable by the learning pipeline)
+  family: SYS
+  type: rule
+  layers: [L1, L3]
+  enforcement_points: [learning_pipeline, prompt_layers_0_2]
+  action: block
+  also: []
+  escalation: []
+  intents: []
+  kb_entries: []
+  regulatory_tags: [RBI_RESPONSIBLE_AI]
+  severity: CRITICAL
+  fp_target_pct: 0.1
+  immutable: true
+  fail_mode: "any proposed change to rules, thresholds or prompt layers 0-2 from the learning pipeline is rejected at the change gate; safety changes need HITL and Risk Committee approval"
+  tests_reserved: 2
+  brief_ref: A5, PLAN 3.7
+  doc: account-security.md
+
+- id: GR-SYS-03
+  name: Guardrail strictness parameter protection
+  family: SYS
+  type: rule
+  layers: [L1]
+  enforcement_points: [policy_engine, learning_pipeline]
+  action: block
+  also: []
+  escalation: []
+  intents: []
+  kb_entries: []
+  regulatory_tags: []
+  severity: HIGH
+  fp_target_pct: 0.1
+  immutable: true
+  fail_mode: "guardrail_strictness_level, session_timeout_minutes and the thresholds in this file change only through Risk Committee approval (A12.3); the runtime refuses values outside the registry bounds"
+  tests_reserved: 2
+  brief_ref: A12.3
+  doc: account-security.md
+
+# Day 10 reservation: GR-ATK-* for the six A4.4 vectors (prompt injection, jailbreak, social engineering, data exfiltration, denial of service, identity spoofing).

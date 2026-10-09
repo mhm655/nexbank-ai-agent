@@ -227,3 +227,32 @@ One entry per working day (15). Each entry: tasks, decisions with rationale, cha
 - Gap-hit condition made explicit in spec and diagram (D-52); section 9 'intent-level floor' reworded; `troubleshooting.yaml` header count 11; R-35 and R-36 moved into numeric order.
 
 **Next (Day 9)**: advice, security and compliance guardrails: information-vs-advice spec, the 8 account-security rules with enforcement points, and the regulatory mapping matrix (tag to guardrail to test), reusing the KB tags and the retrieval-side auth assertions.
+
+## Day 9: Advice, security and compliance guardrails
+
+**Tasks completed**
+- `docs/guardrails/financial-advice.md`: information-versus-advice boundary for the six A4.1 categories (brief wording quoted, cross-checked against KB-POL-001), three-question test, per-category detection signals and allowed information with KB sources, layered enforcement (rule floor, advice classifier, output check), thresholds 0.50 and 0.30 aligned with disambiguation pair 2, 13 safe-response template names (text on Day 13), the ESC-013 offer-then-escalate route and its split from ESC-008, no-elicitation rule (no income, age or portfolio questions), 16 borderline cases, false-positive analysis, reserved test IDs.
+- `docs/guardrails/account-security.md`: the 8 A4.2 rules quoted verbatim and numbered R1-R8, component enforcement matrix, auth-level interplay table, and per rule the enforcement point, mechanism, failure behaviour, Day 10 attack surface and reserved test IDs; decision order, immutability and change control, metrics hooks.
+- `docs/guardrails/regulatory-mapping.md`: 38 matrix rows (regulation, obligation, guardrail, component, real KB IDs, test placeholders) across the 12 appendix regulations plus KYC/AML and the A13.1 facts, KB tag index (14 of 14 tags mapped), OWASP LLM 2025 cross-reference, coverage statement (0 unmapped obligations), 9 residual dependencies with owners, draft status of the 2025 RBI circular stated.
+- `config/guardrails.yaml`: registry of 45 guardrails (ADV 9, SEC 8, REG 20, OUT 5, SYS 3; rule 23, hybrid 20, model 2), each with type, layers, enforcement points, action, ESC, intents, KB IDs, severity, false-positive bound, immutable flag, fail mode and reserved tests (124 IDs).
+- `diagrams/guardrail-layers.mmd`: five defence layers with guardrail IDs; Mermaid 10.9 parser: OK (not rendered).
+- Checker (scratchpad, not in repo): YAML parses, every GR ID in the docs and diagram exists in the registry and vice versa, linked intent, ESC, KB, RED, D- and G- IDs exist, 8 rules present and verbatim against the brief text, A4.1 wording equals KB-POL-001, KB tag counts, test IDs within reserved ranges, ASCII only. PASS.
+- Updated README (Day 9 of 15), requirements traceability (R-22 to R-24 done; R-37 added), decisions D-53 to D-63.
+
+**Decisions (rationale in `docs/assumptions-and-decisions.md`)**
+- D-53: rule numbering R1-R8 and the ID and test scheme. D-54: output-side advice thresholds and the rule-floor hybrid. D-55: volunteered circumstances are not stored or echoed; ESC-013 is an offer. D-56: session timeout ceiling 5 minutes despite the A12.3 range 3-15. D-57: false-positive bounds by type (proposals). D-58: immutability covers all guardrails; classifiers change only by safety change control. D-59: definition of "facilitate". D-60: authority claims plus a request go to ESC-001. D-61: reading of the regulatory appendix table. D-62: what "zero gaps" means and the G-01 to G-09 dependency list. D-63: A9.2 and fail-closed guardrails registered now.
+
+**Challenges**
+- The A4.2 bullets carry no numbers and the A12.3 timeout range (3-15) conflicts with rule 7 (5 minutes); numbering by order and a ceiling of 5 resolve both.
+- The A4.1 examples (a 1-year FD rate, an EMI) are illustrations, while the KB treats any other tenure rate as a gap; the document separates "category example" from "figure the agent may state".
+- The appendix regulation table is garbled in the PDF text; the reading used is stated (D-61). Cooling-off length, IRDAI thresholds and AML indicators are not in the brief, so they are listed as dependencies instead of being invented.
+
+**Open questions**
+- Risk Committee: output-side advice thresholds, per-class false-positive bounds, timeout ceiling, definition of "facilitate", authority-claim routing, joint-account handling (all proposals or assumptions).
+- Regulatory Compliance Manager: G-01 (cooling-off length), G-02 (IRDAI thresholds), G-08 (final RBI Responsible AI text).
+- OWASP LLM 2025 category names to be verified against the OWASP publication on Day 15.
+- Day 9 audit follow-ups: D-64 restates the false-positive target as an end-to-end gate (below 3 percent of benign messages) with per-guardrail bounds as diagnostics lowered to rule 0.10, hybrid 0.15, model 0.30 percent (typical path 10 + 6 + 2 guardrails sums to 2.50 percent, reserve 0.50); `config/guardrails.yaml` fp_target_pct values and parameters and `financial-advice.md` section 10 updated; supersedes the D-57 figures.
+- Day 9 audit follow-ups: D-66 adds OWASP LLM04 and LLM08 (partial) to `regulatory-mapping.md` section 4 and moves LLM10 to a gap with a Day 10 dependency (no rate-limit guardrail is registered); section 4 is not part of the 38 M-rows, so matrix counts are unchanged.
+- Day 9 audit follow-ups: D-65 records ESC-009 for GR-SEC-R2 and ESC-001 for GR-SEC-R3 as design choices to confirm on Day 12; D-67 clarifies the D-61 "interleaved" wording. Decisions now run D-01 to D-67.
+
+**Next (Day 10)**: adversarial defences for the six A4.4 vectors (`GR-ATK-*`), 55+ guardrail and adversarial tests in the reserved ID ranges with 20 boss scenarios, response safety layer spec, monitoring dashboard with trigger heat map, incident response playbook.
