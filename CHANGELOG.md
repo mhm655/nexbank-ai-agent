@@ -256,3 +256,29 @@ One entry per working day (15). Each entry: tasks, decisions with rationale, cha
 - Day 9 audit follow-ups: D-65 records ESC-009 for GR-SEC-R2 and ESC-001 for GR-SEC-R3 as design choices to confirm on Day 12; D-67 clarifies the D-61 "interleaved" wording. Decisions now run D-01 to D-67.
 
 **Next (Day 10)**: adversarial defences for the six A4.4 vectors (`GR-ATK-*`), 55+ guardrail and adversarial tests in the reserved ID ranges with 20 boss scenarios, response safety layer spec, monitoring dashboard with trigger heat map, incident response playbook.
+
+## Day 10: Adversarial defences, response safety layer, monitoring, incident response
+
+**Tasks completed**
+- `docs/guardrails/adversarial-defences.md`: defences for the six A4.4 vectors (Prompt Injection, Jailbreak Attempts, Social Engineering, Data Exfiltration, Denial of Service, Identity Spoofing): canonicalisation, instruction/data separation, leak-tolerant system prompt, rate limiting and complexity scoring, attack-response contract that avoids the A9.2 anti-patterns (D-68 to D-77).
+- `config/guardrails.yaml`: GR-ATK-01 to GR-ATK-11 plus GR-OUT-06 (no delivery without a SafetyVerdict) and GR-SYS-04 (kill switch and template-only mode); Output Safety Layer added to GR-REG-16 (D-90). Registry: 58 guardrails (rule 29, hybrid 26, model 3), 190 reserved test IDs.
+- `tests/adversarial/`: 62 cases (60 attacks, 2 controls), 27 boss scenarios over all six vectors, 26 multi-turn, 9 Hinglish or Hindi. `tests/guardrails/`: 128 cases. All 190 reserved IDs have a written case. All are specified, not run (D-78, D-79). `tests/README.md` gives schema, ID scheme and coverage.
+- `docs/guardrails/output-safety-layer.md`: seven checks C1 to C7 mapped to registry IDs, 300 ms split into stages, deterministic repairs, fail-closed ladder respecting D-19, pair 2 and pair 6 (D-80 to D-82).
+- `docs/guardrails/monitoring-dashboard.md`: metrics DM-01 to DM-16, trigger heat maps, false-positive budget panel, near-miss definition, sampling plan, circuit-breaker spec (D-85, D-88, D-89).
+- `docs/guardrails/incident-response-playbook.md`: SEV0 to SEV3 aligned to P0-P2, eight tighten-only containment levers, seven runbooks; only A10.3 duties cited, other notification duties listed as dependencies IR-D1 to IR-D5 (D-83, D-84, D-86, D-87).
+- Regulatory mapping section 4 rewritten: LLM10 closed at the application layer by GR-ATK-08 and GR-ATK-09, LLM03 stated as a gap by scope.
+
+**Decisions** (D-68 to D-90, mostly proposals): ATK registry design, session score and safe mode, ESC-001 for authority claims (D-72), DoS limits of 20 messages a minute, 4,000 characters, 250 reply words and 3 tool calls a turn (proposals), end-to-end false-positive budget (D-76: always-on ATK guardrails draw 0.46 so the typical path is 2.96% against the 3% gate; GR-ATK-11 stays in shadow mode), registration of GR-OUT-06 and GR-SYS-04 (D-90).
+
+**Challenges**
+- Two agents wrote the adversarial and operational docs in parallel; the audit aligned the registry, wording and false-positive table.
+- The reserve is thin: 0.04 points remain, so any new always-on guardrail needs another bound lowered.
+
+**Audit fixes**: registered the two IDs that had only been proposed, aligned output-safety, dashboard and playbook wording with the registry, fixed one test oracle (GR-ATK-07-03), added a pointer to the post-Day-10 totals in `financial-advice.md` section 10.
+
+**Open questions**
+- Risk Committee: false-positive targets of 0.00 for GR-OUT-06 and GR-SYS-04; thin reserve; legal hold against the 30-day deletion duty (D-87).
+- ESC targets for jailbreak and spoofing (D-72, D-65) to confirm on Day 12; ESC-003, -004, -007 and -011 have no test case yet (Day 11).
+- OWASP LLM 2025 names and Hindi/Hinglish wording remain unverified (Day 13, Day 15). One test uses a real pin code (GR-SEC-R5-06); a placeholder would be cleaner.
+
+**Next (Day 11)**: continuous learning pipeline, A/B testing framework, safety-preserving update protocol, 200+ case safety suite index, Level 5 boss.

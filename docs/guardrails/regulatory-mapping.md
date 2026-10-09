@@ -149,19 +149,22 @@ Every `regulatory_tags` value used in the 77 KB entries maps to a row above.
 
 ## 4. OWASP LLM Top 10 (2025) cross-reference
 
-Category names are from the OWASP Top 10 for LLM Applications (2025 edition); the brief names the list as a resource and cross-reference, and the PLAN calls for it in the Day 10 defences. Verify the list against the OWASP publication on Day 15. Day 9 guardrails cover the categories below; the rest are Day 10.
+Category names are from the OWASP Top 10 for LLM Applications (2025 edition) as remembered; the brief names the list as a resource and cross-reference, and the PLAN calls for it in the Day 10 defences. **Verify names and numbering against the OWASP publication on Day 15** (D-77). Day 9 guardrails cover the categories as shown in the second column; Day 10 added the GR-ATK guardrails in the third (`adversarial-defences.md` section 12 has the per-vector view). This is a cross-reference, not a certification, and it is not part of the 38 M-rows.
 
-| OWASP category | Day 9 guardrails | Day 10 |
+| OWASP category | Day 9 guardrails | Day 10 (GR-ATK, `adversarial-defences.md`) |
 |---|---|---|
-| LLM01 Prompt Injection | GR-ADV-07 (prompt layer restatement), GR-SEC-R8 | GR-ATK injection defences |
-| LLM02 Sensitive Information Disclosure | GR-SEC-R1, GR-SEC-R4, GR-SEC-R5, GR-OUT-02 | exfiltration tests |
-| LLM04 Data and Model Poisoning (partial) | GR-SYS-02 (the learning pipeline cannot alter rules, thresholds or prompt layers); KB approval chain for content (`docs/knowledge-base/maintenance-workflow.md`) | Day 12 learning-pipeline spec must define data-pipeline quality gates (source validation, PII scrub, human review of training candidates); poisoning tests Day 10 |
-| LLM05 Improper Output Handling | GR-ADV-06, GR-OUT-01 to GR-OUT-05, GR-SYS-01 | output validation tests |
-| LLM06 Excessive Agency | GR-SEC-R3 (no money-movement tool), GR-SEC-R2 | agency tests |
-| LLM07 System Prompt Leakage | GR-SYS-02 (prompt layers 0-2 are immutable) | extraction tests |
-| LLM08 Vector and Embedding Weaknesses (partial) | Retrieval auth, audience and expiry pre-filter inside both searches (D-44, D-51); KB approval workflow so only published, approved entries are indexed | embedding-store access control and isolation depend on the Day 12 and 13 platform design; retrieval-poisoning and cross-audience probe tests Day 10 |
-| LLM09 Misinformation | GR-OUT-01, GR-OUT-03, GR-REG-18 | hallucination traps |
-| LLM10 Unbounded Consumption (gap, dependency) | none registered. GR-SEC-R7 is an authentication inactivity timeout, not a consumption limit, so it is no longer mapped here. Gateway rate limiting and DoS defence exist only as an architecture statement (system-architecture.md, FMEA #2) | Day 10 to add a registered rate-limit and token-budget guardrail (new ID); until then LLM10 is not covered |
+| LLM01 Prompt Injection (includes jailbreaking) | GR-ADV-07 (prompt layer restatement), GR-SEC-R8 | GR-ATK-01, GR-ATK-02 (injection, indirect injection), GR-ATK-03, GR-ATK-04 (jailbreak, behavioural monitor), GR-ATK-05 (authority claims); 34 reserved tests |
+| LLM02 Sensitive Information Disclosure | GR-SEC-R1, GR-SEC-R4, GR-SEC-R5, GR-OUT-02 | GR-ATK-07 (response scanning), GR-ATK-06; exfiltration tests |
+| LLM03 Supply Chain | none | none in the chat guardrails: model, library and data supply-chain controls are a platform dependency (Day 14); stated as a gap by scope, not as covered |
+| LLM04 Data and Model Poisoning (partial) | GR-SYS-02 (the learning pipeline cannot alter rules, thresholds or prompt layers); KB approval chain for content (`docs/knowledge-base/maintenance-workflow.md`) | GR-ATK-02 (imperative-text scan of KB passages at ingestion and retrieval, quarantine); Day 12 learning-pipeline spec must define data-pipeline quality gates (source validation, PII scrub, human review of training candidates) |
+| LLM05 Improper Output Handling | GR-ADV-06, GR-OUT-01 to GR-OUT-05, GR-SYS-01 | GR-ATK-07 (links, images, encoded values, foreign identifiers in drafts); output validation tests |
+| LLM06 Excessive Agency | GR-SEC-R3 (no money-movement tool), GR-SEC-R2 | GR-ATK-10, GR-ATK-11 (identity claims, risk signal), GR-ATK-04; agency tests (no model-controlled customer key or auth level) |
+| LLM07 System Prompt Leakage | GR-SYS-02 (prompt layers 0-2 are immutable) | GR-ATK-06 (probe lexicon, canary, overlap scan; prompts hold no secrets, D-73); 5 extraction tests |
+| LLM08 Vector and Embedding Weaknesses (partial) | Retrieval auth, audience and expiry pre-filter inside both searches (D-44, D-51); KB approval workflow so only published, approved entries are indexed | GR-ATK-02 (retrieval-poisoning and cross-audience probe tests); embedding-store access control and isolation depend on the Day 12 and 13 platform design |
+| LLM09 Misinformation | GR-OUT-01, GR-OUT-03, GR-REG-18 | hallucination traps (Day 11 suite); attack replies use the gap statement, never a guess (D-71) |
+| LLM10 Unbounded Consumption | none before Day 10 (GR-SEC-R7 is an authentication inactivity timeout, not a consumption limit, and is not mapped here) | **GR-ATK-08 (rate limiting, token budget) and GR-ATK-09 (complexity scoring, tool-call budget, turn cap): gap closed at the application layer** (D-74). Limits are proposals; network-layer DDoS is a platform dependency (Day 14). 8 reserved tests |
+
+Social engineering and identity spoofing (A4.4) have no dedicated OWASP LLM category; they are mapped to LLM01 and LLM06 above and are chiefly bank authentication and process controls.
 
 ## 5. Coverage statement
 
@@ -198,4 +201,4 @@ A new RBI circular or SEBI/IRDAI notice enters through the KB regulatory fast-tr
 
 ## 8. Reserved test IDs and counts
 
-Reserved IDs follow `<guardrail ID>-<NN>`: GR-REG-01 to GR-REG-20 reserve 2, 2, 3, 2, 2, 2, 1, 2, 2, 2, 2, 2, 2, 1, 2, 2, 2, 2, 1, 2 (total 38); GR-OUT-01 to GR-OUT-05 reserve 2 each (10); GR-SYS-01 reserves 2. Across all families the registry reserves GR-ADV 30, GR-SEC 40, GR-REG 38, GR-OUT 10, GR-SYS 6, a total of 124, from which Day 10 writes at least the 55 guardrail and adversarial cases the PLAN requires, and every guardrail gets at least one written case before Day 15.
+Reserved IDs follow `<guardrail ID>-<NN>`: GR-REG-01 to GR-REG-20 reserve 2, 2, 3, 2, 2, 2, 1, 2, 2, 2, 2, 2, 2, 1, 2, 2, 2, 2, 1, 2 (total 38); GR-OUT-01 to GR-OUT-05 reserve 2 each (10); GR-SYS-01 reserves 2. Across all families the registry reserves GR-ADV 30, GR-SEC 40, GR-REG 38, GR-OUT 10, GR-SYS 6, a total of 124, from which Day 10 writes at least the 55 guardrail and adversarial cases the PLAN requires, and every guardrail gets at least one written case before Day 15. Day 10 adds the adversarial family GR-ATK (11 guardrails, 62 reserved IDs, `adversarial-defences.md` section 15), so the registry reserves 186 IDs in total (124 + 62); the Day 9 figures above are unchanged. The Day 10 audit adds GR-OUT-06 and GR-SYS-04 with 2 reserved IDs each (D-90): 58 guardrails and 190 reserved IDs.

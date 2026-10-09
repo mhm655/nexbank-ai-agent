@@ -28,7 +28,7 @@ Status: `todo` / `draft` / `done`. Brief sections refer to the ZeTheta PDF. Upda
 | R-22 | Financial advice boundary | A4.1 | 4 | `docs/guardrails/financial-advice.md`, `config/guardrails.yaml` (GR-ADV-01..09) | 9 | done |
 | R-23 | 8 account-security rules | A4.2 | 4 | `docs/guardrails/account-security.md`, `config/guardrails.yaml` (GR-SEC-R1..R8) | 9 | done |
 | R-24 | RBI / PCI DSS / KYC-AML / SEBI / IRDAI / DPDP / Ombudsman mapping | A4.3, appendix | 4 | `docs/guardrails/regulatory-mapping.md`, `config/guardrails.yaml` (GR-REG-01..20) | 9 | done |
-| R-25 | 6 adversarial vectors and 50+ tests | A4 | 4 | `docs/guardrails/adversarial-defences.md`, `tests/adversarial/` | 10 | todo |
+| R-25 | 6 adversarial vectors and 50+ tests | A4 | 4 | `docs/guardrails/adversarial-defences.md`, `tests/adversarial/` (62 cases, 60 attacks, 27 boss), `tests/guardrails/` (128 cases), `GR-ATK-01..11` | 10 | done |
 | R-26 | Continuous learning pipeline and safety preservation (200-case suite) | A5 | 5 | `docs/learning-pipeline/`, `tests/safety-suite/` | 11 | todo |
 | R-27 | 15 escalation triggers (ESC-001..015), routing, handoff | A6 | 6 | `docs/escalation/`, `config/escalation_rules.yaml` | 12 | todo |
 | R-28 | KPIs, 3 dashboards | A8 | 6 | `docs/metrics/` | 12 | todo |
