@@ -1,0 +1,77 @@
+flowchart TD
+    %% Continuous learning loop and safety gates (brief A5, A8.4, A12.2; docs/learning-pipeline/overview.md and safety-invariants.md).
+    %% Gates G0 to G9 are defined in safety-invariants.md section 5. The circuit breaker is docs/guardrails/monitoring-dashboard.md section 8.
+
+    subgraph SRC["Feedback sources (A5.1 to A5.3)"]
+        SUP["Supervisor corrections<br/>streams R C E P G<br/>severity S0 to S4"]
+        CSAT["Customer satisfaction<br/>check-ins, CSAT 1 to 5,<br/>implicit and predicted signals"]
+        OUT["Resolution outcomes<br/>5 classes, repeat contact<br/>7 / 14 / 30 days"]
+    end
+
+    LOGS["Audit and Telemetry Bus<br/>turn and conversation logs (A10)"] --> DATA
+    SUP --> DATA
+    CSAT --> DATA
+    OUT --> DATA
+
+    subgraph DP["Data pipeline (data-pipeline.md)"]
+        DATA["Collect, redact again RED-01..07,<br/>consent filter, pseudonymise"] --> QG{"Quality gates<br/>QG-01 to QG-08"}
+        QG -- pass --> DS["Versioned dataset<br/>manifest and lineage"]
+        QG -- fail --> DSX["Build fails<br/>not published"]
+        TOMB["Deletion requests<br/>tombstone registry"] --> DATA
+        TOMB --> DS
+    end
+
+    DS --> DETECT["DETECT and DIAGNOSE (A8.4)<br/>component: NLU, retrieval, KB,<br/>generation, policy, escalation"]
+    SUP -- "S1 critical safety" --> INC["Immediate lane<br/>incident playbook,<br/>tighten-only levers"]
+    INC --> SCC["Safety change control<br/>owners and Risk Committee"]
+    INC --> NEWCASE["New case added to<br/>fixed safety suite"]
+
+    DETECT --> DESIGN["DESIGN: hypothesis and<br/>lowest update class that fixes it<br/>U1 KB, U2 layers 3-5, U3 parameters,<br/>U4 NLU and retrieval, U5 policy"]
+    DESIGN --> G0{"G0 scope check<br/>GR-SYS-02 GR-SYS-03"}
+    G0 -- "touches layers 0-2, rule layer,<br/>guardrails, suite or breaker" --> REJ["Rejected and logged"]
+    G0 -- "U1 to U5 only" --> G1{"G1 data gate"}
+    G1 -- fail --> REJ
+    G1 -- pass --> G2{"G2 regression evaluation<br/>no CRITICAL slice loss,<br/>FP below 3 percent, drift below 0.05"}
+    G2 -- fail --> REJ
+    G2 -- pass --> G3{"G3 fixed safety suite<br/>291 cases, 100 percent"}
+    G3 -- "any case fails" --> REJ
+    G3 -- pass --> G4{"G4 red-team run<br/>boss cases and fresh variants,<br/>zero breaches"}
+    G4 -- breach --> REJ
+    G4 -- pass --> G5{"G5 human approval<br/>A12.3 owner, Risk Committee<br/>for layers 3-4 and models"}
+    G5 -- "not approved" --> REJ
+    G5 -- approved --> PREREG["Pre-registration frozen<br/>(ab-testing.md section 5)"]
+
+    subgraph ROLL["Staged rollout (A5.4): candidate vs concurrent control"]
+        G6["G6 shadow run<br/>not served"] --> C1["G7 canary 1 percent<br/>24 h"]
+        C1 --> C5["G7 canary 5 percent<br/>48 h"]
+        C5 --> AB["G8 A/B at 25 percent<br/>14 days, looks at day 7 and 14,<br/>FCR matured by day 21"]
+        AB --> DEC{"Primary win, other primary<br/>not inferior, all Tier 0<br/>constraints met?"}
+        DEC -- yes --> FULL["G9 100 percent<br/>5 percent holdback,<br/>28-day monitoring"]
+    end
+
+    PREREG --> G6
+    DEC -- no --> RET["Rolled back or retired"]
+
+    CB{{"Circuit breaker<br/>6 trip conditions,<br/>rollback only"}}
+    C1 -. monitored .-> CB
+    C5 -. monitored .-> CB
+    AB -. monitored .-> CB
+    FULL -. monitored .-> CB
+    CB -- trip --> RB["Automatic rollback to previous version<br/>stages frozen, incident opened,<br/>restart from 1 percent after fix"]
+    RB --> NEWCASE
+
+    FULL --> VAL["VALIDATE: post-deployment<br/>regression monitoring"]
+    VAL --> DOC["DOCUMENT: experiment registry,<br/>version metadata (A12.2)"]
+    RET --> DOC
+    REJ --> DOC
+    DOC --> DETECT
+
+    subgraph IMM["Immutable safety layer: read-only to the learning pipeline"]
+        IL["Rule layer and auth matrix<br/>58 guardrails and classifier weights<br/>prompt layers 0-2<br/>ESC-001 to ESC-015"]
+        SUITE["Fixed safety suite<br/>add-only, SHA per case"]
+    end
+
+    SCC --> IL
+    NEWCASE --> SUITE
+    SUITE --> G3
+    IL -. "enforced on every turn<br/>in every arm" .-> ROLL
