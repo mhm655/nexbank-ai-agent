@@ -2,7 +2,7 @@
 
 A specification-first design for a production-grade, self-improving AI customer service system for **NexBank**, a fictional Indian neo-bank (2.7M customers, ~18,000 interactions/day).
 
-> Status: **Day 10 of 15** (Level 1 architecture, Level 2 NLU, Level 3 knowledge base and retrieval, and Level 4 guardrails and safety complete; Level 5 learning pipeline next). Most folders are placeholders that later days fill in. See [CHANGELOG.md](CHANGELOG.md).
+> Status: **Day 12 of 15** (Level 1 architecture, Level 2 NLU, Level 3 knowledge base and retrieval, Level 4 guardrails and safety, and Level 5 continuous learning pipeline complete; escalation and metrics (Level 6) complete; system prompts and templates (Day 13) next). Most remaining folders are placeholders that later days fill in. See [CHANGELOG.md](CHANGELOG.md).
 
 ## Targets
 
@@ -13,6 +13,9 @@ A specification-first design for a production-grade, self-improving AI customer 
 | Incorrect financial advice | 0% |
 | First reply | < 30 s (engineering budget < 3 s p95 per turn; see decision D-07) |
 | KB retrieval p95 latency | < 200 ms |
+| First contact resolution (FCR) | >= 70% |
+| Escalation rate | < 30% |
+| Average handle time (AHT) | < 8 min |
 
 ## Navigation
 
@@ -25,16 +28,17 @@ A specification-first design for a production-grade, self-improving AI customer 
 | `docs/intent-taxonomy/` | Intents, entities, disambiguation, sentiment, `utterances.csv`, `language-detection.md` | Days 4-6 |
 | `docs/knowledge-base/` | KB schema and ER model, 77 entries in `entries/` ([index](docs/knowledge-base/README.md), Day 7); retrieval pipeline, maintenance workflow and access matrix (Day 8) | Days 7-8 |
 | `docs/guardrails/` | Advice boundary (`financial-advice.md`), 8 security rules (`account-security.md`), regulatory mapping (`regulatory-mapping.md`) on Day 9; adversarial defences (`adversarial-defences.md`), response safety layer (`output-safety-layer.md`), monitoring dashboard (`monitoring-dashboard.md`) and incident playbook (`incident-response-playbook.md`) on Day 10. Registry: `config/guardrails.yaml` (58 guardrails). Tests: `tests/adversarial/` and `tests/guardrails/` (190 cases, specified not run). Layers: `diagrams/guardrail-layers.mmd` | Days 9-10 |
-| `docs/learning-pipeline/` | Supervisor, CSAT and outcome feedback loops, A/B testing | Day 11 |
-| `docs/escalation/`, `docs/metrics/` | ESC-001..015, routing, KPIs, dashboards | Days 12-13 |
+| `docs/learning-pipeline/` | Loop, update classes and cadence (overview.md); supervisor corrections, CSAT signals and outcome tracking; data pipeline with consent and deletion (data-pipeline.md); A/B testing with power analysis and sequential design (ab-testing.md); immutable layer, gates G0-G9, canary and rollback (safety-invariants.md); Level 5 boss as a simulated worked example (boss-level5.md). Loop diagram: diagrams/learning-loop.mmd | Day 11 |
+| `docs/escalation/`, `docs/metrics/` | `triggers.md` (ESC-001..015, precedence, 7 additions), `routing-and-handoff.md`, `queue-management.md` (overflow, capacity model, EQ-01..12); `kpi-framework.md`, `improvement-cycle.md`, `dashboards.md`. Rules: `config/escalation_rules.yaml`. Tests: `tests/escalation/` (57 cases, specified not run). Diagram: `diagrams/escalation-routing.mmd` | Day 12 |
 | `docs/compliance/`, `docs/risk/` | Audit logging, risk matrix | Day 14 |
 | `diagrams/` | Mermaid sources | Days 2-13 |
 | `simulations/` | 20+ annotated conversations | Day 14 |
-| `tests/` | Guardrail, adversarial, escalation, NLU, KB (validator, Level 3 boss) and safety-suite cases | Days 5-14 |
+| `tests/` | Guardrail, adversarial, escalation (57 cases, validator, Level 6 boss), NLU, KB (validator, Level 3 boss) and safety-suite cases; fixed safety suite `tests/safety-suite/` (348 cases indexed in `manifest.yaml`: 247 by reference, 101 new, specified not run; validator `validate_manifest.py`) | Days 5-14 |
 | `config/` | YAML/JSON configs, 6-layer system prompt, 15+ templates | Days 3-13 |
 
 ## Conventions
 
 - Thresholds, IDs and parameters live in `config/*.yaml` and are the single source of truth. Docs reference them rather than restating values.
 - All rates, fees and figures come from the simulated NexBank catalogue. No real-world product data is used.
+- Statistical planning values in `docs/learning-pipeline/` are proposals and are marked as such; simulated figures are labelled simulated.
 - No real customer data. Examples use pseudonymised or synthetic values only.

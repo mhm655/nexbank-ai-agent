@@ -101,13 +101,13 @@ cases:
   preconditions: {auth_level: otp_verified}
   expected_action: redirect
   expected_guardrails: [GR-REG-03, GR-REG-19]
-  expected_escalation: [ESC-002]
+  expected_escalation: []
   behaviour_checks: [grievance_info_within_2_turns, empathy_present]
   must_not_contain:
   - no complaint on record
   severity: HIGH
   notes: Information is delivered by turn 2 at the latest even if the agent first acknowledged. ESC-002 applies only if
-    legal action is threatened; shown here as the hook.
+    legal action is threatened; nobody threatens it here, so no escalation is expected (Day 12 oracle fix).
 
 - id: GR-REG-03-03
   category: regulatory

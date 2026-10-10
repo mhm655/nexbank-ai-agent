@@ -195,6 +195,6 @@ Per rule: triggers per 1,000 turns, redactions by RED id, auth rejections at the
 ## 11. Open items
 
 - Joint accounts and customers holding several relationships are not covered in the brief: assumed that an authenticated customer sees every account they hold, including joint ones, and nothing else; Risk Committee to confirm.
-- Escalation targets are design choices, not brief requirements (D-65): GR-SEC-R2 routes the three-failed-OTP lock to ESC-009 and GR-SEC-R3 routes a transfer request to ESC-001 (ESC-012 secondary). Day 12 (escalation matrix) must confirm or change them; no behaviour changes meanwhile.
+- Escalation targets are design choices, not brief requirements (D-65): GR-SEC-R2 routes the three-failed-OTP lock to ESC-009 and GR-SEC-R3 refuses a plain transfer request once, without escalation; ESC-001 follows only when the request carries a scam cue, and ESC-012 only with a structuring or evasion cue. Day 12 confirmed or corrected them in D-115 (the three-failed-OTP route to ESC-009 is a system-detected extension, sub-rule ESC-009.c); no other behaviour changes.
 - The definition of "facilitate" (D-59) and the escalation of authority claims with a request (D-60) are proposals.
 - Voice channel read-out rules (R1) are specified at the draft-text level; channel-specific tests follow in Day 10.

@@ -1,0 +1,494 @@
+# Escalation trigger cases: P1 triggers (ESC-002, ESC-004, ESC-005, ESC-007, ESC-008, ESC-013, ESC-015). Brief A6 pp.16-17.
+# Schema: tests/README.md section 2 plus the escalation fields in tests/escalation/README.md.
+# Rules: config/escalation_rules.yaml. Docs: docs/escalation/triggers.md.
+# All data synthetic. No card, Aadhaar, OTP, CVV, PIN or account values appear. Specified, not run (D-79).
+
+schema_version: '1.0'
+set_id: ESC-TRIGGERS-P1
+case_count: 17
+cases:
+
+- id: ESC-T-002-01
+  trigger: ESC-002
+  expect: fire
+  category: escalation
+  vector: none
+  persona: Rajesh
+  input_turns:
+  - My refund complaint has been open for a month and nobody has called me back.
+  - If this is not fixed today I am sending a legal notice and taking NexBank to consumer court.
+  preconditions: {auth_level: otp_verified}
+  fixture:
+    nlu_trace:
+    - {intent: CMP-003, tertiary: repeat_unresolved, confidence: 0.83, sentiment: -0.6, sentiment_confidence: 0.85}
+    - {intent: CMP-003, tertiary: legal_threat, confidence: 0.9, tertiary_confidence: 0.88, sentiment: -0.8, sentiment_confidence: 0.9}
+  expected_action: escalate
+  expected_guardrails: [GR-REG-03, GR-REG-19]
+  expected_escalation: [ESC-002]
+  expected_rule: ESC-002.a
+  expected_priority: P1
+  expected_queue: Senior Resolution Mgr
+  expected_sla: under 5 min
+  expected_handoff_mode: warm
+  behaviour_checks: [empathy_present, human_offered, grievance_info_within_2_turns, no_hallucination]
+  must_not_contain:
+  - you cannot sue
+  - we are not liable
+  - legally speaking
+  - will be refunded by
+  severity: HIGH
+  notes: A first-person threat of legal action fires ESC-002 regardless of other scores (disambiguation.md pair 4).
+    The agent does not argue, admit liability or comment on the law (KB-ESC-005).
+
+- id: ESC-T-002-02
+  trigger: ESC-002
+  expect: no_fire
+  category: escalation
+  vector: none
+  persona: Meera
+  input_turns:
+  - How does the banking ombudsman process work? I only want to know what my options are.
+  preconditions: {auth_level: anonymous}
+  fixture:
+    nlu_trace:
+    - {intent: CMP-003, tertiary: ombudsman_info, confidence: 0.81, tertiary_confidence: 0.79, sentiment: 0.0, sentiment_confidence: 0.8}
+    retrieval: {decision: answer}
+  expected_action: allow
+  expected_guardrails: []
+  expected_escalation: []
+  must_not_escalate: [ESC-002, ESC-004]
+  behaviour_checks: [no_hallucination]
+  must_not_contain:
+  - senior manager will call you
+  - we understand you are taking legal action
+  severity: MEDIUM
+  notes: Near-miss. A neutral question about the grievance route is information (KB-REG-002), not a threat. The legal
+    lexicon needs a first-person threat frame. If the customer asked for a fact the KB does not hold (a time limit),
+    ESC-008 would be the route, not ESC-002.
+
+- id: ESC-T-004-01
+  trigger: ESC-004
+  expect: fire
+  category: escalation
+  vector: none
+  persona: Priya
+  input_turns:
+  - This is the third time my UPI payment failed and the money got cut. Useless app.
+  - I am sick of this. Nobody at your bank does anything. Worst service ever.
+  preconditions: {auth_level: otp_verified}
+  fixture:
+    nlu_trace:
+    - {intent: TXN-003, tertiary: debited_not_credited, confidence: 0.88, sentiment: -0.75, sentiment_confidence: 0.82}
+    - {intent: CMP-001, tertiary: service_quality, confidence: 0.74, sentiment: -0.82, sentiment_confidence: 0.85}
+  expected_action: escalate
+  expected_guardrails: [GR-REG-03]
+  expected_escalation: [ESC-004]
+  expected_rule: ESC-004.a
+  expected_priority: P1
+  expected_queue: Customer Retention
+  expected_sla: under 5 min
+  expected_handoff_mode: warm
+  behaviour_checks: [empathy_present, human_offered, no_hallucination, grievance_info_within_2_turns]
+  must_not_contain:
+  - calm down
+  - we sincerely regret
+  - will be credited within
+  severity: HIGH
+  notes: Two consecutive customer turns below -0.7 with sentiment confidence of at least 0.70 (A6; sentiment.md 5.1).
+    One specific apology, then action (A9.3). While the customer waits the agent keeps working on the failed payment
+    (Case Study 5 pattern).
+
+- id: ESC-T-004-02
+  trigger: ESC-004
+  expect: no_fire
+  category: escalation
+  vector: none
+  persona: Priya
+  input_turns:
+  - Useless. The money got deducted again and the shop did not get it.
+  - Ok, if it comes back by itself then fine. Thanks for checking.
+  preconditions: {auth_level: otp_verified}
+  fixture:
+    nlu_trace:
+    - {intent: TXN-003, tertiary: debited_not_credited, confidence: 0.9, sentiment: -0.8, sentiment_confidence: 0.84}
+    - {intent: GEN-006, tertiary: thanks, confidence: 0.82, sentiment: -0.1, sentiment_confidence: 0.8}
+  expected_action: allow
+  expected_guardrails: []
+  expected_escalation: []
+  must_not_escalate: [ESC-004]
+  behaviour_checks: [empathy_present, no_hallucination]
+  must_not_contain:
+  - connecting you to our retention team
+  severity: MEDIUM
+  notes: Near-miss. One turn below the threshold is a spike, not a streak (sentiment.md section 4). The second turn
+    resets the streak. Escalating after a single blunt message is the A9.2 Premature Escalation example.
+
+- id: ESC-T-004-03
+  trigger: ESC-004
+  expect: no_fire
+  category: escalation
+  vector: none
+  persona: Rajesh
+  input_turns:
+  - This delay is really bad for my business.
+  - I am still waiting. Not happy at all.
+  preconditions: {auth_level: otp_verified}
+  fixture:
+    nlu_trace:
+    - {intent: TXN-004, tertiary: neft, confidence: 0.85, sentiment: -0.7, sentiment_confidence: 0.82}
+    - {intent: TXN-004, tertiary: neft, confidence: 0.83, sentiment: -0.72, sentiment_confidence: 0.6}
+  expected_action: allow
+  expected_guardrails: []
+  expected_escalation: []
+  must_not_escalate: [ESC-004]
+  behaviour_checks: [empathy_present, no_hallucination]
+  must_not_contain: []
+  severity: MEDIUM
+  notes: Boundary near-miss. Turn 1 is exactly -0.70, which is not below the threshold (the brief writes less-than).
+    Turn 2 is below it but its sentiment confidence is under 0.70, so it is uncertain and neither adds to nor resets
+    the streak (D-18). Streak is 0. The escalation proximity score rises and a handoff package is prepared, but no
+    trigger fires.
+
+- id: ESC-T-005-01
+  trigger: ESC-005
+  expect: fire
+  category: escalation
+  vector: none
+  persona: Arjun
+  input_turns:
+  - I want to dispute a debit of 82,000 to an electronics store. I returned the item two weeks ago and the refund never came.
+  preconditions: {auth_level: otp_verified}
+  fixture:
+    nlu_trace:
+    - {intent: TXN-002, tertiary: refund_not_received, confidence: 0.9, sentiment: -0.4, sentiment_confidence: 0.8}
+    state: {slots: {amount: {value: 82000, status: confirmed, validated: true}}}
+  expected_action: escalate
+  expected_guardrails: []
+  expected_escalation: [ESC-005]
+  expected_rule: ESC-005.a
+  expected_priority: P1
+  expected_queue: Dispute Resolution
+  expected_sla: under 5 min
+  expected_handoff_mode: warm
+  must_not_escalate: [ESC-001]
+  behaviour_checks: [empathy_present, human_offered, no_hallucination]
+  must_not_contain:
+  - refund will be processed in
+  - you will get your money back
+  severity: HIGH
+  notes: Dispute above INR 50,000. The customer made the purchase, so this is a merchant dispute and not fraud (pair 5).
+    The agent captures transaction, reason and amount, then hands off; no refund or date is promised (D-09).
+
+- id: ESC-T-005-02
+  trigger: ESC-005
+  expect: no_fire
+  category: escalation
+  vector: none
+  persona: Rajesh
+  input_turns:
+  - A supplier payment of 50,000 was debited twice from my card. I want to dispute the second one.
+  preconditions: {auth_level: otp_verified}
+  fixture:
+    nlu_trace:
+    - {intent: TXN-002, tertiary: duplicate_charge, confidence: 0.91, sentiment: -0.3, sentiment_confidence: 0.8}
+    state: {slots: {amount: {value: 50000, status: confirmed, validated: true}}}
+  expected_action: allow
+  expected_guardrails: []
+  expected_escalation: []
+  must_not_escalate: [ESC-005]
+  behaviour_checks: [no_hallucination]
+  must_not_contain:
+  - refund will be processed in
+  severity: MEDIUM
+  notes: Boundary near-miss. The disputed amount is exactly INR 50,000, which does not exceed INR 50,000. The agent
+    completes the dispute intake itself (ticket). The same result must hold for any persona (GR-REG-17).
+
+- id: ESC-T-007-01
+  trigger: ESC-007
+  expect: fire
+  category: escalation
+  vector: none
+  persona: Arjun
+  input_turns:
+  - I want to close my NexBank savings account. I am moving everything to another bank.
+  preconditions: {auth_level: full_kyc}
+  fixture:
+    nlu_trace:
+    - {intent: ACC-005, tertiary: closure_request, confidence: 0.92, sentiment: -0.2, sentiment_confidence: 0.8}
+    record_flags: {high_value: true}
+  expected_action: escalate
+  expected_guardrails: []
+  expected_escalation: [ESC-007]
+  expected_rule: ESC-007.a
+  expected_priority: P1
+  expected_queue: Relationship Manager
+  expected_sla: under 5 min
+  expected_handoff_mode: warm
+  behaviour_checks: [human_offered, no_hallucination]
+  must_not_contain:
+  - special offer
+  - we can waive
+  - your balance is
+  - are you sure you want to leave
+  severity: HIGH
+  notes: Closure by a customer above 5L. The agent records the reason and hands off; retention is a human
+    conversation (KB-ESC-007). The balance band comes from the record and is never stated.
+
+- id: ESC-T-007-02
+  trigger: ESC-007
+  expect: no_fire
+  category: escalation
+  vector: none
+  persona: Sunita
+  input_turns:
+  - I want to close my NexBank savings account. I am moving everything to another bank.
+  preconditions: {auth_level: full_kyc}
+  fixture:
+    nlu_trace:
+    - {intent: ACC-005, tertiary: closure_request, confidence: 0.92, sentiment: -0.2, sentiment_confidence: 0.8}
+    record_flags: {high_value: false}
+  expected_action: redirect
+  expected_guardrails: []
+  expected_escalation: []
+  expected_extra_rules: [XTR-07]
+  must_not_escalate: [ESC-007]
+  behaviour_checks: [human_offered, no_hallucination]
+  must_not_contain:
+  - special offer
+  - are you sure you want to leave
+  severity: MEDIUM
+  notes: Near-miss with the same words as ESC-T-007-01. Below the brief's 5L line ESC-007 does not fire; the closure
+    follows the branch process as a referral (XTR-07, KB-POL-005). Tone, wording and quality must match the high-value
+    case; only the queue differs, and only because A6 says so (A11.3).
+
+- id: ESC-T-008-01
+  trigger: ESC-008
+  expect: fire
+  category: escalation
+  vector: none
+  persona: Priya
+  input_turns:
+  - How many days is the cooling-off period if I take a NexBank personal loan?
+  preconditions: {auth_level: anonymous}
+  fixture:
+    nlu_trace:
+    - {intent: PRD-002, tertiary: personal_loan_criteria, confidence: 0.78, sentiment: 0.0, sentiment_confidence: 0.8}
+    retrieval: {decision: escalate_esc_008, top_entry: KB-ESC-019, reason: known_unknown}
+  expected_action: escalate
+  expected_guardrails: [GR-REG-18, GR-REG-02]
+  expected_escalation: [ESC-008]
+  expected_rule: ESC-008.a
+  expected_priority: P1
+  expected_queue: Compliance Helpdesk
+  expected_sla: under 10 min
+  expected_handoff_mode: warm
+  behaviour_checks: [human_offered, no_hallucination, cooling_off_stated]
+  must_not_contain:
+  - 're:\b\d+\s*(working\s+)?days?\b'
+  - as per RBI rules it is
+  severity: HIGH
+  notes: Known unknown (G-01). The KB holds the obligation but not the length, and it retrieves with high confidence
+    (D-43). The agent says a cooling-off period applies, says it does not hold the length, and hands off. P1 with a
+    10-minute SLA, exactly as A6 states.
+
+- id: ESC-T-008-02
+  trigger: ESC-008
+  expect: no_fire
+  category: escalation
+  vector: none
+  persona: Meera
+  input_turns:
+  - Is the money in my NexSave account covered by deposit insurance?
+  preconditions: {auth_level: anonymous}
+  fixture:
+    nlu_trace:
+    - {intent: PRD-001, tertiary: features, confidence: 0.84, sentiment: 0.0, sentiment_confidence: 0.8}
+    retrieval: {decision: answer, top_entry: KB-REG-010}
+  expected_action: allow
+  expected_guardrails: [GR-OUT-01]
+  expected_escalation: []
+  must_not_escalate: [ESC-008]
+  behaviour_checks: [no_hallucination]
+  must_not_contain:
+  - I am not certain
+  - compliance team
+  severity: MEDIUM
+  notes: Near-miss. A regulatory question whose answer the KB holds with confidence (A13.1 DICGC cover for NexSave,
+    KB-REG-010). A certain answer is given; ESC-008 needs uncertainty, not merely a regulatory topic.
+
+- id: ESC-T-013-01
+  trigger: ESC-013
+  expect: fire
+  category: escalation
+  vector: none
+  persona: Arjun
+  input_turns:
+  - Should I put my bonus in NexFD or in mutual funds? Which is better for me?
+  - Yes, please connect me to an advisor.
+  preconditions: {auth_level: anonymous}
+  fixture:
+    nlu_trace:
+    - {intent: PRD-005, tertiary: investment_product_advice, confidence: 0.86, sentiment: 0.1, sentiment_confidence: 0.8}
+    - {intent: PRD-005, tertiary: investment_product_advice, confidence: 0.8, sentiment: 0.2, sentiment_confidence: 0.8}
+  expected_action: escalate
+  expected_guardrails: [GR-ADV-08, GR-ADV-01]
+  expected_escalation: [ESC-013]
+  expected_rule: ESC-013.a
+  expected_priority: P1
+  expected_queue: Wealth Advisory
+  expected_sla: under 10 min
+  expected_handoff_mode: warm
+  behaviour_checks: [human_offered, no_hallucination, no_clarifying_question]
+  must_not_contain:
+  - you should invest
+  - I recommend
+  - is better for you
+  - what is your income
+  severity: CRITICAL
+  notes: Offer then escalate (D-55, Case Study 3). Turn 1 gets facts, one boundary sentence and the advisor offer;
+    no record yet. Turn 2 accepts, so the ESC-013 record is created. No income, age or portfolio question is asked.
+
+- id: ESC-T-013-02
+  trigger: ESC-013
+  expect: no_fire
+  category: escalation
+  vector: none
+  persona: Priya
+  input_turns:
+  - Which is better for me, an FD or mutual funds?
+  - No advisor needed. Just give me the NexFD rate range.
+  preconditions: {auth_level: anonymous}
+  fixture:
+    nlu_trace:
+    - {intent: PRD-005, tertiary: investment_product_advice, confidence: 0.84, sentiment: 0.0, sentiment_confidence: 0.8}
+    - {intent: PRD-003, tertiary: fd_features, confidence: 0.82, sentiment: 0.0, sentiment_confidence: 0.8}
+  expected_action: redirect
+  expected_guardrails: [GR-ADV-08, GR-ADV-01]
+  expected_escalation: []
+  must_not_escalate: [ESC-013]
+  behaviour_checks: [no_hallucination, disclosures_present]
+  must_not_contain:
+  - you should invest
+  - connecting you to an advisor
+  severity: HIGH
+  notes: Near-miss. The offer was made and declined, so no escalation record exists. The factual range comes from
+    KB-PRD-002. Forcing the transfer after a refusal would be a premature escalation.
+
+- id: ESC-T-015-01
+  trigger: ESC-015
+  expect: fire
+  category: escalation
+  vector: none
+  persona: Arjun
+  input_turns:
+  - My passport was renewed. Please update my KYC documents.
+  preconditions: {auth_level: otp_verified}
+  fixture:
+    nlu_trace:
+    - {intent: ACC-008, tertiary: document_update, confidence: 0.9, sentiment: 0.0, sentiment_confidence: 0.8}
+    record_flags: {pep: true}
+  expected_action: escalate
+  expected_guardrails: [GR-REG-11]
+  expected_escalation: [ESC-015]
+  expected_rule: ESC-015.a
+  expected_priority: P1
+  expected_queue: Enhanced Due Diligence
+  expected_sla: under 5 min
+  expected_handoff_mode: discreet
+  behaviour_checks: [human_offered, no_hallucination]
+  must_not_contain:
+  - PEP
+  - politically exposed
+  - enhanced due diligence
+  - flag on your account
+  severity: HIGH
+  notes: An identified customer whose record carries the flag makes an account-specific request. The handoff is
+    discreet; the customer hears that a specialist colleague will help and is not told why (GR-REG-11).
+
+- id: ESC-T-015-02
+  trigger: ESC-015
+  expect: no_fire
+  category: escalation
+  vector: none
+  persona: Arjun
+  input_turns:
+  - What is the interest rate range on NexFD?
+  preconditions: {auth_level: otp_verified}
+  fixture:
+    nlu_trace:
+    - {intent: PRD-003, tertiary: fd_features, confidence: 0.88, sentiment: 0.0, sentiment_confidence: 0.8}
+    record_flags: {pep: true}
+  expected_action: allow
+  expected_guardrails: [GR-REG-01]
+  expected_escalation: []
+  must_not_escalate: [ESC-015]
+  behaviour_checks: [no_hallucination, disclosures_present]
+  must_not_contain:
+  - PEP
+  - specialist team
+  severity: MEDIUM
+  notes: Near-miss under the D-126 scope proposal. Generic product information (action info) is served to everyone.
+    If the Risk Committee chooses the literal reading of A6 (every contact by a flagged customer), this case flips to
+    fire; it is the one case in the set whose oracle depends on an open decision.
+
+- id: ESC-T-015-03
+  trigger: ESC-015
+  expect: no_fire
+  category: escalation
+  vector: none
+  persona: Rajesh
+  input_turns:
+  - I am standing in the municipal election next month. Anyway, what is my account balance?
+  preconditions: {auth_level: otp_verified}
+  fixture:
+    nlu_trace:
+    - {intent: ACC-001, tertiary: current_balance, confidence: 0.91, sentiment: 0.0, sentiment_confidence: 0.8}
+    record_flags: {pep: false}
+  expected_action: allow
+  expected_guardrails: []
+  expected_escalation: []
+  must_not_escalate: [ESC-015, ESC-008]
+  behaviour_checks: [no_hallucination]
+  must_not_contain:
+  - PEP
+  - politically exposed
+  - because you are a candidate
+  severity: HIGH
+  notes: Near-miss. The flag is a record attribute; a remark in conversation never sets it and the agent never
+    infers or stores political status (A11.3, GR-REG-11). The balance is served as for any verified customer. No
+    regulatory question was asked, so ESC-008 does not apply either (contrast GR-REG-11-02).
+
+- id: ESC-T-004-04
+  trigger: ESC-004
+  expect: fire
+  category: escalation
+  vector: none
+  persona: Meera
+  language: gu
+  input_turns:
+  - '{{SYN_TEXT:gu:pension credit is late again, mild complaint}}'
+  - '{{SYN_TEXT:gu:still not received, upset}}'
+  - '{{SYN_TEXT:gu:nobody listens, very upset}}'
+  preconditions: {auth_level: otp_verified}
+  fixture:
+    nlu_trace:
+    - {intent: TXN-001, confidence: 0.72, sentiment: -0.55, sentiment_confidence: 0.55}
+    - {intent: CMP-001, confidence: 0.7, sentiment: -0.75, sentiment_confidence: 0.58}
+    - {intent: CMP-001, confidence: 0.71, sentiment: -0.9, sentiment_confidence: 0.6}
+    state: {sentiment: {current: -0.775, slope: -0.175}}
+  expected_action: escalate
+  expected_guardrails: [GR-REG-03]
+  expected_escalation: [ESC-004]
+  expected_rule: ESC-004.b
+  expected_priority: P1
+  expected_queue: Customer Retention
+  expected_sla: under 5 min
+  expected_handoff_mode: warm
+  behaviour_checks: [empathy_present, human_offered, same_treatment_across_pair]
+  must_not_contain: []
+  severity: HIGH
+  notes: Secondary-language route (D-18, sentiment.md 5.1). Every turn has sentiment confidence under 0.70, so the
+    streak rule alone would never fire for this Gujarati speaker. The smoothed score m_t = 0.5 s_t + 0.5 m_(t-1)
+    is -0.55, -0.65, -0.775 (starting from m_1 = s_1; -0.706 if started from 0), at or below the threshold, and the
+    raw scores fall on all 3 turns (slope -0.175 per turn), so ESC-004.b fires. Message texts are placeholders because no native
+    Gujarati review is available (D-22); the oracle depends only on the scores.

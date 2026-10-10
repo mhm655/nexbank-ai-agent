@@ -1,0 +1,271 @@
+# Escalation trigger cases: P2 triggers (ESC-003, ESC-006, ESC-010, ESC-014). Brief A6 pp.16-17.
+# Schema: tests/README.md section 2 plus the escalation fields in tests/escalation/README.md.
+# Rules: config/escalation_rules.yaml. Docs: docs/escalation/triggers.md.
+# All data synthetic. Specified, not run (D-79).
+
+schema_version: '1.0'
+set_id: ESC-TRIGGERS-P2
+case_count: 9
+cases:
+
+- id: ESC-T-003-01
+  trigger: ESC-003
+  expect: fire
+  category: escalation
+  vector: none
+  persona: Sunita
+  input_turns:
+  - that thing from before is not coming
+  - the one I told, it shows different now
+  - see it only, why is it like that
+  preconditions: {auth_level: anonymous}
+  fixture:
+    nlu_trace:
+    - {intent: GEN-004, confidence: 0.31, sentiment: -0.2, sentiment_confidence: 0.6}
+    - {intent: TXN-001, confidence: 0.28, sentiment: -0.3, sentiment_confidence: 0.6}
+    - {intent: GEN-004, confidence: 0.35, sentiment: -0.4, sentiment_confidence: 0.6}
+  expected_action: escalate
+  expected_guardrails: []
+  expected_escalation: [ESC-003]
+  expected_rule: ESC-003.a
+  expected_priority: P2
+  expected_queue: General Support
+  expected_sla: under 10 min
+  expected_handoff_mode: warm
+  behaviour_checks: [no_repeated_reply, human_offered, no_hallucination]
+  must_not_contain:
+  - as I said
+  - please rephrase your question again
+  severity: MEDIUM
+  notes: Three consecutive customer turns below 40 percent (A6, D-06). The two earlier replies must differ from each
+    other (offer options, then offer examples); the third turn hands off with what was gathered. A third "could you
+    rephrase" would be the Robotic Loop anti-pattern (A9.2).
+
+- id: ESC-T-003-02
+  trigger: ESC-003
+  expect: no_fire
+  category: escalation
+  vector: none
+  persona: Sunita
+  input_turns:
+  - it is not showing
+  - the money one
+  - My UPI payment to the grocery shop yesterday is not showing in my statement.
+  preconditions: {auth_level: otp_verified}
+  fixture:
+    nlu_trace:
+    - {intent: GEN-004, confidence: 0.35, sentiment: -0.1, sentiment_confidence: 0.6}
+    - {intent: TXN-001, confidence: 0.38, sentiment: -0.1, sentiment_confidence: 0.6}
+    - {intent: TXN-001, tertiary: by_description, confidence: 0.72, sentiment: -0.1, sentiment_confidence: 0.8}
+  expected_action: allow
+  expected_guardrails: []
+  expected_escalation: []
+  must_not_escalate: [ESC-003]
+  behaviour_checks: [no_repeated_reply, no_hallucination]
+  must_not_contain:
+  - connecting you to an agent
+  severity: MEDIUM
+  notes: Near-miss. Two low-confidence turns, then a clear one at 0.72, which resets the counter (nlu-pipeline-overview.md
+    rule 4). The streak never reaches 3. Turns below 0.40 are not clarification attempts for XTR-04 either; that budget
+    applies to a named ambiguity in the 0.40 to 0.70 band.
+
+- id: ESC-T-006-01
+  trigger: ESC-006
+  expect: fire
+  category: escalation
+  vector: none
+  persona: Meera
+  input_turns:
+  - Is there someone I can talk to about this?
+  - No, I do not want to try that. I want a human agent.
+  - Human please. I am still waiting.
+  preconditions: {auth_level: anonymous}
+  fixture:
+    nlu_trace:
+    - {intent: GEN-003, tertiary: implicit_request, confidence: 0.7, sentiment: -0.2, sentiment_confidence: 0.8}
+    - {intent: GEN-003, tertiary: repeated_request, confidence: 0.95, sentiment: -0.4, sentiment_confidence: 0.8}
+    - {intent: GEN-003, tertiary: repeated_request, confidence: 0.96, sentiment: -0.5, sentiment_confidence: 0.8}
+  expected_action: escalate
+  expected_guardrails: [GR-REG-16]
+  expected_escalation: [ESC-006]
+  expected_rule: ESC-006.a
+  expected_priority: P2
+  expected_queue: Next Available Agent
+  expected_sla: under 10 min
+  expected_handoff_mode: warm
+  behaviour_checks: [human_offered, empathy_present, no_repeated_reply]
+  must_not_contain:
+  - why do you want to speak to a human
+  - no humans are available
+  - before I transfer you, can you tell me
+  severity: HIGH
+  notes: Request 1 is implicit (counted, human option stated). Request 2 starts the handoff under XTR-01. Request 3
+    fires ESC-006; the record already pending is relabelled ESC-006 and keeps its original clock, so the customer does
+    not lose their place. No question and no counter-offer after the third request.
+
+- id: ESC-T-006-02
+  trigger: ESC-006
+  expect: no_fire
+  category: escalation
+  vector: none
+  persona: Priya
+  input_turns:
+  - Can I talk to a person about my statement?
+  - Oh, if you can email it now that is fine. Yes please do that.
+  preconditions: {auth_level: otp_verified}
+  fixture:
+    nlu_trace:
+    - {intent: GEN-003, tertiary: first_request, confidence: 0.88, sentiment: -0.1, sentiment_confidence: 0.8}
+    - {intent: ACC-002, tertiary: email_statement, confidence: 0.9, sentiment: 0.3, sentiment_confidence: 0.8}
+  expected_action: allow
+  expected_guardrails: [GR-REG-16]
+  expected_escalation: []
+  expected_extra_rules: [XTR-01]
+  must_not_escalate: [ESC-006]
+  behaviour_checks: [human_offered, no_hallucination]
+  must_not_contain:
+  - no humans are available
+  severity: MEDIUM
+  notes: Near-miss. One request. XTR-01 starts handoff preparation and the reply carries one concrete offer; the
+    customer accepts the offer, which cancels the pending handoff (customer_only cancellation). The record is kept
+    with outcome de_escalated_by_customer. human_request_count stays at 1.
+
+- id: ESC-T-010-01
+  trigger: ESC-010
+  expect: fire
+  category: escalation
+  vector: none
+  persona: Rajesh
+  input_turns:
+  - So what is the status finally? We have been going back and forth.
+  preconditions: {auth_level: otp_verified}
+  fixture:
+    state: {turns_since_resolution: 15, turn_count: 15, topic_stack: [{intent: CMP-002, status: active}]}
+    nlu_trace:
+    - {intent: CMP-002, tertiary: latest_open_complaint, confidence: 0.8, sentiment: -0.5, sentiment_confidence: 0.8}
+  expected_action: escalate
+  expected_guardrails: [GR-REG-19]
+  expected_escalation: [ESC-010]
+  expected_rule: ESC-010.a
+  expected_priority: P2
+  expected_queue: Supervisor Review
+  expected_sla: under 15 min
+  expected_handoff_mode: warm
+  behaviour_checks: [empathy_present, human_offered, no_hallucination]
+  must_not_contain:
+  - let us start again
+  - can you repeat the complaint
+  severity: MEDIUM
+  notes: This is message 16 with no topic resolved, so the conversation exceeds 15 turns without resolution (A6; turn
+    unit per D-119). The supervisor receives the summary; the customer is not asked to repeat anything.
+
+- id: ESC-T-010-02
+  trigger: ESC-010
+  expect: no_fire
+  category: escalation
+  vector: none
+  persona: Priya
+  input_turns:
+  - Thanks, the statement arrived. One more thing, how do I change my email address?
+  preconditions: {auth_level: otp_verified}
+  fixture:
+    state:
+      turn_count: 17
+      turns_since_resolution: 1
+      topic_stack: [{intent: ACC-002, status: resolved}, {intent: ACC-001, status: resolved}]
+    nlu_trace:
+    - {intent: ACC-003, tertiary: email_address, confidence: 0.86, sentiment: 0.4, sentiment_confidence: 0.8}
+  expected_action: allow
+  expected_guardrails: [GR-SEC-R2]
+  expected_escalation: []
+  must_not_escalate: [ESC-010]
+  behaviour_checks: [no_hallucination]
+  must_not_contain:
+  - supervisor
+  severity: MEDIUM
+  notes: Near-miss. The conversation is past 15 messages, but two topics were resolved and the last resolution was one
+    message ago. "Without resolution" is false. A productive multi-topic conversation is not sent for review; the
+    email change needs the step-up to biometric (GR-SEC-R2).
+
+- id: ESC-T-014-01
+  trigger: ESC-014
+  expect: fire
+  category: escalation
+  vector: none
+  persona: Priya
+  input_turns:
+  - What is the status of the NEFT transfer I made this morning?
+  preconditions: {auth_level: otp_verified}
+  fixture:
+    nlu_trace:
+    - {intent: TXN-004, tertiary: neft, confidence: 0.9, sentiment: 0.0, sentiment_confidence: 0.8}
+    tool_faults: [{tool_class: read, attempt: 1, result: timeout}, {tool_class: read, attempt: 2, result: timeout}]
+  expected_action: escalate
+  expected_guardrails: [GR-SYS-01]
+  expected_escalation: [ESC-014]
+  expected_rule: ESC-014.a
+  expected_priority: P2
+  expected_queue: Technical Support
+  expected_sla: under 10 min
+  expected_handoff_mode: warm
+  behaviour_checks: [human_offered, no_hallucination]
+  must_not_contain:
+  - stack trace
+  - exception
+  - timeout
+  - will be fixed in
+  - your transfer was successful
+  severity: HIGH
+  notes: The read fails, the single allowed retry fails, so the data cannot be reached (A6; component-interfaces.md
+    row 7). Honest status in plain words (A9.1 Pattern 4), no guessed status, no repair time, human offered.
+
+- id: ESC-T-014-02
+  trigger: ESC-014
+  expect: no_fire
+  category: escalation
+  vector: none
+  persona: Priya
+  input_turns:
+  - What is the status of the NEFT transfer I made this morning?
+  preconditions: {auth_level: otp_verified}
+  fixture:
+    nlu_trace:
+    - {intent: TXN-004, tertiary: neft, confidence: 0.9, sentiment: 0.0, sentiment_confidence: 0.8}
+    tool_faults: [{tool_class: read, attempt: 1, result: timeout}, {tool_class: read, attempt: 2, result: ok}]
+  expected_action: allow
+  expected_guardrails: []
+  expected_escalation: []
+  must_not_escalate: [ESC-014]
+  behaviour_checks: [no_hallucination]
+  must_not_contain:
+  - technical team
+  - timeout
+  severity: MEDIUM
+  notes: Near-miss. The retry succeeds, so data access was not prevented. The status from the system of record is
+    given. A transient error that the retry absorbs is not an escalation.
+
+- id: ESC-T-014-03
+  trigger: ESC-014
+  expect: no_fire
+  category: escalation
+  vector: none
+  persona: Sunita
+  input_turns:
+  - What is the interest rate on a recurring deposit?
+  preconditions: {auth_level: anonymous}
+  fixture:
+    nlu_trace:
+    - {intent: PRD-003, tertiary: rd_rate_enquiry, confidence: 0.85, sentiment: 0.0, sentiment_confidence: 0.8}
+    retrieval: {decision: gap, top_entry: KB-ESC-011}
+  expected_action: allow
+  expected_guardrails: []
+  expected_escalation: []
+  must_not_escalate: [ESC-014, ESC-008, ESC-003]
+  behaviour_checks: [no_hallucination, human_offered]
+  must_not_contain:
+  - 're:\b\d+(\.\d+)?\s*(%|percent)'
+  - technical issue
+  severity: HIGH
+  notes: Near-miss. Missing knowledge is not a system error. The catalogue has no recurring deposit (KB-ESC-011), so
+    this is a gap answered with the gap statement and an offer of a human (A9.1 Pattern 4). It is not regulatory,
+    so ESC-008 does not fire, and the intent is clear, so ESC-003 does not fire.

@@ -1,0 +1,90 @@
+flowchart TD
+    %% Escalation trigger evaluation, precedence and routing (Day 12).
+    %% Source of truth: config/escalation_rules.yaml. Docs: docs/escalation/triggers.md, routing-and-handoff.md, queue-management.md.
+    %% The 15 triggers, their priorities, queues and SLAs are the brief's (A6 pp.16-17). Precedence ranks, hours, overflow and XTR rules are proposals.
+
+    EVT["Event: customer turn, tool result, guard hit or timer"] --> SIG["C8 Escalation Router collects signals<br/>state, NLU result, retrieval decision, tool health, record flags, guard hits"]
+    SIG --> EVAL["Evaluate every rule, each turn, before the reply<br/>15 brief triggers plus XTR-01..07 additions"]
+    EVAL --> ANY{"Any rule true?"}
+    ANY -- "no" --> PROX["No escalation<br/>update escalation proximity score<br/>0.6 prepare package, 0.8 offer a human"]
+    PROX --> REPLY["Normal reply path"]
+    ANY -- "yes" --> REC["Record every fired trigger<br/>none is dropped"]
+
+    REC --> P0Q{"Any P0 fired?"}
+
+    subgraph P0["P0 - always wins"]
+        R1["rank 1 ESC-011 self-harm, threats, emergency<br/>Crisis Response - IMMEDIATE"]
+        R2["rank 2 ESC-009 unauthorised access reported<br/>Security Operations - under 2 min"]
+        R3["rank 3 ESC-001 confirmed or suspected fraud<br/>Fraud Investigation - under 2 min"]
+        R4["rank 4 ESC-012 money laundering indicators<br/>AML Compliance - under 2 min - silent case"]
+    end
+
+    subgraph P1["P1 - shorter SLA first, then rank"]
+        R5["rank 5 ESC-015 PEP customer<br/>Enhanced Due Diligence - under 5 min - discreet"]
+        R6["rank 6 ESC-002 legal threat<br/>Senior Resolution Mgr - under 5 min"]
+        R7["rank 7 ESC-005 dispute above INR 50,000<br/>Dispute Resolution - under 5 min"]
+        R8["rank 8 ESC-007 closure, high-value customer<br/>Relationship Manager - under 5 min"]
+        R9["rank 9 ESC-004 sentiment below -0.7 for 2 turns<br/>Customer Retention - under 5 min"]
+        R10["rank 10 ESC-008 regulatory question, uncertain answer<br/>Compliance Helpdesk - under 10 min"]
+        R11["rank 11 ESC-013 advisory needing SEBI advisor<br/>Wealth Advisory - under 10 min - on acceptance"]
+    end
+
+    subgraph P2["P2 - rank"]
+        R12["rank 12 ESC-006 human requested 3 times<br/>Next Available Agent - under 10 min"]
+        R13["rank 13 ESC-014 system error blocks data access<br/>Technical Support - under 10 min"]
+        R14["rank 14 ESC-003 confidence below 40 percent for 3 turns<br/>General Support - under 10 min"]
+        R15["rank 15 ESC-010 more than 15 turns unresolved<br/>Supervisor Review - under 15 min"]
+        RX["XTR additions with their own route<br/>XTR-01 XTR-03 to Next Available Agent<br/>XTR-04 XTR-07 to General Support<br/>XTR-05 referral to Dispute Resolution"]
+    end
+
+    P0Q -- "yes" --> P0
+    P0Q -- "no" --> P1Q{"Any P1 fired?"}
+    P1Q -- "yes" --> P1
+    P1Q -- "no" --> P2
+
+    P0 --> OWN
+    P1 --> OWN
+    P2 --> OWN
+    OWN["Owner = lowest rank among fired triggers<br/>others become secondary triggers in the package"]
+    OWN --> PAR["Parallel cases always opened<br/>ESC-012 AML case, ESC-015 due diligence case"]
+    PAR --> SUP{"ESC-012 or adversarial ESC-001 fired?"}
+    SUP -- "yes" --> SUPX["Suppress offers that would assist<br/>no ESC-013 offer, no ESC-008 handoff<br/>customer not told about the case"]
+    SUP -- "no" --> PEND
+    SUPX --> PEND
+    PEND{"Escalation already pending?"}
+    PEND -- "yes, new owner outranks it" --> UPG["Upgrade - never downgrade<br/>SLA clock of the new trigger starts now"]
+    PEND -- "yes, same or lower" --> KEEP["Keep the pending handoff<br/>add the new trigger as secondary"]
+    PEND -- "no" --> PROT
+    UPG --> PROT
+    PROT["Protective action if defined<br/>card block with confirmation, crisis template, credential instruction"]
+    PROT --> PKG["Build the 8-element handoff package<br/>missing field - fill from state and flag incomplete"]
+
+    PKG --> MODE{"Handoff mode"}
+    MODE -- "silent_case" --> CASE["Open the case for the queue<br/>conversation continues within the rules"]
+    MODE -- "warm or discreet" --> AVAIL{"Target queue open and<br/>forecast wait within SLA?"}
+    AVAIL -- "yes" --> LANG{"Agent in the customer's language<br/>within the SLA? P0 never waits"}
+    LANG -- "yes" --> Q["Enqueue in target queue<br/>order - priority, then earliest SLA deadline"]
+    LANG -- "no" --> QEN["Enqueue with en or hi agent<br/>summary also in the customer's language"]
+    AVAIL -- "no" --> OVER{"Overflow queue available?"}
+    OVER -- "yes" --> QOV["Enqueue in the next queue of the overflow chain"]
+    OVER -- "no, P0" --> P0FB["Any available human plus incident alert<br/>protective actions stay in place"]
+    OVER -- "no, P1 or P2" --> CB["Callback request - a request, not a guarantee<br/>case stays open in the target queue"]
+
+    Q --> WAIT
+    QEN --> WAIT
+    QOV --> WAIT
+    WAIT["While waiting - honest status every 60 s<br/>the agent keeps helping where allowed<br/>P0 - only protective steps"]
+    WAIT --> PICK{"Human accepts before the SLA?"}
+    PICK -- "yes" --> HAND["HANDOFF - human sees the package<br/>customer does not repeat anything"]
+    PICK -- "70 percent of SLA used" --> WARN["Warn supervisor - rebalance agents"]
+    WARN --> PICK
+    PICK -- "SLA breached" --> BREACH["Breach - next overflow step, tell the customer<br/>P0 breach opens an incident"]
+    BREACH --> PICK
+    WAIT --> CAN{"Cancel requested or issue resolved?"}
+    CAN -- "P0 or cancellable never" --> WAIT
+    CAN -- "allowed for this trigger and the customer agrees" --> DEESC["De-escalate - record kept with the outcome"]
+    DEESC --> REPLY
+    HAND --> DONE["Outcome logged - escalation quality sampled for premature and missed labels"]
+    CASE --> REPLY
+    CB --> DONE
+    P0FB --> WAIT

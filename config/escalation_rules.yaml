@@ -1,0 +1,713 @@
+# NexBank escalation rules (Day 12). Single source of truth for escalation triggers, precedence, queues and SLAs.
+# Brief refs: A6 pp.16-17 (the 15 triggers: condition, priority, target queue, SLA), A4.2 rule 6, A4.4 (auto escalation,
+# mandatory escalation), A11.3 (thresholds consistent across segments; right to a human at any point), A12.3 (parameters),
+# Case Study 2 pp.49-50 (ESC-001), Case Study 3 p.51 (ESC-013 offered), Case Study 5 pp.53-54 (sentiment recovery).
+# Docs: docs/escalation/triggers.md, routing-and-handoff.md, queue-management.md. Diagram: diagrams/escalation-routing.mmd.
+# Tests: tests/escalation/ (specified, not run). Validator: tests/escalation/validate_escalation.py.
+#
+# What is the brief's and what is ours:
+#   - `brief:` blocks quote A6 verbatim. `condition_text`, `priority`, `queue`, `sla` restate them in the wording of KB-ESC-010.
+#   - `fire_when`, `sub_rules`, `precedence_rank`, `cancellable`, `handoff_mode`, queue hours, overflow chains and every
+#     value under `proposals:` are design proposals (decisions D-115 to D-134). The brief is silent on them.
+#   - `extra_rules` (XTR-01 to XTR-07) are ADDITIONS, not brief triggers. They never add a priority, a queue or an SLA:
+#     each one either raises one of the brief's 15 triggers or uses a brief queue at that queue's own SLA.
+# Parameters are referenced by their A12.3 names (governed copy: config/parameters.yaml, Day 13). Values are not restated here
+# except the constants A6 itself fixes (40%, 3 turns, 2 turns, INR 50,000, 3 requests, 5L, 15 turns).
+
+schema_version: "1.0"
+registry_status: draft_day12
+source: "A6 pp.16-17"
+
+# ---------------------------------------------------------------------------------------------------------------- priorities
+priorities:
+  P0: {rank: 0, meaning: "safety, security or compliance critical", pre_empts: [P1, P2], cancellable_by_ai: false, cancellable_by_customer: false}
+  P1: {rank: 1, meaning: "specialist or high-stakes handling", pre_empts: [P2], cancellable_by_ai: false, cancellable_by_customer: per_rule}
+  P2: {rank: 2, meaning: "general assistance", pre_empts: [], cancellable_by_ai: per_rule, cancellable_by_customer: per_rule}
+
+# ---------------------------------------------------------------------------------------------------------------- parameters
+parameters_ref:            # A12.3 names; values live in config/parameters.yaml (Day 13)
+  escalation_sentiment_threshold: "A12.3: default -0.70, range -1.0 to -0.3, CX Team, CEB approval"
+  intent_confidence_threshold: "A12.3: default 0.70, range 0.50-0.95, NLU Team, A/B test required"
+  retrieval_confidence_threshold: "A12.3: default 0.65, range 0.50-0.90, NLU Team, A/B test required"
+  max_conversation_turns: "A12.3: default 25, range 10-50, Product, standard change"
+  session_timeout_minutes: "A12.3: default 5; ceiling 5 (D-56)"
+
+constants:                 # fixed by A6; a change is a change to the brief's trigger, not a tuning step
+  esc003_confidence_floor: 0.40
+  esc003_consecutive_turns: 3
+  esc004_consecutive_turns: 2
+  esc005_dispute_amount_inr: 50000
+  esc006_human_requests: 3
+  esc007_high_value_inr: 500000
+  esc010_turns: 15
+
+proposals:                 # not in the brief; each is recorded as a decision and needs owner sign-off
+  flow_entry_confidence: 0.50               # D-19 (existing): SEC-001, SEC-004, GEN-007, GEN-003, PRD-005
+  sentiment_turn_confidence_min: 0.70       # D-18 (existing)
+  legal_threat_tertiary_confidence: 0.65    # tertiary act threshold in config/intents.yaml
+  otp_failures_lock: 3                      # D-65 (existing), auth-flow.mmd
+  crisis_pickup_target_seconds: 60          # D-118: operational reading of IMMEDIATE
+  turn_unit: message                        # D-119: one logged customer or agent message (A10.2 turn record); system turns excluded
+  esc004_cancel_sentiment_min: -0.40        # D-125: anchor is Case Study 5 (-0.4, "recovering")
+  wait_update_interval_seconds: 60          # D-124
+  handoff_attempts_max: 2                   # D-123
+  sla_warn_fraction: 0.70                   # D-128: same warn convention as monitoring-dashboard.md section 6
+  sla_attainment_target_pct: {P0: 95, P1: 90, P2: 85}   # D-128
+  ageing_boost_fraction: 0.80               # D-127
+  repeat_contact_window_days: 7             # D-121; A5.3 tracks 7/14/30 days
+  clarification_failures_handoff: 2         # existing (dialogue-management.md section 4.4)
+
+# ---------------------------------------------------------------------------------------------------------------- signals
+# Every identifier used in a `fire_when` expression is defined here. `in_schema: true` means the field exists in
+# config/dialogue_state.schema.json today; `in_schema: false` means it is a proposed addition (D-120) or an input that
+# reaches the Escalation Router from another component (component-interfaces.md row 8: "DialogueState, trigger signals").
+# `prompt_visible: false` means the value never enters a prompt layer or a reply (it is router-side only).
+signals:
+  intent:                 {source: state.intent.label, in_schema: true, type: string}
+  intent_conf:            {source: state.intent.confidence, in_schema: true, type: number}
+  tertiary:               {source: "state.intent.layer_path[2]", in_schema: true, type: string}
+  tertiary_conf:          {source: state.intent.layer_confidence.tertiary, in_schema: true, type: number}
+  low_conf_streak:        {source: state.consecutive_low_conf, in_schema: true, type: integer, note: "customer turns with secondary confidence below 0.40; any turn at or above 0.40, or an answered clarification, resets it (nlu-pipeline-overview.md rule 4)"}
+  human_requests:         {source: state.human_request_count, in_schema: true, type: integer, note: "explicit and implicit requests (GEN-003)"}
+  explicit_human_request: {source: "nlu: GEN-003 tertiary first_request or repeated_request on this turn at flow_entry_confidence", in_schema: false, type: boolean}
+  clarify_failures:       {source: state.clarification_attempts, in_schema: true, type: integer}
+  neg_sentiment_streak:   {source: state.escalation.neg_sentiment_streak, in_schema: false, type: integer, note: "consecutive customer turns whose sarcasm-adjusted raw score is below escalation_sentiment_threshold with sentiment confidence at or above 0.70; an uncertain turn neither adds nor resets (sentiment.md 5.1, D-18)"}
+  sentiment_ema_route:    {source: "derived from state.sentiment.current and state.sentiment.slope", in_schema: false, type: boolean, note: "secondary languages only: smoothed score at or below the threshold with a falling slope for 3 customer turns (sentiment.md 5.1)"}
+  latest_sentiment:       {source: "last element of state.sentiment.trajectory", in_schema: true, type: number}
+  turn_count:             {source: "A10.1 turn_count (messages by customer and agent)", in_schema: false, type: integer}
+  turns_since_resolution: {source: state.escalation.turns_since_resolution, in_schema: false, type: integer, note: "messages since the conversation started or since a topic last reached status resolved, whichever is later"}
+  open_topic:             {source: "any state.topic_stack[].status in (active, parked)", in_schema: true, type: boolean}
+  dispute_amount_inr:     {source: "state.slots.amount.value for a TXN-002 dispute, validated; the system-of-record amount replaces the stated amount once the transaction is looked up; several transactions in one dispute are summed", in_schema: true, type: number}
+  dispute_open:           {source: "active topic is TXN-002 and the dispute intake has started", in_schema: true, type: boolean}
+  legal_threat:           {source: "rule lexicon (court, lawyer, legal notice, consumer forum, sue, ombudsman complaint as a threat) in a first-person threat frame, or CMP-003 tertiary legal_threat at legal_threat_tertiary_confidence (disambiguation.md pair 4)", in_schema: false, type: boolean}
+  fraud_signal:           {source: "sub_rules of ESC-001", in_schema: false, type: boolean}
+  access_report:          {source: "sub_rules of ESC-009", in_schema: false, type: boolean}
+  crisis_signal:          {source: "Input Guard crisis screen hit, or GEN-007 at flow_entry_confidence", in_schema: false, type: boolean}
+  aml_indicator:          {source: "GR-REG-09 or GR-REG-10 hit (customer-stated or structuring cue; indicator list is an AML team input, G-03)", in_schema: false, type: boolean, prompt_visible: false}
+  retrieval_decision:     {source: "RetrievalResult.decision (component-interfaces.md row 6)", in_schema: false, type: string}
+  advisor_requested:      {source: "customer accepts the advisor offer (GR-ADV-08) or asks for an advisor directly", in_schema: false, type: boolean}
+  closure_requested:      {source: "ACC-005 tertiary closure_request at full_kyc", in_schema: true, type: boolean}
+  high_value:             {source: "customer record: total deposit balance above esc007_high_value_inr, read through a tool", in_schema: false, type: boolean, prompt_visible: false}
+  pep_flag:               {source: "customer record attribute read through a tool; never inferred from conversation (GR-REG-11)", in_schema: false, type: boolean, prompt_visible: false}
+  customer_identified:    {source: "state.auth_level != anonymous", in_schema: true, type: boolean}
+  account_specific:       {source: "the active intent's action in config/intents.yaml is not `info`", in_schema: true, type: boolean}
+  data_access_failed:     {source: "ToolResult.ok == false for a read needed by the active intent after the single read retry, or the tool circuit is open, or every rung of GR-SYS-01 failed", in_schema: false, type: boolean}
+  otp_failures:           {source: state.escalation.otp_failures, in_schema: false, type: integer, note: "failed OTP entries in the secure widget in this session (auth-flow.mmd)"}
+  ato_pattern:            {source: "KB-TRB-011 check: credential reset or sensitive request shortly after a contact-details change", in_schema: false, type: boolean, prompt_visible: false}
+  adversarial_escalate:   {source: "GR-ATK-04: second flagged turn with a data target (D-72, D-91); or GR-ATK-05 / GR-SEC-R8: authority claim with a request (D-60)", in_schema: false, type: boolean, prompt_visible: false}
+  intent_requires_human:  {source: "the active intent's action in config/intents.yaml is `handoff`", in_schema: true, type: boolean}
+  care_disclosure:        {source: "customer states, in this session, a bereavement, a serious illness or disability affecting use of the service, or financial hardship (PRD-002 emi_restructuring_request); never inferred, never stored beyond the session (A11.3)", in_schema: false, type: boolean}
+  followup_deadline_missed: {source: "a scheduled follow-up timer set by the agent expired without the awaited event (Case Study 6 turn 6)", in_schema: false, type: boolean}
+
+expression_grammar: "identifiers from `signals`, `const.<name>` from `constants`, `prop.<name>` from `proposals`, `param.<name>` from `parameters_ref`; operators == != < <= > >= in && || !; parentheses; string and number literals. Evaluated after every customer turn and on tool or guard events, before the reply is generated."
+
+# ---------------------------------------------------------------------------------------------------------------- queues
+# The 15 target queues are the brief's (A6), one per trigger. Mode, hours, languages and overflow are proposals (D-121, D-122, D-127).
+# overflow: ordered list of other brief queues tried when the queue is unavailable or its forecast wait exceeds the SLA;
+# `callback` is the last step for every queue (component-interfaces.md row 8). No new queue is invented.
+queues:
+  - {name: Fraud Investigation,    trigger: ESC-001, mode: live, hours: 24x7,     overflow: [Security Operations, Senior Resolution Mgr, callback]}
+  - {name: Senior Resolution Mgr,  trigger: ESC-002, mode: live, hours: extended, overflow: [Customer Retention, Supervisor Review, callback]}
+  - {name: General Support,        trigger: ESC-003, mode: live, hours: 24x7,     overflow: [Next Available Agent, Supervisor Review, callback]}
+  - {name: Customer Retention,     trigger: ESC-004, mode: live, hours: extended, overflow: [Senior Resolution Mgr, Next Available Agent, callback]}
+  - {name: Dispute Resolution,     trigger: ESC-005, mode: live, hours: extended, overflow: [General Support, callback]}
+  - {name: Next Available Agent,   trigger: ESC-006, mode: live, hours: 24x7,     overflow: [General Support, Supervisor Review, callback]}
+  - {name: Relationship Manager,   trigger: ESC-007, mode: live, hours: extended, overflow: [Customer Retention, callback]}
+  - {name: Compliance Helpdesk,    trigger: ESC-008, mode: live, hours: extended, overflow: [callback]}
+  - {name: Security Operations,    trigger: ESC-009, mode: live, hours: 24x7,     overflow: [Fraud Investigation, Senior Resolution Mgr, callback]}
+  - {name: Supervisor Review,      trigger: ESC-010, mode: live, hours: extended, overflow: [Senior Resolution Mgr, General Support, callback]}
+  - {name: Crisis Response,        trigger: ESC-011, mode: live, hours: 24x7,     overflow: [Senior Resolution Mgr, Security Operations, Next Available Agent]}
+  - {name: AML Compliance,         trigger: ESC-012, mode: case, hours: 24x7,     overflow: [Enhanced Due Diligence, Compliance Helpdesk]}
+  - {name: Wealth Advisory,        trigger: ESC-013, mode: live, hours: extended, overflow: [callback]}
+  - {name: Technical Support,      trigger: ESC-014, mode: live, hours: extended, overflow: [General Support, callback]}
+  - {name: Enhanced Due Diligence, trigger: ESC-015, mode: live, hours: extended, overflow: [AML Compliance, Compliance Helpdesk, callback]}
+
+queue_hours:               # proposals (D-122); the brief gives no operating hours
+  "24x7": "always staffed"
+  extended: "08:00-22:00 IST, all days; outside these hours the after-hours rule of the trigger applies"
+
+after_hours:               # proposals (D-122); P0 queues are 24x7 so they have no after-hours rule
+  P1: "live handoff to Next Available Agent (24x7) with the full package and the specialist case opened in the target queue for the next opening; callback offered; a callback time is a request, not a guarantee (D-09)"
+  P2: "the queue's own overflow chain; General Support and Next Available Agent are 24x7"
+  exceptions:
+    ESC-008: "no generalist answers the regulatory question; callback from the Compliance Helpdesk"
+    ESC-013: "no generalist gives advice; callback from Wealth Advisory (TPL-ADV-ADVISOR-UNAVAILABLE)"
+    ESC-015: "account-specific requests wait for Enhanced Due Diligence; generic information is still served"
+
+languages:                 # proposals (D-121)
+  all_queues: [en, hi, hinglish]
+  secondary: {languages: [ta, te, bn, mr, gu], pools: [General Support, Next Available Agent], hours: extended}
+  rule: "language match is attempted for P1 and P2 if it does not breach the SLA; P0 never waits for a language match; the package carries state.language.primary and the summary is written in English plus the customer's language"
+
+# ---------------------------------------------------------------------------------------------------------------- precedence
+# Used when several triggers are true in the same evaluation. Rank 1 owns the live handoff. Every other fired trigger is
+# recorded in the handoff package as a secondary trigger and never dropped. Triggers marked parallel_case always open
+# their own case, whoever owns the live conversation. (Proposal, D-116.)
+precedence:
+  rule_order:
+    - "1. Priority: P0 before P1 before P2 (P0 always wins)."
+    - "2. Within a priority: the shorter SLA first (IMMEDIATE, then 2, 5, 10, 15 minutes)."
+    - "3. Within the same priority and SLA: precedence_rank (life safety, then containment of live access, then loss investigation, then compliance case, then the most specific specialist queue, then generic signals)."
+    - "4. A pending escalation is upgraded, never downgraded, when a higher-ranked trigger fires; the SLA clock of the new trigger starts at the upgrade."
+    - "5. XTR rules that raise a brief trigger take that trigger's rank; XTR rules with their own route rank after all 15."
+  ranked: [ESC-011, ESC-009, ESC-001, ESC-012, ESC-015, ESC-002, ESC-005, ESC-007, ESC-004, ESC-008, ESC-013, ESC-006, ESC-014, ESC-003, ESC-010]
+
+# ---------------------------------------------------------------------------------------------------------------- triggers
+# cancellable: never | customer_only | customer_or_recovery   (docs/escalation/routing-and-handoff.md section 9)
+# handoff_mode: warm (customer told, live transfer) | discreet (live transfer, reason not stated to the customer)
+#               | silent_case (case opened for the queue; the customer is not told; the conversation continues within the rules)
+# intent_scope: linked (fires only in the flows of the linked intents) | any (conversation-level; can fire on any intent)
+# intents / guardrails / kb_entries equal the links already recorded in config/intents.yaml, config/guardrails.yaml and
+# docs/knowledge-base/entries/*.yaml (checked by the validator).
+triggers:
+
+- id: ESC-001
+  origin: brief
+  brief: {condition: "Confirmed or suspected fraud", priority: P0, queue: "Fraud Investigation", sla: "<2 min", citation: "A6 p.16"}
+  condition_text: confirmed or suspected fraud
+  priority: P0
+  queue: Fraud Investigation
+  sla: under 2 min
+  sla_seconds: 120
+  precedence_rank: 3
+  cancellable: never
+  handoff_mode: warm
+  parallel_case: false
+  intent_scope: linked
+  fire_when: "fraud_signal || adversarial_escalate"
+  sub_rules:
+    - {id: ESC-001.a, when: "intent == 'SEC-001' && intent_conf >= prop.flow_entry_confidence && tertiary in ['unauthorised_transaction', 'card_misuse', 'scam_victim', 'identity_theft']", source: customer_report}
+    - {id: ESC-001.b, when: "intent == 'SEC-004' && tertiary == 'deny_not_me'", source: customer_report, note: "becomes SEC-001 unauthorised_transaction at once (config/intents.yaml)"}
+    - {id: ESC-001.c, when: "customer denies knowing the merchant or the payment after the pair 5 question (TXN-002 unrecognised_charge), or states a scam cue (shared OTP, clicked a link, fake bank call, remote-access app)", source: customer_report, note: "Case Study 2 turn 5; disambiguation.md pair 5"}
+    - {id: ESC-001.d, when: "after a CRD-001 block the customer confirms payments they did not make (pair 6)", source: customer_report}
+    - {id: ESC-001.e, when: "SEC-002 where the customer already clicked, shared a credential or paid", source: customer_report, note: "reclassified SEC-001 scam_victim; a phishing report with no action taken is a ticket, not ESC-001"}
+    - {id: ESC-001.f, when: "adversarial_escalate", source: system, handoff_mode: silent_case, note: "D-60, D-72, D-91: authority claim with a request, or second flagged turn with a data target; the customer sees the neutral refusal and the human option, never an accusation"}
+  protective_actions: "card block offered with explicit confirmation at otp_verified or above before the handoff (D-16, D-08, KB-POL-006); an anonymous reporter gets the fast OTP step and, if it fails, the P0 handoff still happens"
+  detectors: [input_guard, nlu_service, policy_engine]
+  owner_component: escalation_router
+  state_fields: [intent, intent_conf, tertiary, auth_level, guardrails.triggered, actions_taken, sentiment.trajectory]
+  intents: [TXN-002, CRD-001, SEC-001, SEC-002, SEC-004]
+  guardrails: [GR-SEC-R3, GR-SEC-R4, GR-SEC-R5, GR-SEC-R6, GR-SEC-R8, GR-ATK-04, GR-ATK-05]
+  kb_entries: [KB-ESC-002, KB-ESC-010, KB-POL-011, KB-TRB-003, KB-TRB-005, KB-TRB-008]
+  templates: [TPL-ESC-FRAUD-P0, TPL-ESC-HANDOFF-WARM]
+  tests: [ESC-T-001-01, ESC-T-001-02, ESC-T-001-03]
+  decisions: [D-08, D-16, D-60, D-72, D-91, D-115]
+
+- id: ESC-002
+  origin: brief
+  brief: {condition: "Customer threatens legal action", priority: P1, queue: "Senior Resolution Mgr", sla: "<5 min", citation: "A6 p.16"}
+  condition_text: customer threatens legal action
+  priority: P1
+  queue: Senior Resolution Mgr
+  sla: under 5 min
+  sla_seconds: 300
+  precedence_rank: 6
+  cancellable: never
+  handoff_mode: warm
+  parallel_case: false
+  intent_scope: any
+  fire_when: "legal_threat"
+  sub_rules:
+    - {id: ESC-002.a, when: "legal_threat", source: customer_statement, note: "fires regardless of other scores (disambiguation.md pair 4); a question about how the ombudsman route works is CMP-003 ombudsman_info and does not fire"}
+  protective_actions: "none; the agent does not argue, admit liability or comment on the law (KB-ESC-005); grievance route still given within 2 turns (GR-REG-03)"
+  detectors: [nlu_service]
+  owner_component: escalation_router
+  state_fields: [intent, tertiary, tertiary_conf, sentiment.trajectory, carry_over.open_tickets]
+  intents: [CMP-001, CMP-003]
+  guardrails: [GR-REG-03, GR-REG-19]
+  kb_entries: [KB-ESC-005, KB-ESC-010, KB-REG-002]
+  templates: [TPL-ESC-HANDOFF-WARM]
+  tests: [ESC-T-002-01, ESC-T-002-02]
+  decisions: [D-125]
+
+- id: ESC-003
+  origin: brief
+  brief: {condition: "Confidence <40% for 3+ consecutive turns", priority: P2, queue: "General Support", sla: "<10 min", citation: "A6 p.16"}
+  condition_text: confidence below 40% for 3 or more consecutive turns
+  priority: P2
+  queue: General Support
+  sla: under 10 min
+  sla_seconds: 600
+  precedence_rank: 14
+  cancellable: customer_or_recovery
+  handoff_mode: warm
+  parallel_case: false
+  intent_scope: any
+  fire_when: "low_conf_streak >= const.esc003_consecutive_turns"
+  sub_rules:
+    - {id: ESC-003.a, when: "low_conf_streak >= const.esc003_consecutive_turns", source: system, note: "confidence is the secondary-layer intent confidence (D-06); the streak counts customer turns"}
+    - {id: ESC-003.b, when: "NLU service unavailable and the rule tier also yields no intent for 3 customer turns", source: system, note: "an outage is treated as low confidence (component-interfaces.md row 3)"}
+  protective_actions: none
+  detectors: [nlu_service, state_tracker]
+  owner_component: escalation_router
+  state_fields: [consecutive_low_conf, intent.confidence, intent.alternatives, clarification_attempts]
+  intents: [GEN-004]
+  guardrails: [GR-SYS-01]
+  kb_entries: [KB-ESC-010, KB-ESC-020]
+  templates: [TPL-ESC-HANDOFF-WARM]
+  tests: [ESC-T-003-01, ESC-T-003-02]
+  decisions: [D-06]
+
+- id: ESC-004
+  origin: brief
+  brief: {condition: "Sentiment score <-0.7 for 2+ turns", priority: P1, queue: "Customer Retention", sla: "<5 min", citation: "A6 p.16"}
+  condition_text: sentiment score below -0.7 for 2 or more turns
+  priority: P1
+  queue: Customer Retention
+  sla: under 5 min
+  sla_seconds: 300
+  precedence_rank: 9
+  cancellable: customer_or_recovery
+  handoff_mode: warm
+  parallel_case: false
+  intent_scope: any
+  fire_when: "neg_sentiment_streak >= const.esc004_consecutive_turns || sentiment_ema_route"
+  sub_rules:
+    - {id: ESC-004.a, when: "neg_sentiment_streak >= const.esc004_consecutive_turns", source: system, note: "threshold is param.escalation_sentiment_threshold (default -0.70, the A6 value); strict less-than, as the brief writes it"}
+    - {id: ESC-004.b, when: "sentiment_ema_route", source: system, note: "secondary languages only (D-18); awaiting CEB view"}
+  protective_actions: "none; Empathy-First reply (A9.1 Pattern 1); the agent keeps working on the problem while the customer waits (Case Study 5)"
+  detectors: [nlu_service, state_tracker]
+  owner_component: escalation_router
+  state_fields: [sentiment.trajectory, sentiment.current, sentiment.slope, sentiment.sarcasm_suspected, sentiment.emotions]
+  intents: [CMP-001, CMP-003, CMP-005]
+  guardrails: [GR-REG-03]
+  kb_entries: [KB-ESC-005, KB-ESC-010]
+  templates: [TPL-ESC-HANDOFF-WARM, TPL-ESC-DEESCALATION-CHECK]
+  tests: [ESC-T-004-01, ESC-T-004-02, ESC-T-004-03, ESC-T-004-04]
+  decisions: [D-18, D-125]
+
+- id: ESC-005
+  origin: brief
+  brief: {condition: "Dispute exceeding INR 50,000", priority: P1, queue: "Dispute Resolution", sla: "<5 min", citation: "A6 p.16"}
+  condition_text: "dispute exceeding INR 50,000"
+  priority: P1
+  queue: Dispute Resolution
+  sla: under 5 min
+  sla_seconds: 300
+  precedence_rank: 7
+  cancellable: never
+  handoff_mode: warm
+  parallel_case: false
+  intent_scope: linked
+  fire_when: "dispute_open && dispute_amount_inr > const.esc005_dispute_amount_inr"
+  sub_rules:
+    - {id: ESC-005.a, when: "dispute_open && dispute_amount_inr > const.esc005_dispute_amount_inr", source: system, note: "strictly above INR 50,000; fires once transaction_id, dispute_reason and amount are captured (KB-ESC-006 intake_first); if the customer corrects the amount to INR 50,000 or less before pickup the record is withdrawn as condition_false, which is not a cancellation"}
+  protective_actions: "none; intake only, no refund or date promised (D-09)"
+  detectors: [nlu_service, tool_orchestrator, state_tracker]
+  owner_component: escalation_router
+  state_fields: [intent, slots.amount, slots.transaction_id, slots.dispute_reason, topic_stack]
+  intents: [TXN-002]
+  guardrails: []
+  kb_entries: [KB-ESC-006, KB-ESC-010, KB-TRB-005, KB-TRB-006]
+  templates: [TPL-ESC-HANDOFF-WARM]
+  tests: [ESC-T-005-01, ESC-T-005-02]
+  decisions: [D-09, D-125]
+
+- id: ESC-006
+  origin: brief
+  brief: {condition: "Customer requests human agent 3+ times", priority: P2, queue: "Next Available Agent", sla: "<10 min", citation: "A6 p.16"}
+  condition_text: customer requests human agent 3 or more times
+  priority: P2
+  queue: Next Available Agent
+  sla: under 10 min
+  sla_seconds: 600
+  precedence_rank: 12
+  cancellable: customer_only
+  handoff_mode: warm
+  parallel_case: false
+  intent_scope: any
+  fire_when: "human_requests >= const.esc006_human_requests"
+  sub_rules:
+    - {id: ESC-006.a, when: "human_requests >= const.esc006_human_requests", source: customer_request, note: "hard backstop: no further question, no counter-offer; earlier requests are honoured through XTR-01 (D-117)"}
+  protective_actions: none
+  detectors: [nlu_service, state_tracker]
+  owner_component: escalation_router
+  state_fields: [human_request_count, intent, topic_stack]
+  intents: [CMP-005, GEN-003]
+  guardrails: [GR-REG-16]
+  kb_entries: [KB-ESC-003, KB-ESC-010]
+  templates: [TPL-ESC-HANDOFF-WARM]
+  tests: [ESC-T-006-01, ESC-T-006-02]
+  decisions: [D-117]
+
+- id: ESC-007
+  origin: brief
+  brief: {condition: "Account closure for high-value customer (>5L)", priority: P1, queue: "Relationship Manager", sla: "<5 min", citation: "A6 p.16"}
+  condition_text: account closure for high-value customer (more than 5L)
+  priority: P1
+  queue: Relationship Manager
+  sla: under 5 min
+  sla_seconds: 300
+  precedence_rank: 8
+  cancellable: customer_only
+  handoff_mode: warm
+  parallel_case: false
+  intent_scope: linked
+  fire_when: "closure_requested && high_value"
+  sub_rules:
+    - {id: ESC-007.a, when: "closure_requested && high_value", source: system, note: "needs full_kyc (KB-ESC-007); the balance is read through a tool, never asked for or stated; a closure_process_enquiry does not fire; below the threshold XTR-07 applies"}
+  protective_actions: "none; the agent records the reason and does not argue, pressure or offer incentives (KB-ESC-007)"
+  detectors: [nlu_service, tool_orchestrator]
+  owner_component: escalation_router
+  state_fields: [intent, tertiary, auth_level]
+  intents: [ACC-005]
+  guardrails: []
+  kb_entries: [KB-ESC-007, KB-ESC-010, KB-POL-005]
+  templates: [TPL-ESC-HANDOFF-WARM]
+  tests: [ESC-T-007-01, ESC-T-007-02]
+  decisions: [D-126]
+
+- id: ESC-008
+  origin: brief
+  brief: {condition: "Regulatory question with uncertain answer", priority: P1, queue: "Compliance Helpdesk", sla: "<10 min", citation: "A6 p.16"}
+  condition_text: regulatory question with uncertain answer
+  priority: P1
+  queue: Compliance Helpdesk
+  sla: under 10 min
+  sla_seconds: 600
+  precedence_rank: 10
+  cancellable: customer_only
+  handoff_mode: warm
+  parallel_case: false
+  intent_scope: any
+  fire_when: "retrieval_decision == 'escalate_esc_008'"
+  sub_rules:
+    - {id: ESC-008.a, when: "retrieval_decision == 'escalate_esc_008'", source: system, note: "D-43: retrieval confidence below param.retrieval_confidence_threshold on a regulatory question, a known-unknown gap entry that lists ESC-008, or a hard-expired regulatory entry; a gap on a non-regulatory topic does not fire"}
+    - {id: ESC-008.b, when: "Output Safety Layer rung 4 on an ungrounded regulatory claim (GR-OUT-03, GR-REG-18)", source: system}
+  protective_actions: "none; the agent states what the KB does hold and does not guess (KB-ESC-008)"
+  detectors: [knowledge_retrieval, output_safety_layer, policy_engine]
+  owner_component: escalation_router
+  state_fields: [intent, versions.kb_entry_ids, guardrails.triggered]
+  intents: [PRD-001, PRD-004]
+  guardrails: [GR-ADV-08, GR-REG-01, GR-REG-02, GR-REG-12, GR-REG-15, GR-REG-18, GR-OUT-03]
+  kb_entries: [KB-ESC-008, KB-ESC-010, KB-ESC-019, KB-ESC-020, KB-ESC-021, KB-REG-001, KB-REG-002, KB-REG-005, KB-REG-006, KB-REG-007, KB-REG-008, KB-REG-009, KB-REG-010]
+  templates: [TPL-ESC-HANDOFF-WARM]
+  tests: [ESC-T-008-01, ESC-T-008-02]
+  decisions: [D-43, D-50]
+
+- id: ESC-009
+  origin: brief
+  brief: {condition: "Unauthorised account access reported", priority: P0, queue: "Security Operations", sla: "<2 min", citation: "A6 p.16"}
+  condition_text: unauthorised account access reported
+  priority: P0
+  queue: Security Operations
+  sla: under 2 min
+  sla_seconds: 120
+  precedence_rank: 2
+  cancellable: never
+  handoff_mode: warm
+  parallel_case: false
+  intent_scope: linked
+  fire_when: "access_report || otp_failures >= prop.otp_failures_lock || ato_pattern"
+  sub_rules:
+    - {id: ESC-009.a, when: "intent == 'SEC-001' && intent_conf >= prop.flow_entry_confidence && tertiary == 'account_takeover'", source: customer_report}
+    - {id: ESC-009.b, when: "SEC-003 or SEC-004 where the customer reports a login, device, password or contact-detail change they did not make", source: customer_report}
+    - {id: ESC-009.c, when: "otp_failures >= prop.otp_failures_lock", source: system, raised_by: XTR-02, note: "extension of the detection signal (D-65 confirmed, D-115): the brief's wording is 'reported'; a locked challenge is a system-detected suspected access attempt"}
+    - {id: ESC-009.d, when: "ato_pattern", source: system, handoff_mode: discreet, note: "KB-TRB-011: credential reset or sensitive request shortly after a contact-details change; the reset link is withheld"}
+  protective_actions: "credential reset link to the registered channel only (SEC-003); instruction to change any compromised credential in the same turn (GR-SEC-R5, KB-POL-011)"
+  detectors: [nlu_service, gateway_session_manager, policy_engine]
+  owner_component: escalation_router
+  state_fields: [intent, intent_conf, tertiary, auth_level, guardrails.triggered]
+  intents: [SEC-001, SEC-003, SEC-004]
+  guardrails: [GR-SEC-R2, GR-SEC-R5, GR-SEC-R6, GR-ATK-10, GR-ATK-11]
+  kb_entries: [KB-ESC-002, KB-ESC-010, KB-TRB-011]
+  templates: [TPL-ESC-FRAUD-P0, TPL-ESC-HANDOFF-WARM]
+  tests: [ESC-T-009-01, ESC-T-009-02, ESC-T-009-03]
+  decisions: [D-16, D-65, D-92, D-115]
+
+- id: ESC-010
+  origin: brief
+  brief: {condition: "Conversation exceeds 15 turns without resolution", priority: P2, queue: "Supervisor Review", sla: "<15 min", citation: "A6 p.16"}
+  condition_text: conversation exceeds 15 turns without resolution
+  priority: P2
+  queue: Supervisor Review
+  sla: under 15 min
+  sla_seconds: 900
+  precedence_rank: 15
+  cancellable: customer_or_recovery
+  handoff_mode: warm
+  parallel_case: false
+  intent_scope: any
+  fire_when: "turns_since_resolution > const.esc010_turns && open_topic"
+  sub_rules:
+    - {id: ESC-010.a, when: "turns_since_resolution > const.esc010_turns && open_topic", source: system, note: "fires on the 16th message without a resolved topic (D-119); a long conversation that keeps resolving topics does not fire; XTR-06 covers the max_conversation_turns ceiling"}
+  protective_actions: none
+  detectors: [state_tracker, gateway_session_manager]
+  owner_component: escalation_router
+  state_fields: [turn_index, topic_stack, summary, carry_over.open_tickets]
+  intents: [CMP-002, CMP-003]
+  guardrails: [GR-REG-03, GR-REG-19, GR-ATK-09]
+  kb_entries: [KB-ESC-005, KB-ESC-010]
+  templates: [TPL-ESC-HANDOFF-WARM]
+  tests: [ESC-T-010-01, ESC-T-010-02]
+  decisions: [D-119]
+
+- id: ESC-011
+  origin: brief
+  brief: {condition: "Customer mentions self-harm/threats/emergency", priority: P0, queue: "Crisis Response", sla: "IMMEDIATE", citation: "A6 p.16"}
+  condition_text: "customer mentions self-harm, threats or emergency"
+  priority: P0
+  queue: Crisis Response
+  sla: IMMEDIATE
+  sla_seconds: null
+  precedence_rank: 1
+  cancellable: never
+  handoff_mode: warm
+  parallel_case: false
+  intent_scope: any
+  fire_when: "crisis_signal"
+  sub_rules:
+    - {id: ESC-011.a, when: "Input Guard crisis screen hit (runs before NLU on native text and pivot)", source: system}
+    - {id: ESC-011.b, when: "intent == 'GEN-007' && intent_conf >= prop.flow_entry_confidence", source: customer_statement, note: "tertiaries self_harm, threat_to_others, medical_emergency, coercion_or_duress; sentiment never downgrades it (sentiment.md section 8); an idiom or a product name containing the word emergency does not fire"}
+  protective_actions: "the banking task stops on this turn; reviewed crisis template in the customer's language; no account questions, no products (KB-ESC-004)"
+  detectors: [input_guard, nlu_service]
+  owner_component: escalation_router
+  state_fields: [intent, intent_conf, tertiary, language.primary]
+  intents: [GEN-007]
+  guardrails: []
+  kb_entries: [KB-ESC-004, KB-ESC-010]
+  templates: [TPL-ESC-CRISIS]
+  tests: [ESC-T-011-01, ESC-T-011-02, ESC-T-011-03]
+  decisions: [D-19, D-118]
+
+- id: ESC-012
+  origin: brief
+  brief: {condition: "Potential money laundering indicators", priority: P0, queue: "AML Compliance", sla: "<2 min", citation: "A6 p.17"}
+  condition_text: potential money laundering indicators
+  priority: P0
+  queue: AML Compliance
+  sla: under 2 min
+  sla_seconds: 120
+  precedence_rank: 4
+  cancellable: never
+  handoff_mode: silent_case
+  parallel_case: true
+  intent_scope: any
+  fire_when: "aml_indicator"
+  sub_rules:
+    - {id: ESC-012.a, when: "aml_indicator", source: system, note: "customer-stated or structuring cue (GR-REG-09), or a request that could facilitate laundering (GR-REG-10); the customer is never told (KB-ESC-009); the indicator list beyond these cues is an AML team input (G-03)"}
+  protective_actions: "the request is declined on its own grounds (GR-SEC-R3, GR-REG-10); no wording that reveals a flag"
+  detectors: [input_guard, policy_engine]
+  owner_component: escalation_router
+  state_fields: [intent, guardrails.triggered, slots.amount]
+  intents: [TXN-006, SEC-001]
+  guardrails: [GR-SEC-R3, GR-SEC-R6, GR-REG-09, GR-REG-10]
+  kb_entries: [KB-ESC-009, KB-ESC-010, KB-REG-004]
+  templates: []
+  tests: [ESC-T-012-01, ESC-T-012-02]
+  decisions: [D-116]
+
+- id: ESC-013
+  origin: brief
+  brief: {condition: "Investment advisory requiring SEBI advisor", priority: P1, queue: "Wealth Advisory", sla: "<10 min", citation: "A6 p.17"}
+  condition_text: investment advisory requiring SEBI advisor
+  priority: P1
+  queue: Wealth Advisory
+  sla: under 10 min
+  sla_seconds: 600
+  precedence_rank: 11
+  cancellable: customer_only
+  handoff_mode: warm
+  parallel_case: false
+  intent_scope: linked
+  fire_when: "advisor_requested"
+  sub_rules:
+    - {id: ESC-013.a, when: "advisor_requested", source: customer_request, note: "offer-then-escalate (D-55, Case Study 3 turn 4 'ESC-013 offered'): the advice boundary reply carries the offer; the escalation record is created only when the customer accepts or asks for an advisor; a declined offer creates no record"}
+  protective_actions: "information-only reply; no income, age or portfolio questions (GR-ADV-07)"
+  detectors: [nlu_service, policy_engine]
+  owner_component: escalation_router
+  state_fields: [intent, tertiary, guardrails.advice_deflections]
+  intents: [TXN-006, PRD-002, PRD-004, PRD-005]
+  guardrails: [GR-ADV-01, GR-ADV-02, GR-ADV-03, GR-ADV-04, GR-ADV-05, GR-ADV-06, GR-ADV-08, GR-ADV-09, GR-REG-12, GR-REG-20]
+  kb_entries: [KB-ESC-008, KB-ESC-010, KB-POL-001, KB-REG-005, KB-REG-006, KB-REG-011]
+  templates: [TPL-ADV-ADVISOR-OFFER, TPL-ADV-ADVISOR-CONFIRM, TPL-ADV-ADVISOR-UNAVAILABLE]
+  tests: [ESC-T-013-01, ESC-T-013-02]
+  decisions: [D-55]
+
+- id: ESC-014
+  origin: brief
+  brief: {condition: "System error preventing data access", priority: P2, queue: "Technical Support", sla: "<10 min", citation: "A6 p.17"}
+  condition_text: system error preventing data access
+  priority: P2
+  queue: Technical Support
+  sla: under 10 min
+  sla_seconds: 600
+  precedence_rank: 13
+  cancellable: customer_or_recovery
+  handoff_mode: warm
+  parallel_case: false
+  intent_scope: any
+  fire_when: "data_access_failed"
+  sub_rules:
+    - {id: ESC-014.a, when: "data_access_failed", source: system, note: "after the single read retry (component-interfaces.md row 7); writes are never retried; a slow but successful read does not fire; a KB miss is not a system error (that is graceful degradation or ESC-008)"}
+  protective_actions: "honest status with no technical jargon and no timeline promise (A9.1 Pattern 4, D-09)"
+  detectors: [tool_orchestrator, policy_engine, output_safety_layer]
+  owner_component: escalation_router
+  state_fields: [intent, actions_taken, guardrails.triggered]
+  intents: [TXN-001, TXN-003, TXN-004]
+  guardrails: [GR-SYS-01]
+  kb_entries: [KB-ESC-010, KB-TRB-001, KB-TRB-002, KB-TRB-004, KB-TRB-009]
+  templates: [TPL-ESC-HANDOFF-WARM]
+  tests: [ESC-T-014-01, ESC-T-014-02, ESC-T-014-03]
+  decisions: [D-125]
+
+- id: ESC-015
+  origin: brief
+  brief: {condition: "Customer is a Politically Exposed Person (PEP)", priority: P1, queue: "Enhanced Due Diligence", sla: "<5 min", citation: "A6 p.17"}
+  condition_text: customer is a Politically Exposed Person
+  priority: P1
+  queue: Enhanced Due Diligence
+  sla: under 5 min
+  sla_seconds: 300
+  precedence_rank: 5
+  cancellable: never
+  handoff_mode: discreet
+  parallel_case: true
+  intent_scope: any
+  fire_when: "customer_identified && pep_flag && account_specific"
+  sub_rules:
+    - {id: ESC-015.a, when: "customer_identified && pep_flag && account_specific", source: system, note: "scope is a proposal (D-126): the flag is known only for an identified customer; generic information (action info) is still served by the agent; the customer is never told the flag exists and a customer's own statement never sets or clears it (GR-REG-11)"}
+  protective_actions: "no account-specific action by the agent once the flag is read"
+  detectors: [tool_orchestrator, policy_engine, state_tracker]
+  owner_component: escalation_router
+  state_fields: [auth_level, customer_ref, intent]
+  intents: []
+  guardrails: [GR-REG-11]
+  kb_entries: [KB-ESC-009, KB-ESC-010, KB-REG-004]
+  templates: [TPL-ESC-HANDOFF-DISCREET]
+  tests: [ESC-T-015-01, ESC-T-015-02, ESC-T-015-03]
+  decisions: [D-126]
+
+# ---------------------------------------------------------------------------------------------------------------- additions
+# NOT in the brief. Each rule is marked origin: addition and carries an XTR id so it cannot be mistaken for one of the 15.
+# `raises`: the brief trigger whose record is created (priority, queue and SLA are that trigger's).
+# `route`: for rules that do not raise a brief trigger, a brief queue used at that queue's own SLA, or `referral` (no live handoff).
+extra_rules:
+
+- id: XTR-01
+  origin: addition
+  name: Customer-requested human handoff before the third request
+  basis: "A11.3 p.31: 'Customers must have the right to request human assistance at any point'; KB-ESC-003; boss-trace.md turn 18; GR-REG-16"
+  fire_when: "explicit_human_request && human_requests < const.esc006_human_requests"
+  raises: null
+  route: {priority: P2, queue: Next Available Agent, sla: under 10 min, sla_seconds: 600}
+  behaviour: "request 1: handoff preparation starts and the reply may carry one concrete offer to finish the task now; if the customer takes the offer the pending handoff is cancelled, otherwise it proceeds. Request 2: handoff with no counter-offer. Request 3 or more: ESC-006. An implicit request (who can I talk to) is counted and answered with the human option; it starts a handoff only if the customer confirms"
+  cancellable: customer_only
+  handoff_mode: warm
+  intents: [GEN-003, CMP-005]
+  guardrails: [GR-REG-16]
+  kb_entries: [KB-ESC-003]
+  tests: [XTR-T-01-01, XTR-T-01-02]
+  decisions: [D-117]
+
+- id: XTR-02
+  origin: addition
+  name: Repeated authentication failure
+  basis: "D-65 (confirmed on Day 12, D-115); A4.2 rule 2 and rule 6 p.12-13; auth-flow.mmd"
+  fire_when: "otp_failures >= prop.otp_failures_lock"
+  raises: ESC-009
+  route: null
+  behaviour: "the challenge locks; no account-specific service in this session; the customer is told calmly that a colleague from the security team will help, with no accusation; sub-rule ESC-009.c"
+  cancellable: never
+  handoff_mode: warm
+  intents: [SEC-003]
+  guardrails: [GR-SEC-R2, GR-ATK-10]
+  kb_entries: [KB-ESC-002]
+  tests: [XTR-T-02-01, XTR-T-02-02]
+  decisions: [D-65, D-92, D-115]
+
+- id: XTR-03
+  origin: addition
+  name: Care flag on an explicit vulnerability disclosure
+  basis: "A1.3 p.4 (CEB: accessibility for varying literacy levels); A13.2 persona Meera; KB-ESC-018 hardship_note; A11.3 p.31-32 (no inference or storage of sensitive attributes)"
+  fire_when: "care_disclosure"
+  raises: null
+  route: {priority: P2, queue: Next Available Agent, sla: under 10 min, sla_seconds: 600}
+  behaviour: "an offer, not a forced handoff: simpler wording, slower pace, and one offer of a human; the package carries a care note in the customer's own words; no threshold of any brief trigger changes; nothing is inferred from age, language or balance"
+  cancellable: customer_only
+  handoff_mode: warm
+  intents: [PRD-002]
+  guardrails: [GR-REG-17]
+  kb_entries: [KB-ESC-018]
+  tests: [XTR-T-03-01, XTR-T-03-02]
+  decisions: [D-129]
+
+- id: XTR-04
+  origin: addition
+  name: Clarification budget exhausted
+  basis: "dialogue-management.md section 2 (CLARIFY > ESCALATING at 2 attempts) and section 4.4; A9.2 Robotic Loop p.24"
+  fire_when: "clarify_failures >= prop.clarification_failures_handoff"
+  raises: null
+  route: {priority: P2, queue: General Support, sla: under 10 min, sla_seconds: 600}
+  behaviour: "after 2 failed clarifications for the same ambiguity: the pair's safe default if it has one, otherwise a human offer with the gathered context; never a third rephrase request"
+  cancellable: customer_or_recovery
+  handoff_mode: warm
+  intents: []
+  guardrails: [GR-SYS-01]
+  kb_entries: [KB-ESC-020]
+  tests: [XTR-T-04-01]
+  decisions: [D-129]
+
+- id: XTR-05
+  origin: addition
+  name: Scheduled follow-up deadline missed
+  basis: "Case Study 6 turn 6 pp.55-56 ('automatic escalation ... Payments Resolution Team'); A9.1 Pattern 5"
+  fire_when: "followup_deadline_missed"
+  raises: null
+  route: {priority: P2, queue: Dispute Resolution, sla: referral, sla_seconds: null}
+  behaviour: "asynchronous: no customer is waiting in chat, so this is a back-office referral with a proactive notification, not a live handoff; it is not counted in the escalation rate (kpi-framework.md KPI-O2); the brief's 'Payments Resolution Team' is not an A6 queue, so the Dispute Resolution queue is used (proposal)"
+  cancellable: customer_or_recovery
+  handoff_mode: silent_case
+  intents: [TXN-003]
+  guardrails: []
+  kb_entries: [KB-TRB-001]
+  tests: [XTR-T-05-01]
+  decisions: [D-129]
+
+- id: XTR-06
+  origin: addition
+  name: Conversation turn ceiling reached
+  basis: "A12.3 p.34 max_conversation_turns (default 25, range 10-50); the brief does not say what happens at the ceiling"
+  fire_when: "turn_count >= param.max_conversation_turns"
+  raises: ESC-010
+  route: null
+  behaviour: "if a topic is still open the conversation goes to Supervisor Review with the summary; if every topic is resolved the agent closes politely and offers a new conversation, and no record is created"
+  cancellable: customer_or_recovery
+  handoff_mode: warm
+  intents: []
+  guardrails: [GR-ATK-09]
+  kb_entries: [KB-ESC-010]
+  tests: [XTR-T-06-01]
+  decisions: [D-119, D-129]
+
+- id: XTR-07
+  origin: addition
+  name: Intent that needs a human process and fires no brief trigger
+  basis: "A3.1 (ACC-005 and ACC-006: Full KYC + Branch); config/intents.yaml action handoff; KB-POL-005"
+  fire_when: "intent_requires_human && !(closure_requested && high_value)"
+  raises: null
+  route: {priority: P2, queue: General Support, sla: referral, sla_seconds: null}
+  behaviour: "the agent explains the process, records the reason and opens a referral ticket for the branch or specialist process; it is a referral, not a live escalation; a customer who wants a person now uses XTR-01"
+  cancellable: customer_only
+  handoff_mode: warm
+  intents: [ACC-005, ACC-006]
+  guardrails: [GR-SEC-R2]
+  kb_entries: [KB-POL-005]
+  tests: [XTR-T-07-01]
+  decisions: [D-129]
+
+# ---------------------------------------------------------------------------------------------------------------- handoff package
+# The 8 elements are D-04 and KB-ESC-001, in that order. Field-level schema: docs/escalation/routing-and-handoff.md section 4.
+handoff_package:
+  elements:
+    - {n: 1, name: customer ID (pseudonymised), field: customer_ref, source: state.customer_ref}
+    - {n: 2, name: auth level, field: auth, source: "state.auth_level, state.auth_expiry"}
+    - {n: 3, name: intent history, field: intent_history, source: "state.topic_stack, state.history[].intent"}
+    - {n: 4, name: entities collected, field: entities, source: "state.slots (masked)"}
+    - {n: 5, name: conversation summary, field: summary, source: "state.summary.text, state.summary.pinned_facts"}
+    - {n: 6, name: sentiment trajectory, field: sentiment, source: "state.sentiment.trajectory, slope, emotions"}
+    - {n: 7, name: actions already taken, field: actions_taken, source: state.actions_taken}
+    - {n: 8, name: escalation trigger and reason, field: escalation, source: "EscalationDecision: trigger_id, rule_id, secondary triggers, reason codes"}
+  envelope: [package_id, conversation_id, created_at, priority, queue, sla_deadline, language, channel, complete, missing_fields, versions]
+  never_contains: [full card number, CVV, PIN, full Aadhaar, password, OTP]
+  missing_fields_rule: "fill from state and flag the package as incomplete (KB-ESC-001); an incomplete package never delays a P0 handoff"
