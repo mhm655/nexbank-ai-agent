@@ -1,0 +1,264 @@
+{
+  "turn_id": "00000000-0000-4000-8000-00000000d004",
+  "speaker": "agent",
+  "raw_message": null,
+  "intent_classification": null,
+  "entities_extracted": [],
+  "sentiment_score": null,
+  "knowledge_items_retrieved": [
+    "KB-ESC-006@1.0.0",
+    "KB-ESC-001@1.0.0"
+  ],
+  "retrieval_confidence": 0.9,
+  "agent_response": "For your security I have removed the card number you typed; please do not share full card numbers in chat. I can see this is worrying. Because the disputed amount is above INR 50,000, a colleague from the disputes team will join this chat. They will have the full details, so you will not need to repeat yourself.",
+  "response_generation_method": "hybrid",
+  "guardrails_checked": [
+    "GR-OUT-01",
+    "GR-OUT-02",
+    "GR-OUT-03",
+    "GR-OUT-04",
+    "GR-OUT-05",
+    "GR-OUT-06",
+    "GR-ADV-06",
+    "GR-ATK-07",
+    "GR-SEC-R1",
+    "GR-REG-07"
+  ],
+  "guardrails_triggered": [],
+  "response_latency_ms": 1840,
+  "action_taken": "escalate",
+  "ext": {
+    "record_type": "turn",
+    "schema_version": "1.0.0",
+    "conversation_id": "00000000-0000-4000-8000-00000000c001",
+    "turn_index": 3,
+    "trace_id": "trace-example-0003",
+    "timestamp": "2026-10-12T14:02:07+05:30",
+    "agent_kind": "ai",
+    "auth_level": "otp_verified",
+    "dialogue_phase": "ESCALATING",
+    "language": {
+      "primary": "en",
+      "code_switching": false,
+      "reply_language": "en"
+    },
+    "policy_action": "escalate",
+    "reason_codes": [
+      "ESC-005",
+      "amount_validated_above_threshold"
+    ],
+    "guardrail_verdicts": [
+      {
+        "guardrail_id": "GR-OUT-01",
+        "enforcement_point": "output_safety_layer",
+        "result": "pass",
+        "action": null,
+        "score": null,
+        "latency_ms": 20
+      },
+      {
+        "guardrail_id": "GR-OUT-02",
+        "enforcement_point": "output_safety_layer",
+        "result": "pass",
+        "action": null,
+        "score": null,
+        "latency_ms": 20
+      },
+      {
+        "guardrail_id": "GR-OUT-03",
+        "enforcement_point": "output_safety_layer",
+        "result": "pass",
+        "action": null,
+        "score": null,
+        "latency_ms": 20
+      },
+      {
+        "guardrail_id": "GR-OUT-04",
+        "enforcement_point": "output_safety_layer",
+        "result": "pass",
+        "action": null,
+        "score": null,
+        "latency_ms": 20
+      },
+      {
+        "guardrail_id": "GR-OUT-05",
+        "enforcement_point": "output_safety_layer",
+        "result": "pass",
+        "action": null,
+        "score": null,
+        "latency_ms": 20
+      },
+      {
+        "guardrail_id": "GR-OUT-06",
+        "enforcement_point": "output_safety_layer",
+        "result": "pass",
+        "action": null,
+        "score": null,
+        "latency_ms": 20
+      },
+      {
+        "guardrail_id": "GR-ADV-06",
+        "enforcement_point": "output_safety_layer",
+        "result": "pass",
+        "action": null,
+        "score": null,
+        "latency_ms": 20
+      },
+      {
+        "guardrail_id": "GR-ATK-07",
+        "enforcement_point": "output_safety_layer",
+        "result": "pass",
+        "action": null,
+        "score": null,
+        "latency_ms": 20
+      },
+      {
+        "guardrail_id": "GR-SEC-R1",
+        "enforcement_point": "output_safety_layer",
+        "result": "pass",
+        "action": null,
+        "score": null,
+        "latency_ms": 20
+      },
+      {
+        "guardrail_id": "GR-REG-07",
+        "enforcement_point": "audit_bus",
+        "result": "pass",
+        "action": null,
+        "score": null,
+        "latency_ms": 6
+      }
+    ],
+    "safety_verdict": {
+      "verdict": "pass",
+      "checks": [
+        {
+          "check": "C1",
+          "result": "pass"
+        },
+        {
+          "check": "C2",
+          "result": "pass"
+        },
+        {
+          "check": "C3",
+          "result": "pass"
+        },
+        {
+          "check": "C4",
+          "result": "pass"
+        },
+        {
+          "check": "C5",
+          "result": "pass"
+        },
+        {
+          "check": "C6",
+          "result": "pass"
+        },
+        {
+          "check": "C7",
+          "result": "pass"
+        }
+      ],
+      "ladder_rung": 0,
+      "latency_ms": 210
+    },
+    "retrieval": {
+      "decision": "answer",
+      "kb_entry_ids": [
+        "KB-ESC-006@1.0.0"
+      ],
+      "top1_confidence": 0.9,
+      "synthesis_confidence": 0.88,
+      "gap_entry_id": null,
+      "stale_ids": [],
+      "index_epoch": 41,
+      "retrieval_log_ref": "rl-example-0003"
+    },
+    "template": {
+      "template_id": "TPL-ESC-HANDOFF-WARM",
+      "variant": "standard",
+      "template_version": "1.0.0",
+      "notice_ids": []
+    },
+    "tool_calls": [
+      {
+        "name": "get_txn",
+        "args_masked": {
+          "transaction_ref": "txn_ref_example",
+          "card": "card ending 4521"
+        },
+        "idempotency_key_hash": "idem-example-01",
+        "auth_level_at_call": "otp_verified",
+        "confirmation_turn": null,
+        "result": "ok",
+        "error_code": null,
+        "reference_id": null,
+        "latency_ms": 180,
+        "high_risk": false,
+        "audit_ack": true
+      }
+    ],
+    "escalation": {
+      "trigger_id": "ESC-005",
+      "rule_id": "ESC-005",
+      "secondary": [],
+      "priority": "P1",
+      "queue": "Dispute Resolution",
+      "state": "fired",
+      "package_id": "hp_example_002"
+    },
+    "versions": {
+      "prompt_version": "sp-1.0.0+518d5a1e.n000000",
+      "model_version": "gen-llm-example-1.0",
+      "component_models": {
+        "nlu": "nlu-example-1.0",
+        "sentiment": "sent-example-1.0",
+        "reranker": "rr-example-1.0",
+        "osl_classifier": "osl-example-1.0"
+      },
+      "kb_index_epoch": 41,
+      "parameters_version": "params-example-1",
+      "rules_version": "rules-example-1",
+      "registry_hash": "reg-example-58",
+      "redaction_rules_version": "red-1.0",
+      "log_schema_version": "1.0.0",
+      "kb_entry_ids": [
+        "KB-ESC-006@1.0.0"
+      ]
+    },
+    "experiment": null,
+    "pii": {
+      "detected": false,
+      "red_rules_fired": [],
+      "redaction_rules_version": "red-1.0"
+    },
+    "payment_related": true,
+    "latency_breakdown_ms": {
+      "gateway": 20,
+      "input_guard": 40,
+      "nlu": 150,
+      "policy": 15,
+      "retrieval": 140,
+      "tools": 180,
+      "generation": 1085,
+      "output_safety": 210
+    },
+    "retention": {
+      "class": "LC-2",
+      "delete_after": "2033-10-12",
+      "legal_hold": false,
+      "deletion_state": "none",
+      "deletion_certificate_id": null
+    },
+    "integrity": {
+      "seq": 8,
+      "prev_hash": "sha256:8dbcb680bb8023cfbedf4679a8ecd81e43f4aaf5a203e4542dd9f743cec6abf4",
+      "record_hash": "sha256:73bda4a78a42d93cea8bf5e1b149f27a37da5513dac86add55e110380021d0c6",
+      "written_at": "2026-10-12T14:02:07+05:30",
+      "clock_skew_ms": 9,
+      "daily_root_ref": null
+    }
+  }
+}

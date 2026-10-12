@@ -156,4 +156,4 @@ D-104 (consent purposes, default exclusion, deletion propagation, models as deri
 1. The consent notice, its legal basis and the handling of customers who never answer it are for the Data Protection lead and Legal (dependency G-05).
 2. Whether trained model weights are "derived data" under A10.3 needs a legal reading; the default here is yes.
 3. Backup retention below 30 days for learning stores must be agreed with the platform team; where a backup must live longer, it needs a purge procedure instead.
-4. The interaction between the 7-year audit retention and a deletion request is specified with audit logging on Day 14 and is not decided here.
+4. The interaction between the 7-year audit retention and a deletion request is specified in `docs/compliance/audit-logging.md` section 11 (decision D-183) and is not decided here.

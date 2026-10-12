@@ -151,7 +151,7 @@ The brief gives no sentiment accuracy target; these are proposals I set so the m
 | ESC-004 precision at the default threshold | >= 0.85 (false escalations are the Premature Escalation anti-pattern, -10) |
 | ESC-004 recall on labelled very-negative pairs | >= 0.90 |
 | Sarcasm recall | >= 0.60, with precision >= 0.60 |
-| Fairness: counterfactual language, region and name swap on ESC-004 | Escalation rates equal within 2 percentage points; method in the Day 14 risk matrix |
+| Fairness: counterfactual language, region and name swap on ESC-004 | Escalation rates equal within 2 percentage points; method in `docs/risk/fairness-testing.md` section 6 |
 
 The evaluation set is built from the Day 6 utterance library plus 100 synthetic multi-turn trajectories (sentiment curves, sarcasm cases, recovery cases).
 

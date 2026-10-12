@@ -34,9 +34,9 @@ Status: `todo` / `draft` / `done`. Brief sections refer to the ZeTheta PDF. Upda
 | R-28 | KPIs (leading, lagging, operational), improvement cycle, 3 dashboards | A8, A1.4 | 6 | `docs/metrics/kpi-framework.md`, `docs/metrics/improvement-cycle.md`, `docs/metrics/dashboards.md` | 12 | done |
 | R-29 | Conversation design: 5 mandatory patterns, 8 anti-patterns with penalties, brand tone | A9 | 6 | `docs/architecture/conversation-design.md`, `config/system-prompt/layer3-dialogue.md`, `config/templates/` (A9 codes per template) | 13 | done (Hindi and Hinglish wording not native-reviewed) |
 | R-30 | 6-layer system prompt with immutability rules, 8 governed parameters, 15+ prompt templates with trigger conditions and safety annotations | A12, D (Day 12-13) | 6 | `config/system-prompt/` (6 layers, README, manifest), `config/parameters.yaml`, `config/templates/` (63 templates) | 13 | done (no committee review; specified not run) |
-| R-31 | 20+ annotated conversations | D | 7 | `simulations/` | 14 | todo |
-| R-32 | Audit and compliance logging | A10 | 7 | `docs/compliance/audit-logging.md` | 14 | todo |
-| R-33 | Risk assessment matrices | A11 | 7 | `docs/risk/risk-matrix.md` | 14 | todo |
+| R-31 | 20+ annotated conversations | D (Day 14-15), B (Level 7) | 7 | `simulations/` (30 conversations, `INDEX.md`, `pattern-audit.md`) | 14 | done (designed examples, not run; Hindi, Hinglish and Gujarati wording not native-reviewed) |
+| R-32 | Audit and compliance logging: interaction-level (A10.1, 11 fields) and turn-level (A10.2, 14 fields) schemas, retention, field masking, event taxonomy, 16 audit queries, answer-to-version traceability | A10.1, A10.2, A11.3 | 7 | `docs/compliance/audit-logging.md` sections 1-6, 13, 14, `config/audit_log.schema.json`, `tests/compliance/examples/`, `diagrams/audit-log-flow.mmd` | 14 | done (specified, not run) |
+| R-33 | Risk assessment matrices: technical, business, ethical; heat map, top 10 residual, appetite | A11.1, A11.2, A11.3 | 7 | `docs/risk/risk-matrix.md` | 14 | done (scores are design-time judgements) |
 | R-34 | Cross-reference audit, transfer to `@ZethetaIntern` | F | 7 | n/a | 15 | todo |
 | R-35 | Graceful fallback when no relevant knowledge is found; gap handling | A2.3 | 3 | `docs/knowledge-base/retrieval-pipeline.md` sections 9-10, `docs/knowledge-base/entries/escalation.yaml`, `config/templates/support.yaml` (TPL-KB-GAP, TPL-KB-DEGRADE) | 7, 8, 13 | done |
 | R-36 | KB maintenance workflow, regulatory fast-track, staleness alerts; access matrix by auth level; Level 3 boss (5 queries, 3+ entries) | A2.3, B | 3 | `docs/knowledge-base/maintenance-workflow.md`, `docs/knowledge-base/access-control-matrix.md`, `tests/kb/boss-level3.yaml`, `tests/kb/README.md` | 8 | done |
@@ -53,5 +53,20 @@ Status: `todo` / `draft` / `done`. Brief sections refer to the ZeTheta PDF. Upda
 | R-47 | Primary-language coverage of customer-facing wording (English, Hindi, Hinglish) | A2.4 | 6 | `config/templates/*.yaml`, `config/templates/labels.yaml` | 13 | draft (not native-reviewed; no secondary-language text) |
 | R-48 | Template, parameter and prompt validator | A12.2, A9.2 | 6 | `tests/templates/validate_templates.py`, `tests/templates/README.md` | 13 | done |
 | R-49 | Layer 5 dynamic context as typed notice slots (promotions, status, known issues, temporary policy) | A12.1, A12.2 | 6 | `config/system-prompt/layer5-operational.md`, `TPL-SYS-NOTICE` | 13 | done |
+| R-50 | Level 7 boss: 25-turn journey across 3 intents with authentication, guardrail activation, sentiment recovery and escalation decision | B (Level 7) | 7 | `simulations/conv-30-level-7-integration-journey.md` | 14 | done (designed, not run) |
+| R-51 | All six test personas exercised | A13.2 | 7 | `simulations/INDEX.md` section 4.2 | 14 | done |
+| R-52 | Each adversarial vector demonstrated end to end | A4.4 | 7 | `simulations/conv-04`, `conv-13` (denial of service), `conv-14` (identity spoofing) | 14 | done |
+| R-53 | Information-versus-advice boundary in each A4.1 category | A4.1 | 7 | `simulations/conv-03`, `conv-08`, `conv-10`, `conv-16`, `conv-30` | 14 | done |
+| R-54 | Escalation triggers demonstrated in conversation | A6 | 7 | `simulations/INDEX.md` sections 4.4, 4.5 | 14 | done for 14 of 15 (ESC-010 shown only as not reached) |
+| R-55 | Five patterns applied and eight anti-patterns absent, per conversation, with evidence; AUTO-FAIL figure sweep | A9.1, A9.2, Part D Day 14-15 | 7 | `simulations/pattern-audit.md`, the self-audit block of each conversation | 14 | done |
+| R-56 | Secondary-language fallback ladder demonstrated | A2.4 (multi-language support), D-22 | 7 | `simulations/conv-29-rajesh-gujarati-fallback-ladder.md` | 14 | draft (no reviewed Gujarati template; replies in Hindi) |
+| R-57 | Simulation validator | Part D Day 14-15 | 7 | `tests/simulations/validate_simulations.py`, `tests/simulations/README.md` | 14 | done |
+| R-58 | Log integrity, encryption and key management, access control matrix with break-glass, retention schedule | A10.3, A1.3 | 7 | `docs/compliance/audit-logging.md` sections 7-10 | 14 | done (HSM, mode and role holders are dependencies AL-D3, AL-D8) |
+| R-59 | Deletion workflow within 30 days incl. backups and training data; deletion certificate; legal hold | A10.3, A11.3 | 7 | `docs/compliance/audit-logging.md` section 11 | 14 | draft (legal reading AL-D1 open) |
+| R-60 | Regulatory reporting: monthly RBI summary, quarterly complaint analysis, annual AI audit report, 48-hour ad-hoc queries | A10.3 | 7 | `docs/compliance/audit-logging.md` section 12 | 14 | draft (formats and recipients AL-D2 open) |
+| R-61 | Fail-closed behaviour when the audit bus is down; enhanced logging for payment-related conversations | A4.3, A10.3 | 7 | `docs/compliance/audit-logging.md` sections 15-17 | 14 | done (class H2 needs Risk Committee) |
+| R-62 | Statistical fairness testing, counterfactual pairs, transparency, accountability chain, privacy purposes | A11.3 | 7 | `docs/risk/fairness-testing.md`, `tests/compliance/fairness-pairs.yaml` | 14 | done (pairs specified, not run) |
+| R-63 | Submission checklist: mandatory minimums, proxy lists for the 10 failure conditions and 7 deliverable requirements | Part D, A9.2, D-01, D-02 | 7 | `docs/compliance/submission-checklist.md` | 14 | draft (simulations and CHANGELOG pending) |
+| R-64 | Compliance and risk validator with seeded-defect evidence | A10, A11 | 7 | `tests/compliance/validate_compliance.py`, `tests/compliance/README.md` | 14 | done |
 
 Note: R-38: suite cases are specified, not executed (D-79).

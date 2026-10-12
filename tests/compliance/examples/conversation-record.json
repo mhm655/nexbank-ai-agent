@@ -1,0 +1,114 @@
+{
+  "conversation_id": "00000000-0000-4000-8000-00000000c001",
+  "customer_id": "00000000-0000-4000-8000-0000000000a1",
+  "channel": "app",
+  "authentication_level": "otp_verified",
+  "primary_intent": "TXN-002",
+  "resolution_status": "escalated",
+  "guardrails_activated": [
+    "GR-SEC-R1",
+    "GR-REG-05"
+  ],
+  "csat_score": 4.0,
+  "model_version": "gen-llm-example-1.0",
+  "turn_count": 12,
+  "pii_detected": true,
+  "ext": {
+    "record_type": "conversation",
+    "schema_version": "1.0.0",
+    "started_at": "2026-10-12T14:00:41+05:30",
+    "ended_at": "2026-10-12T14:11:02+05:30",
+    "data_region": "IN",
+    "language": {
+      "primary": "en",
+      "code_switching": false,
+      "seen": [
+        "en"
+      ]
+    },
+    "intent_history": [
+      {
+        "intent": "GEN-001",
+        "status": "resolved",
+        "first_turn": 0
+      },
+      {
+        "intent": "TXN-002",
+        "status": "active",
+        "first_turn": 1
+      }
+    ],
+    "versions": {
+      "prompt_version": "sp-1.0.0+518d5a1e.n000000",
+      "model_version": "gen-llm-example-1.0",
+      "component_models": {
+        "nlu": "nlu-example-1.0",
+        "sentiment": "sent-example-1.0",
+        "reranker": "rr-example-1.0",
+        "osl_classifier": "osl-example-1.0"
+      },
+      "kb_index_epoch": 41,
+      "parameters_version": "params-example-1",
+      "rules_version": "rules-example-1",
+      "registry_hash": "reg-example-58",
+      "redaction_rules_version": "red-1.0",
+      "log_schema_version": "1.0.0"
+    },
+    "versions_changed_mid_conversation": false,
+    "experiment": null,
+    "consent": {
+      "p4_training": "none",
+      "consent_snapshot_id": "cs-example-2026-10-12",
+      "notice_version": null
+    },
+    "escalations": [
+      {
+        "trigger_id": "ESC-005",
+        "rule_id": "ESC-005",
+        "secondary": [],
+        "priority": "P1",
+        "queue": "Dispute Resolution",
+        "handoff_mode": "warm",
+        "fired_at_turn": 3,
+        "created_at": "2026-10-12T14:02:07+05:30",
+        "sla_deadline": "2026-10-12T14:07:07+05:30",
+        "accepted_at": "2026-10-12T14:05:30+05:30",
+        "sla_met": true,
+        "outcome": "handed_off",
+        "package_id": "hp_example_002",
+        "package_complete": true,
+        "package_hash": "sha256:b342717c0ddf8bef5757a0170242675a97017505df5ae4cf3fb07ac93feb31ae"
+      }
+    ],
+    "pii": {
+      "red_rules_fired": [
+        "RED-01"
+      ],
+      "redaction_rules_version": "red-1.0"
+    },
+    "payment_related": true,
+    "csat": {
+      "asked": true,
+      "answered_at": "2026-10-12T14:12:10+05:30",
+      "comment": null
+    },
+    "outcome_class": null,
+    "complaint": null,
+    "retention": {
+      "class": "LC-1",
+      "delete_after": "2033-10-12",
+      "csat_delete_after": "2029-10-12",
+      "legal_hold": false,
+      "deletion_state": "none",
+      "deletion_certificate_id": null
+    },
+    "integrity": {
+      "seq": 25,
+      "prev_hash": "sha256:1b3d458b8ed1a19e7ff62682b5742ffd9b85b08913664265511746efe0ed52f1",
+      "record_hash": "sha256:860083adc8420d49e1a3def20ad45b0d6701f6f9882f2203043dc20037bddd80",
+      "written_at": "2026-10-12T14:12:11+05:30",
+      "clock_skew_ms": 7,
+      "daily_root_ref": "root-example-2026-10-12"
+    }
+  }
+}

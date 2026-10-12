@@ -1,0 +1,514 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "nexbank/audit_log.schema.json",
+  "title": "NexBank audit log records",
+  "description": "Conversation-level record (brief A10.1) and turn-level record (brief A10.2). Top-level properties are the brief's fields and nothing else; every project addition sits under `ext` (D-181). Never contains a full card number, CVV, PIN, password, OTP, full Aadhaar, full PAN or full account number (RED-01 to RED-07 in config/entities.yaml). Specification: docs/compliance/audit-logging.md.",
+  "oneOf": [
+    { "$ref": "#/$defs/conversation_record" },
+    { "$ref": "#/$defs/turn_record" }
+  ],
+  "$defs": {
+    "uuid": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+    },
+    "guardrail_id": {
+      "type": "string",
+      "pattern": "^GR-(ADV|SEC|REG|OUT|SYS|ATK)-(R[1-8]|[0-9]{2})$",
+      "description": "An ID from config/guardrails.yaml."
+    },
+    "escalation_rule_id": {
+      "type": "string",
+      "pattern": "^(ESC-0(0[1-9]|1[0-5])|XTR-0[1-7])$",
+      "description": "A trigger or extra rule from config/escalation_rules.yaml."
+    },
+    "kb_ref": {
+      "type": "string",
+      "pattern": "^KB-(PRD|POL|REG|FAQ|TRB|ESC)-[0-9]{3}@[0-9]+\\.[0-9]+\\.[0-9]+$",
+      "description": "KB entry id with version, id@version (docs/knowledge-base/retrieval-pipeline.md section 14)."
+    },
+    "auth_level": {
+      "type": "string",
+      "enum": ["anonymous", "otp_verified", "biometric_verified", "full_kyc"],
+      "description": "Same values as auth_level in config/dialogue_state.schema.json."
+    },
+    "hash": { "type": "string", "pattern": "^sha256:[0-9a-f]{64}$" },
+    "sealed_text": {
+      "type": "object",
+      "description": "Stored form of a PII-class text field: redacted first (RED-01 to RED-07), then encrypted under the PII key (double encryption, brief A10.3). The plaintext never contains a value of handling class `never`.",
+      "required": ["alg", "key_ref", "ciphertext", "redaction_applied"],
+      "additionalProperties": false,
+      "properties": {
+        "alg": { "const": "AES-256" },
+        "key_ref": { "type": "string", "description": "Reference to the data key version; never key material." },
+        "ciphertext": { "type": "string" },
+        "content_hash": { "$ref": "#/$defs/hash", "description": "Hash of the ciphertext, kept after erasure so the chain still verifies (D-184)." },
+        "redaction_applied": { "const": true },
+        "placeholders": { "type": "array", "items": { "type": "string", "pattern": "^\\[[A-Z_]+\\]$" } },
+        "erased": { "type": "boolean", "description": "True after crypto-erasure; ciphertext is then an empty string (D-183)." }
+      }
+    },
+    "text_field": {
+      "description": "At rest: sealed_text. In an authorised, logged read view: the redacted plaintext string.",
+      "oneOf": [
+        { "$ref": "#/$defs/sealed_text" },
+        { "type": "string" },
+        { "type": "null" }
+      ]
+    },
+    "integrity": {
+      "type": "object",
+      "description": "Append-only chain fields (D-184).",
+      "required": ["seq", "prev_hash", "record_hash"],
+      "additionalProperties": false,
+      "properties": {
+        "seq": { "type": "integer", "minimum": 0, "description": "Sequence number inside the conversation chain; 0 is the conversation-open record." },
+        "prev_hash": { "oneOf": [ { "$ref": "#/$defs/hash" }, { "type": "null" } ] },
+        "record_hash": { "$ref": "#/$defs/hash" },
+        "written_at": { "type": "string", "format": "date-time" },
+        "clock_skew_ms": { "type": "integer", "minimum": 0 },
+        "daily_root_ref": { "type": ["string", "null"], "description": "Identifier of the signed daily root that covers this record." }
+      }
+    },
+    "versions": {
+      "type": "object",
+      "description": "Version tuple that produced the behaviour (brief A11.3 accountability; D-138, D-160). Field names follow `versions` in config/dialogue_state.schema.json.",
+      "required": ["prompt_version", "model_version"],
+      "additionalProperties": false,
+      "properties": {
+        "prompt_version": { "type": "string", "pattern": "^sp-[0-9]+\\.[0-9]+\\.[0-9]+\\+[0-9a-f]{8}\\.n[0-9a-f]{6}$" },
+        "model_version": { "type": "string" },
+        "component_models": {
+          "type": "object",
+          "description": "Other model versions used on the turn: nlu, sentiment, embedder, reranker, osl_classifier, input_guard_classifier.",
+          "additionalProperties": { "type": "string" }
+        },
+        "kb_entry_ids": { "type": "array", "items": { "$ref": "#/$defs/kb_ref" } },
+        "kb_index_epoch": { "type": "integer", "minimum": 0 },
+        "parameters_version": { "type": "string" },
+        "rules_version": { "type": "string" },
+        "registry_hash": { "type": "string", "description": "Hash of the loaded guardrail registry bundle (safety-invariants.md mechanism M7)." },
+        "redaction_rules_version": { "type": "string" },
+        "state_version": { "type": "integer", "minimum": 0 },
+        "log_schema_version": { "type": "string" }
+      }
+    },
+    "experiment": {
+      "oneOf": [
+        { "type": "null" },
+        {
+          "type": "object",
+          "required": ["experiment_id", "arm"],
+          "additionalProperties": false,
+          "properties": {
+            "experiment_id": { "type": "string" },
+            "arm": { "type": "string" },
+            "bucket": { "type": "integer", "minimum": 0 },
+            "stage": { "type": "string", "enum": ["shadow", "canary_1", "canary_5", "ab_25", "full", "holdback"] }
+          }
+        }
+      ]
+    },
+    "retention": {
+      "type": "object",
+      "required": ["class", "delete_after"],
+      "additionalProperties": false,
+      "properties": {
+        "class": { "type": "string", "enum": ["LC-1", "LC-2", "LC-3", "LC-4"] },
+        "delete_after": { "type": "string", "format": "date" },
+        "csat_delete_after": { "type": ["string", "null"], "format": "date", "description": "The 3-year date for csat_score (brief A10.1)." },
+        "legal_hold": { "type": "boolean" },
+        "deletion_state": { "type": "string", "enum": ["none", "tombstoned", "erased", "expired"] },
+        "deletion_certificate_id": { "type": ["string", "null"] }
+      }
+    },
+
+    "conversation_record": {
+      "type": "object",
+      "title": "Conversation-level record (brief A10.1)",
+      "required": [
+        "conversation_id", "customer_id", "channel", "authentication_level", "primary_intent",
+        "resolution_status", "guardrails_activated", "csat_score", "model_version", "turn_count",
+        "pii_detected", "ext"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "conversation_id": { "$ref": "#/$defs/uuid", "x-brief": "A10.1", "description": "Unique identifier for the conversation session. Retention 7 years." },
+        "customer_id": {
+          "oneOf": [ { "$ref": "#/$defs/uuid" }, { "type": "null" } ],
+          "x-brief": "A10.1",
+          "description": "Pseudonymised customer identifier, UUID (hashed). Null when the customer was never identified, or after erasure (D-181, D-183). Same value as customer_ref in the dialogue state. Retention 7 years."
+        },
+        "channel": { "type": "string", "enum": ["chat", "voice", "whatsapp", "app"], "x-brief": "A10.1", "description": "Communication channel (chat, voice, WhatsApp, app). Retention 7 years." },
+        "authentication_level": { "$ref": "#/$defs/auth_level", "x-brief": "A10.1", "description": "Highest authentication level achieved. Retention 7 years." },
+        "primary_intent": { "type": "string", "pattern": "^(ACC|TXN|CRD|PRD|CMP|SEC|GEN)-[0-9]{3}$", "x-brief": "A10.1", "description": "Final classified intent for the conversation (an ID from config/intents.yaml). Retention 7 years." },
+        "resolution_status": { "type": "string", "enum": ["resolved_ai", "resolved_human", "unresolved", "escalated"], "x-brief": "A10.1", "description": "resolved_ai, resolved_human, unresolved, escalated. Retention 7 years." },
+        "guardrails_activated": { "type": "array", "items": { "$ref": "#/$defs/guardrail_id" }, "uniqueItems": true, "x-brief": "A10.1", "description": "List of guardrails that fired during conversation. Retention 7 years." },
+        "csat_score": { "type": ["number", "null"], "minimum": 1, "maximum": 5, "x-brief": "A10.1", "description": "Customer satisfaction rating if provided, Float (1-5). Retention 3 years." },
+        "model_version": { "type": "string", "x-brief": "A10.1", "description": "AI model version that handled conversation. Retention 7 years." },
+        "turn_count": { "type": "integer", "minimum": 0, "x-brief": "A10.1", "description": "Total number of conversation turns. Retention 7 years." },
+        "pii_detected": { "type": "boolean", "x-brief": "A10.1", "description": "Whether PII was detected in customer messages. Retention 7 years." },
+        "ext": { "$ref": "#/$defs/conversation_ext" }
+      }
+    },
+
+    "conversation_ext": {
+      "type": "object",
+      "title": "Project extensions to the conversation record (not in the brief)",
+      "x-extension": true,
+      "required": ["record_type", "schema_version", "started_at", "versions", "consent", "retention", "integrity"],
+      "additionalProperties": false,
+      "properties": {
+        "record_type": { "const": "conversation" },
+        "schema_version": { "type": "string" },
+        "started_at": { "type": "string", "format": "date-time" },
+        "ended_at": { "type": ["string", "null"], "format": "date-time" },
+        "data_region": { "const": "IN" },
+        "language": {
+          "type": "object",
+          "properties": {
+            "primary": { "type": "string", "enum": ["en", "hi", "hinglish", "ta", "te", "bn", "mr", "gu"] },
+            "code_switching": { "type": "boolean" },
+            "seen": { "type": "array", "items": { "type": "string" } }
+          }
+        },
+        "intent_history": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["intent", "status"],
+            "properties": {
+              "intent": { "type": "string" },
+              "status": { "type": "string", "enum": ["active", "parked", "resolved", "abandoned"] },
+              "first_turn": { "type": "integer", "minimum": 0 }
+            }
+          }
+        },
+        "versions": { "$ref": "#/$defs/versions" },
+        "versions_changed_mid_conversation": { "type": "boolean", "description": "True when turn records carry more than one version tuple; the turn records are then authoritative." },
+        "experiment": { "$ref": "#/$defs/experiment" },
+        "consent": {
+          "type": "object",
+          "description": "Consent flags read from the consent service (data-pipeline.md section 5, D-104). Only P4 is optional.",
+          "required": ["p4_training"],
+          "additionalProperties": false,
+          "properties": {
+            "p4_training": { "type": "string", "enum": ["granted", "refused", "withdrawn", "none", "not_applicable_anonymous"] },
+            "consent_snapshot_id": { "type": ["string", "null"] },
+            "notice_version": { "type": ["string", "null"] }
+          }
+        },
+        "escalations": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["trigger_id", "priority", "queue", "fired_at_turn", "outcome"],
+            "additionalProperties": false,
+            "properties": {
+              "trigger_id": { "$ref": "#/$defs/escalation_rule_id" },
+              "rule_id": { "type": "string" },
+              "secondary": { "type": "array", "items": { "$ref": "#/$defs/escalation_rule_id" } },
+              "priority": { "type": "string", "enum": ["P0", "P1", "P2"] },
+              "queue": { "type": "string" },
+              "handoff_mode": { "type": "string" },
+              "fired_at_turn": { "type": "integer", "minimum": 0 },
+              "created_at": { "type": "string", "format": "date-time" },
+              "sla_deadline": { "type": ["string", "null"], "format": "date-time" },
+              "accepted_at": { "type": ["string", "null"], "format": "date-time" },
+              "sla_met": { "type": ["boolean", "null"] },
+              "outcome": { "type": "string", "enum": ["handed_off", "de_escalated_by_customer", "de_escalated_recovery", "withdrawn_condition_false", "callback_scheduled", "failed_handoff", "pending"] },
+              "package_id": { "type": ["string", "null"] },
+              "package_complete": { "type": ["boolean", "null"] },
+              "package_hash": { "oneOf": [ { "$ref": "#/$defs/hash" }, { "type": "null" } ] }
+            }
+          }
+        },
+        "pii": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "red_rules_fired": { "type": "array", "items": { "type": "string", "pattern": "^RED-0[1-7]$" } },
+            "redaction_rules_version": { "type": "string" }
+          }
+        },
+        "payment_related": { "type": "boolean", "description": "Enhanced logging class for payment-related conversations (GR-REG-07)." },
+        "csat": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "asked": { "type": "boolean" },
+            "answered_at": { "type": ["string", "null"], "format": "date-time" },
+            "comment": { "$ref": "#/$defs/text_field" }
+          }
+        },
+        "outcome_class": { "type": ["string", "null"], "description": "Matured outcome class from docs/learning-pipeline/outcome-tracking.md; null until matured." },
+        "complaint": {
+          "oneOf": [
+            { "type": "null" },
+            {
+              "type": "object",
+              "required": ["ticket_ref", "category"],
+              "properties": {
+                "ticket_ref": { "type": "string" },
+                "category": { "type": "string" },
+                "opened_at": { "type": "string", "format": "date-time" },
+                "grievance_info_given_at_turn": { "type": ["integer", "null"] }
+              }
+            }
+          ]
+        },
+        "retention": { "$ref": "#/$defs/retention" },
+        "integrity": { "$ref": "#/$defs/integrity" }
+      }
+    },
+
+    "turn_record": {
+      "type": "object",
+      "title": "Turn-level record (brief A10.2)",
+      "required": [
+        "turn_id", "speaker", "raw_message", "intent_classification", "entities_extracted",
+        "sentiment_score", "knowledge_items_retrieved", "retrieval_confidence", "agent_response",
+        "response_generation_method", "guardrails_checked", "guardrails_triggered",
+        "response_latency_ms", "action_taken", "ext"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "turn_id": { "$ref": "#/$defs/uuid", "x-brief": "A10.2" },
+        "speaker": { "type": "string", "enum": ["customer", "agent", "system"], "x-brief": "A10.2", "description": "customer/agent/system. A human agent after handoff is `agent` with ext.agent_kind = human." },
+        "raw_message": { "$ref": "#/$defs/text_field", "x-brief": "A10.2", "description": "Encrypted raw_message with PII redacted. Null on agent and system turns." },
+        "intent_classification": {
+          "x-brief": "A10.2",
+          "description": "label, confidence, alternatives. Null on agent and system turns.",
+          "oneOf": [
+            { "type": "null" },
+            {
+              "type": "object",
+              "required": ["label", "confidence", "alternatives"],
+              "additionalProperties": false,
+              "properties": {
+                "label": { "type": "string" },
+                "confidence": { "type": "number", "minimum": 0, "maximum": 1 },
+                "alternatives": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "required": ["label", "confidence"],
+                    "additionalProperties": false,
+                    "properties": { "label": { "type": "string" }, "confidence": { "type": "number", "minimum": 0, "maximum": 1 } }
+                  }
+                }
+              }
+            }
+          ]
+        },
+        "entities_extracted": {
+          "type": "array",
+          "x-brief": "A10.2",
+          "description": "type, value, confidence, validation. `value` is the stored form for the entity's sensitivity tier: plain for LOW and MEDIUM, masked for HIGH, placeholder or reference for CRITICAL (config/entities.yaml).",
+          "items": {
+            "type": "object",
+            "required": ["type", "value", "confidence", "validation"],
+            "additionalProperties": false,
+            "properties": {
+              "type": { "type": "string" },
+              "value": { "type": ["string", "number", "boolean", "null"] },
+              "confidence": { "type": "number", "minimum": 0, "maximum": 1 },
+              "validation": { "type": "string", "enum": ["valid", "invalid", "unvalidated", "conflicting"] },
+              "sensitivity": { "type": "string", "enum": ["LOW", "MEDIUM", "HIGH", "CRITICAL"], "x-extension": true },
+              "stored_form": { "type": "string", "enum": ["plain", "masked", "ref_only", "placeholder"], "x-extension": true }
+            }
+          }
+        },
+        "sentiment_score": { "type": ["number", "null"], "minimum": -1, "maximum": 1, "x-brief": "A10.2", "description": "-1 to 1. Null on agent and system turns." },
+        "knowledge_items_retrieved": { "type": "array", "items": { "$ref": "#/$defs/kb_ref" }, "x-brief": "A10.2", "description": "KB items retrieved for the reply, as id@version." },
+        "retrieval_confidence": { "type": ["number", "null"], "minimum": 0, "maximum": 1, "x-brief": "A10.2" },
+        "agent_response": { "$ref": "#/$defs/text_field", "x-brief": "A10.2", "description": "The delivered reply. Null on customer and system turns." },
+        "response_generation_method": { "type": ["string", "null"], "enum": ["template", "llm", "hybrid", null], "x-brief": "A10.2", "description": "template/llm/hybrid." },
+        "guardrails_checked": { "type": "array", "items": { "$ref": "#/$defs/guardrail_id" }, "x-brief": "A10.2" },
+        "guardrails_triggered": { "type": "array", "items": { "$ref": "#/$defs/guardrail_id" }, "x-brief": "A10.2" },
+        "response_latency_ms": { "type": ["integer", "null"], "minimum": 0, "x-brief": "A10.2" },
+        "action_taken": { "type": ["string", "null"], "enum": ["respond", "clarify", "confirm", "escalate", "authenticate", null], "x-brief": "A10.2", "description": "respond, clarify, confirm, escalate, authenticate. The finer policy action is ext.policy_action." },
+        "ext": { "$ref": "#/$defs/turn_ext" }
+      }
+    },
+
+    "turn_ext": {
+      "type": "object",
+      "title": "Project extensions to the turn record (not in the brief)",
+      "x-extension": true,
+      "required": ["record_type", "schema_version", "conversation_id", "turn_index", "trace_id", "timestamp", "versions", "pii", "integrity"],
+      "additionalProperties": false,
+      "properties": {
+        "record_type": { "const": "turn" },
+        "schema_version": { "type": "string" },
+        "conversation_id": { "$ref": "#/$defs/uuid" },
+        "turn_index": { "type": "integer", "minimum": 0, "description": "Same as turn_index in the dialogue state." },
+        "trace_id": { "type": "string" },
+        "timestamp": { "type": "string", "format": "date-time" },
+        "agent_kind": { "type": ["string", "null"], "enum": ["ai", "human", null] },
+        "auth_level": { "$ref": "#/$defs/auth_level" },
+        "dialogue_phase": { "type": "string", "enum": ["INIT", "INTENT_DETECT", "CLARIFY", "AUTH_REQUIRED", "SLOT_FILL", "CONFIRM", "EXECUTE", "RESPOND", "ESCALATING", "HANDOFF", "CLOSING", "FAIL_SAFE"] },
+        "language": {
+          "type": "object",
+          "properties": {
+            "primary": { "type": "string", "enum": ["en", "hi", "hinglish", "ta", "te", "bn", "mr", "gu"] },
+            "code_switching": { "type": "boolean" },
+            "reply_language": { "type": "string" }
+          }
+        },
+        "policy_action": { "type": ["string", "null"], "enum": ["respond", "clarify", "confirm", "escalate", "authenticate", "execute", "transfer", "hold", null], "description": "Policy Engine action (dialogue-management.md section 4.1); mapped to action_taken by audit-logging.md section 3.3." },
+        "reason_codes": { "type": "array", "items": { "type": "string" } },
+        "input_guard": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "verdict": { "type": "string", "enum": ["allow", "block", "sanitise"] },
+            "flags": { "type": "array", "items": { "type": "string" } },
+            "crisis": { "type": "boolean" }
+          }
+        },
+        "guardrail_verdicts": {
+          "type": "array",
+          "description": "One entry per guardrail evaluated on the turn. guardrails_checked and guardrails_triggered are the ID lists derived from this array.",
+          "items": {
+            "type": "object",
+            "required": ["guardrail_id", "enforcement_point", "result"],
+            "additionalProperties": false,
+            "properties": {
+              "guardrail_id": { "$ref": "#/$defs/guardrail_id" },
+              "enforcement_point": { "type": "string" },
+              "result": { "type": "string", "enum": ["pass", "triggered", "near_miss", "timeout", "skipped"] },
+              "action": { "type": ["string", "null"], "enum": ["block", "redirect", "escalate", "mask", null] },
+              "score": { "type": ["number", "null"] },
+              "latency_ms": { "type": ["integer", "null"], "minimum": 0 }
+            }
+          }
+        },
+        "safety_verdict": {
+          "description": "SafetyVerdict of the Output Safety Layer (component-interfaces.md row 10). Required on every delivered agent turn (GR-OUT-06).",
+          "oneOf": [
+            { "type": "null" },
+            {
+              "type": "object",
+              "required": ["verdict", "checks"],
+              "additionalProperties": false,
+              "properties": {
+                "verdict": { "type": "string", "enum": ["pass", "rewrite", "block"] },
+                "checks": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "required": ["check", "result"],
+                    "properties": { "check": { "type": "string" }, "result": { "type": "string", "enum": ["pass", "repair", "fail", "timeout"] } }
+                  }
+                },
+                "ladder_rung": { "type": "integer", "minimum": 0, "maximum": 5 },
+                "latency_ms": { "type": "integer", "minimum": 0 }
+              }
+            }
+          ]
+        },
+        "retrieval": {
+          "oneOf": [
+            { "type": "null" },
+            {
+              "type": "object",
+              "required": ["decision", "kb_entry_ids"],
+              "additionalProperties": false,
+              "properties": {
+                "decision": { "type": "string", "enum": ["answer", "gap", "degrade", "escalate_esc_008", "step_up", "unavailable"] },
+                "kb_entry_ids": { "type": "array", "items": { "$ref": "#/$defs/kb_ref" }, "description": "Entries cited in the reply (subset of knowledge_items_retrieved)." },
+                "top1_confidence": { "type": ["number", "null"], "minimum": 0, "maximum": 1 },
+                "synthesis_confidence": { "type": ["number", "null"], "minimum": 0, "maximum": 1 },
+                "gap_entry_id": { "type": ["string", "null"] },
+                "stale_ids": { "type": "array", "items": { "type": "string" } },
+                "index_epoch": { "type": "integer", "minimum": 0 },
+                "retrieval_log_ref": { "type": "string", "description": "Key of the full retrieval_log record (retrieval-pipeline.md section 14)." }
+              }
+            }
+          ]
+        },
+        "template": {
+          "description": "Template used for the reply. Field names follow last_response in config/dialogue_state.schema.json.",
+          "oneOf": [
+            { "type": "null" },
+            {
+              "type": "object",
+              "required": ["template_id"],
+              "additionalProperties": false,
+              "properties": {
+                "template_id": { "type": "string", "pattern": "^TPL-[A-Z]+-[A-Z0-9-]+$" },
+                "variant": { "type": "string" },
+                "template_version": { "type": "string" },
+                "notice_ids": { "type": "array", "items": { "type": "string" } }
+              }
+            }
+          ]
+        },
+        "tool_calls": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["name", "args_masked", "result", "high_risk", "audit_ack"],
+            "additionalProperties": false,
+            "properties": {
+              "name": { "type": "string" },
+              "args_masked": { "type": "object", "description": "Arguments in stored form only: masked, reference or placeholder. Never a raw identifier or credential." },
+              "idempotency_key_hash": { "type": "string" },
+              "auth_level_at_call": { "$ref": "#/$defs/auth_level" },
+              "confirmation_turn": { "type": ["integer", "null"] },
+              "result": { "type": "string", "enum": ["ok", "error", "timeout", "blocked_auth", "blocked_audit", "not_confirmed"] },
+              "error_code": { "type": ["string", "null"] },
+              "reference_id": { "type": ["string", "null"] },
+              "latency_ms": { "type": "integer", "minimum": 0 },
+              "high_risk": { "type": "boolean" },
+              "audit_ack": { "type": "boolean", "description": "True when the pre-action audit record was durably acknowledged before the call (D-185)." }
+            }
+          }
+        },
+        "escalation": {
+          "oneOf": [
+            { "type": "null" },
+            {
+              "type": "object",
+              "required": ["trigger_id", "state"],
+              "additionalProperties": false,
+              "properties": {
+                "trigger_id": { "$ref": "#/$defs/escalation_rule_id" },
+                "rule_id": { "type": "string" },
+                "secondary": { "type": "array", "items": { "$ref": "#/$defs/escalation_rule_id" } },
+                "priority": { "type": "string", "enum": ["P0", "P1", "P2"] },
+                "queue": { "type": "string" },
+                "state": { "type": "string", "enum": ["fired", "pending", "handed_off", "de_escalated", "failed", "withdrawn"] },
+                "package_id": { "type": ["string", "null"] }
+              }
+            }
+          ]
+        },
+        "sentiment_detail": {
+          "type": "object",
+          "properties": {
+            "smoothed": { "type": "number", "minimum": -1, "maximum": 1 },
+            "emotions": { "type": "array", "items": { "type": "string" } }
+          }
+        },
+        "versions": { "$ref": "#/$defs/versions" },
+        "experiment": { "$ref": "#/$defs/experiment" },
+        "pii": {
+          "type": "object",
+          "required": ["detected"],
+          "additionalProperties": false,
+          "properties": {
+            "detected": { "type": "boolean" },
+            "red_rules_fired": { "type": "array", "items": { "type": "string", "pattern": "^RED-0[1-7]$" } },
+            "redaction_rules_version": { "type": "string" }
+          }
+        },
+        "payment_related": { "type": "boolean" },
+        "latency_breakdown_ms": { "type": "object", "additionalProperties": { "type": "integer", "minimum": 0 } },
+        "retention": { "$ref": "#/$defs/retention" },
+        "integrity": { "$ref": "#/$defs/integrity" }
+      }
+    }
+  }
+}

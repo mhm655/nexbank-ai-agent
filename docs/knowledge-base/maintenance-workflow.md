@@ -201,7 +201,7 @@ Gold queries are added for every incident so the same failure cannot return unse
 
 ## 9. Audit trail
 
-Every step writes an immutable, encrypted audit record (A10; encryption, access control and retention are specified in the Day 14 audit-logging document, not repeated here).
+Every step writes an immutable, encrypted audit record (A10; encryption, access control and retention are specified in `docs/compliance/audit-logging.md` sections 8 to 10, not repeated here).
 
 | Event | Fields recorded |
 |---|---|

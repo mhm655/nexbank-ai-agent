@@ -2,7 +2,7 @@
 
 A specification-first design for a production-grade, self-improving AI customer service system for **NexBank**, a fictional Indian neo-bank (2.7M customers, ~18,000 interactions/day).
 
-> Status: **Day 13 of 15** (Levels 1-6 complete: architecture, NLU, knowledge base and retrieval, guardrails and safety, continuous learning pipeline, and escalation, metrics, system prompt, governed parameters and template library; simulations, audit logging and risk matrices (Day 14) next). Most remaining folders are placeholders that later days fill in. See [CHANGELOG.md](CHANGELOG.md).
+> Status: **Day 14 of 15** (Levels 1-7 content complete: architecture, NLU, knowledge base and retrieval, guardrails and safety, continuous learning pipeline, escalation, metrics, system prompt, governed parameters and template library, 30 annotated simulations including the 25-turn Level 7 journey, audit logging and risk matrices; the cross-reference audit and submission (Day 15) remain). Most remaining folders are placeholders that later days fill in. See [CHANGELOG.md](CHANGELOG.md).
 
 ## Targets
 
@@ -30,11 +30,13 @@ A specification-first design for a production-grade, self-improving AI customer 
 | `docs/guardrails/` | Advice boundary (`financial-advice.md`), 8 security rules (`account-security.md`), regulatory mapping (`regulatory-mapping.md`) on Day 9; adversarial defences (`adversarial-defences.md`), response safety layer (`output-safety-layer.md`), monitoring dashboard (`monitoring-dashboard.md`) and incident playbook (`incident-response-playbook.md`) on Day 10. Registry: `config/guardrails.yaml` (58 guardrails). Tests: `tests/adversarial/` and `tests/guardrails/` (190 cases, specified not run). Layers: `diagrams/guardrail-layers.mmd` | Days 9-10 |
 | `docs/learning-pipeline/` | Loop, update classes and cadence (overview.md); supervisor corrections, CSAT signals and outcome tracking; data pipeline with consent and deletion (data-pipeline.md); A/B testing with power analysis and sequential design (ab-testing.md); immutable layer, gates G0-G9, canary and rollback (safety-invariants.md); Level 5 boss as a simulated worked example (boss-level5.md). Loop diagram: diagrams/learning-loop.mmd | Day 11 |
 | `docs/escalation/`, `docs/metrics/` | `triggers.md` (ESC-001..015, precedence, 7 additions), `routing-and-handoff.md`, `queue-management.md` (overflow, capacity model, EQ-01..12); `kpi-framework.md`, `improvement-cycle.md`, `dashboards.md`. Rules: `config/escalation_rules.yaml`. Tests: `tests/escalation/` (63 cases, specified not run). Diagram: `diagrams/escalation-routing.mmd` | Day 12 |
-| `docs/compliance/`, `docs/risk/` | Audit logging, risk matrix | Day 14 |
-| `diagrams/` | Mermaid sources | Days 2-13 |
-| `simulations/` | 20+ annotated conversations | Day 14 |
-| `tests/` | Guardrail, adversarial, escalation (63 cases, validator, Level 6 boss), NLU, KB (validator, Level 3 boss), templates (`tests/templates/validate_templates.py`: templates, parameters and prompt layers) and safety-suite cases; fixed safety suite `tests/safety-suite/` (355 cases indexed in `manifest.yaml`: 253 by reference, 102 new, specified not run; `manifest.lock.yaml` holds the accepted hashes; validator `validate_manifest.py`) | Days 5-14 |
-| `config/` | YAML/JSON configs; `parameters.yaml` (8 A12.3 parameters, 98 project thresholds by reference); `system-prompt/` (6 layers, 84 assertions, manifest); `templates/` (63 templates, 131 variants, en/hi/hinglish, not native-reviewed) | Days 3-13 |
+| `docs/compliance/`, `docs/risk/` | Audit and compliance logging specification (A10.1 and A10.2 schemas, encryption, access matrix, retention, deletion, reporting, 16 audit queries, fail-closed behaviour) and submission checklist; risk matrices (52 risks, heat maps, top 10, appetite) and fairness testing method. These two folders are additions to the brief's required structure (D-191) | Day 14 |
+| `diagrams/` | Mermaid sources, including `audit-log-flow.mmd` | Days 2-14 |
+| `simulations/` | 30 annotated conversations (conv-01 to conv-06 are the brief's six case studies re-run; conv-07 to conv-30 are new; conv-30 is the Level 7 journey), `INDEX.md` with coverage matrices, `pattern-audit.md` with the AUTO-FAIL figure sweep | Day 14 |
+| `tests/` | Guardrail, adversarial, escalation (63 cases, validator, Level 6 boss), NLU, KB (validator, Level 3 boss), templates (`tests/templates/validate_templates.py`: templates, parameters and prompt layers) and safety-suite cases; compliance (validator, 14 fairness pairs, 3 example log records, `tests/compliance/validate_compliance.py`); simulations (`tests/simulations/validate_simulations.py` and README); fixed safety suite `tests/safety-suite/` (355 cases indexed in `manifest.yaml`: 253 by reference, 102 new, specified not run; `manifest.lock.yaml` holds the accepted hashes; validator `validate_manifest.py`) | Days 5-14 |
+| `config/` | YAML/JSON configs; `parameters.yaml` (8 A12.3 parameters, 98 project thresholds by reference); `system-prompt/` (6 layers, 84 assertions, manifest); `templates/` (63 templates, 131 variants, en/hi/hinglish, not native-reviewed); `audit_log.schema.json` (A10.1 and A10.2 log schema) | Days 3-14 |
+
+To run the compliance and risk validator: `python tests/compliance/validate_compliance.py`; the simulation validator: `python tests/simulations/validate_simulations.py`.
 
 ## Conventions
 

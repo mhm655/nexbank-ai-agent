@@ -1,0 +1,72 @@
+flowchart TD
+    %% Audit and compliance log flow (brief A10.1 to A10.3, A11.3; docs/compliance/audit-logging.md).
+    %% Redact first, then seal, then write. Erasure is key destruction plus an appended event. Specified, not built.
+
+    subgraph SRC["Components that emit events (component-interfaces.md)"]
+        GW["Gateway and Session Manager<br/>conversation_id, channel, auth events"]
+        IG["Input Guard<br/>RED-01..07 redaction, GuardVerdict"]
+        NLU["Language and NLU<br/>intent, entities, sentiment"]
+        POL["State Tracker and Policy Engine<br/>action, reason codes, versions"]
+        RET["Knowledge Retrieval<br/>kb_entry_ids as id@version"]
+        TOOL["Tool Orchestrator<br/>pre-action record, masked args"]
+        ESC["Escalation Router<br/>trigger, handoff package"]
+        GEN["Response Generator<br/>template id and variant"]
+        OSL["Output Safety Layer<br/>SafetyVerdict"]
+    end
+
+    GW --> IG
+    IG -- "placeholders only,<br/>never the raw value" --> BUF
+    NLU --> BUF
+    POL --> BUF
+    RET --> BUF
+    TOOL --> BUF
+    ESC --> BUF
+    GEN --> BUF
+    OSL --> BUF
+    GW --> BUF
+
+    BUF["Local durable buffer<br/>encrypted, TLS 1.3 onward"] --> BUS["Audit and Telemetry Bus<br/>seq, prev_hash, record_hash"]
+    BUS -- "bus ack" --> TOOL
+    BUS -. "no ack: class H1 actions blocked<br/>(GR-REG-07, states A1 to A3)" .-> POL
+
+    BUS --> SEAL["Seal PII-class fields<br/>per-customer data key (second layer)"]
+    HSM["HSM<br/>key-encryption keys, quarterly rotation,<br/>signing key"] --> SEAL
+    SEAL --> STORE
+
+    subgraph STORE["Encrypted stores, AES-256, India region, write-once"]
+        LC1["LC-1 conversation records (A10.1)"]
+        LC2["LC-2 turn records (A10.2)"]
+        LC3["LC-3 retrieval, tool and verdict detail"]
+        LC4["LC-4 handoff packages"]
+        LC5["LC-5 meta-audit trail"]
+        LC6["LC-6 deletion register and certificates"]
+    end
+
+    BUS --> ROOT["Daily signed root<br/>separate account"]
+    HSM --> ROOT
+    ROOT --> VERIFY["Integrity verification<br/>daily and before any export"]
+    STORE --> VERIFY
+
+    STORE --> ACCESS{"Access layer<br/>role, queue or case, purpose,<br/>break-glass"}
+    ACCESS -- "every read logged" --> LC5
+    ACCESS --> SUP["Supervisors: own review queue"]
+    ACCESS --> INC["Incident roles: evidence pack"]
+    ACCESS --> AGG["LC-7 anonymised aggregates<br/>dashboards, customer-facing staff"]
+    ACCESS --> RPT["LC-8 regulatory reporting<br/>RPT-01 monthly, RPT-02 quarterly,<br/>RPT-03 annual, RPT-04 within 48 hours"]
+    RPT --> REG["Regulator<br/>signed exports only"]
+
+    STORE --> RETJOB["Retention job, daily<br/>7 years; csat_score 3 years"]
+    RETJOB -- "expired" --> LC6
+    HOLD["Legal hold (D-87)"] -. "suspends" .-> RETJOB
+    HOLD -. "suspends" .-> DEL
+
+    REQ["Deletion request<br/>30-day clock"] --> DEL["Deletion workflow<br/>tombstone, key destruction,<br/>index rows, backups"]
+    DEL -- "destroy per-customer key" --> HSM
+    DEL -- "deletion.erased event,<br/>residual record kept" --> STORE
+    DEL --> CERT["Deletion certificate"]
+    CERT --> LC6
+    DEL -- "tombstone snapshot" --> LP
+
+    STORE -- "read-only copy" --> LP["Learning pipeline<br/>second redaction pass, consent filter P4,<br/>QG-01 to QG-08"]
+    LP --> DS["Versioned datasets and models<br/>deletion-only rebuild (D-157)"]
+    DS -. "lineage: model and dataset versions" .-> LC2
