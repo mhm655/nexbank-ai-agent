@@ -26,8 +26,8 @@ An experiment answers one question: does the candidate improve the customer outc
 | Assignment | `bucket = hash(experiment_salt + unit_id) mod 10,000`. A new salt per experiment removes carry-over between experiments. Buckets 0 to 9,999 are mapped to arms by range, so widening the exposure only adds buckets and nobody switches arm during a ramp |
 | Why not the conversation or the turn | a turn-level switch would change the agent's behaviour mid-conversation (unsafe and unreadable); a conversation-level switch would give a returning customer two behaviours and would contaminate FCR, which is defined on return visits |
 | Analysis unit | the conversation for FCR and operational metrics, the rating for CSAT. Because conversations of one customer are correlated, standard errors are clustered by customer; planning uses a design effect (section 6.2) |
-| Excluded from assignment | staff test accounts; sessions in safe mode (GR-ATK-04); conversations opened by the red team. They always get the control |
-| Counted but protected | crisis (GEN-007) and fraud (SEC-001) flows run on immutable templates and rules in both arms, so a candidate cannot alter them. They stay in the guardrail monitoring of both arms and are excluded from the CSAT and FCR primary analyses (pre-registered), because no survey is sent in crisis and resolution there belongs to human teams |
+| Excluded before assignment | staff test accounts and conversations opened by the red team. They are identified before randomisation, are never assigned and always get the control. Nothing that happens after assignment removes a unit from its arm |
+| Protected flows, still analysed | crisis (GEN-007) and fraud (SEC-001) flows run on immutable templates and rules in both arms, so a candidate cannot alter them; sessions that enter safe mode (GR-ATK-04) or are rate-limited (GR-ATK-08) get the same protective behaviour in both arms. All of them keep their arm and stay in the primary analysis (intention to treat, section 9) and in the guardrail monitoring. No survey is sent in crisis, so those conversations contribute no rating. A pre-registered sensitivity analysis repeats the primaries without them |
 | Fairness of assignment | assignment uses only the hash. No customer attribute (segment, balance, language, value band) is used to choose an arm (A11.3; case SS-LRN-20) |
 
 ## 3. Traffic split and the rollout ladder
@@ -39,8 +39,8 @@ The brief's ladder is 1% > 5% > 25% > 100%. The experiment is the 25% stage of t
 | Shadow | 0% (answers computed, not served) | all | decision and latency differences on live inputs | 24 hours |
 | Canary 1 | 1% (180 conversations a day) | a 1% control bucket range fixed in advance | smoke test: gross faults, crashes, hard-zero events | 24 hours and at least 150 conversations |
 | Canary 2 | 5% (900 a day) | 5% control range | guardrail rates, latency, sample ratio check, instrumentation check | 48 hours and at least 1,500 conversations |
-| A/B | 25% (4,500 a day) | 25% control range (4,500 a day) | the powered comparison on CSAT and FCR; guardrail constraints | 14 days of exposure, plus 7 days for FCR to mature |
-| Full | 100%, less an optional 5% holdback kept on control for 28 days | the holdback | long-term and novelty check; post-deployment regression monitoring | 28 days of monitoring |
+| A/B | 25% (4,500 a day) | 25% control range (4,500 a day) | the powered comparison on CSAT and FCR; guardrail constraints | 14 days of exposure for the analysis; the arms then stay frozen at 25% each until the FCR final look on day 21, so returning customers keep their arm. Conversations started after day 14 are served and safety-monitored but are not in the primary analysis |
+| Full | 100%, less a 5% holdback kept on control for 28 days | the holdback | long-term and novelty check; post-deployment regression monitoring | 28 days of monitoring |
 
 Notes. The control at each stage is a concurrent, equal-sized, pre-declared bucket range, not "everyone else": equal arms give the simplest valid comparison, and the remaining traffic (50% at the A/B stage) stays available for a second experiment on a different surface. Comparison is always candidate against concurrent control, never against history (`monitoring-dashboard.md` section 8). Canary cohorts receive doubled review sampling (D-89).
 
@@ -65,10 +65,10 @@ These decide whether the candidate may ship at all. They are not weighed against
 | First response time (A8.1 below 5 s); p95 turn latency below 3 s (D-07) | turn events | inside target in the candidate cohort; a breach blocks promotion (it is not one of the six breaker conditions) | gate |
 | Model Drift Score (DM-11; A8.3 below 0.05) | evaluation runs | below 0.05 (trip condition 6) | gate |
 | Escalation rate (A8.3 below 30%) | ESC records | not worse than control by more than 1.0 point (non-inferiority, section 7.4); P0 trigger rates (ESC-001, ESC-009, ESC-011, ESC-012) must not fall significantly | non-inferiority, two-directional for P0 |
-| Containment (A8.2 70%) | ESC records | not lower than control by more than 1.0 point | non-inferiority |
+| Containment (A8.2 70%) | `resolution_status` and escalation records | Containment is conversations resolved by the AI with no escalation record (`outcome-tracking.md` section 4.3, D-162). It is not 1 minus the escalation rate (that is the non-escalated share), so it is its own constraint: not lower than control by more than 1.0 point | non-inferiority |
 | Average handle time (A8.3 below 8 minutes) | timestamps | not higher than control by more than 5% | non-inferiority |
 | Complaint rate about the AI; S1 and S2 rates from doubled supervisor sampling | complaints, review tool | no S1 attributable to the candidate; S2 rate not above control | review |
-| Fairness slices: every Tier 0 metric and both primaries, by language class and by channel | as above | no slice worse than control beyond the same margins (A11.3) | non-inferiority per slice |
+| Fairness slices: every Tier 0 metric and both primaries, by language class and by channel | as above | no slice whose repeated interval lies wholly beyond the margin (evidence of harm in that slice), for every slice with at least the pre-registered minimum of 2,000 conversations per arm (proposal); smaller slices are pooled with their language class and reported descriptively. Showing non-inferiority is required for the whole population only (section 7.4) | harm test per slice |
 
 The trip conditions are those of `monitoring-dashboard.md` section 8 and are not redefined here. A drop in P0 escalations is treated as a possible harm, not a gain: an agent that escalates fraud less often is failing GR-SEC-R6 until proven otherwise.
 
@@ -87,7 +87,7 @@ Secondary (reported with a false-discovery-rate correction at 10%, never decisiv
 
 ## 5. Pre-registration
 
-No candidate enters canary 1 without a frozen pre-registration record in the experiment registry. The record is immutable after approval; deviations are appended with a reason and a time, and a deviation after unblinding is flagged in the report.
+No candidate enters shadow or canary 1 without a frozen pre-registration record in the experiment registry. The record is drafted at DESIGN, reviewed while the offline gates run, and frozen at the G5 approval, which is where `diagrams/learning-loop.mmd` shows it. The record is immutable after approval; deviations are appended with a reason and a time, and a deviation after unblinding is flagged in the report.
 
 | Field | Content |
 |---|---|
@@ -179,15 +179,19 @@ Sample sizes are re-checked at look 1 with the pooled (blinded) variance, the ob
 
 ### 7.1 Why and how many looks
 
-Waiting three weeks with no look would keep customers on a harmful candidate longer than necessary; looking every day at a fixed 0.025 threshold would inflate the false-positive rate. The design uses a small number of planned looks with an alpha-spending function, so the overall error rate stays at 0.025 per primary whatever the stopping time.
+Waiting three weeks with no look would keep customers on a harmful candidate longer than necessary; looking every day at a fixed 0.025 threshold would inflate the false-positive rate. The design uses a small number of planned looks with an alpha-spending function for claims of benefit, so the overall error rate stays at 0.025 per primary whatever the stopping time, and a separate, looser one-sided rule for stopping on harm (section 7.3), because the symmetric boundary is deliberately hard to cross early.
 
 Each primary has two looks at information fractions 0.5 and 1.0:
 
-| Calendar day of the A/B stage | CSAT | FCR (7-day maturity) |
+| Calendar day of the A/B stage | CSAT (ratings mature 3 days after the conversation starts) | FCR (7-day maturity) |
 |---|---|---|
-| 7 | look 1 (half of the ratings) | not yet mature; provisional escalation and repeat counts are read for harm only, under Tier 0 |
-| 14 | look 2, final | look 1 (cohorts of days 1 to 7 matured) |
-| 21 | | look 2, final (cohorts of days 1 to 14 matured) |
+| 7 | exposure for look 1 ends (conversations of days 1 to 7) | not yet mature; provisional escalation and repeat counts are read for harm only, under Tier 0 |
+| 10 | look 1 is read: ratings received by day 10 for conversations of days 1 to 7 | |
+| 14 | exposure for the analysis ends; arms stay frozen | look 1 (cohorts of days 1 to 7 matured) |
+| 17 | look 2, final: ratings received by day 17 for conversations of days 1 to 14 | |
+| 21 | late-rating sensitivity analysis | look 2, final (cohorts of days 1 to 14 matured); decision day |
+
+CSAT maturity rule (proposal, D-158). Escalated conversations are surveyed only after the human team closes them (`csat-signals.md` section 3.1), so their ratings arrive late and would be missing from a look taken on the last day of exposure, in exactly the stratum where arms may differ. Each look therefore uses the ratings received within 3 days of the conversation start; the post-stratification weights treat a conversation without a rating by then as a non-response. Ratings that arrive later are not added to a look that has been read. They enter one pre-registered late-rating sensitivity analysis on day 21, reported beside the primary result; if it changes the sign of the CSAT effect or moves it beyond the non-inferiority margin, the decision is deferred and reviewed.
 
 ### 7.2 Alpha spending and boundaries
 
@@ -198,7 +202,7 @@ Spending function: Lan-DeMets with the O'Brien-Fleming shape, `alpha*(t) = 2 x (
 | 1 | 0.5 | `2 x (1 - Phi(2.2414 / sqrt(0.5))) = 2 x (1 - Phi(3.1698)) = 0.0015` | 3.1698 | 0.0015 |
 | 2 | 1.0 | 0.0250 | 2.2510 | 0.0244 |
 
-The second boundary is the value c that solves `P(abs(Z1) < 3.1698 and abs(Z2) >= c) = 0.025 - 0.0015` under the null hypothesis, where Z1 and Z2 are jointly normal with correlation `sqrt(0.5)`. It was found by numerical integration; the total type I error then checks to 0.0250. For comparison a single fixed test would use 2.2414, so the price of the interim look is small: the maximum sample size rises by a factor of 1.0041 for the same 80% power (the inflation used in section 6). Under the design effect the probability of crossing at look 1 is 0.16.
+The second boundary is the value c that solves `P(abs(Z1) < 3.1698 and abs(Z2) >= c) = 0.025 - 0.0015` under the null hypothesis, where Z1 and Z2 are jointly normal with correlation `sqrt(0.5)`. It was found by numerical integration; the total type I error then checks to 0.0250. Convention: the spending function is applied here to the whole two-sided 0.025, as in the original Lan-DeMets formulation. Group-sequential packages commonly apply it to each one-sided tail of 0.0125 instead, which gives 3.3446 and 2.2457; both control the two-sided error at 0.025, and the form used here is slightly less conservative at look 1 and slightly more at look 2. The pre-registration names the convention so that a package check reproduces the numbers. For comparison a single fixed test would use 2.2414, so the price of the interim look is small: the maximum sample size rises by a factor of 1.0041 for the same 80% power (the inflation used in section 6). Under the design effect the probability of crossing at look 1 is 0.16.
 
 If the realised information fraction differs from the plan (for example a holiday week), the boundaries are recomputed from the same spending function at the realised fractions; that is the purpose of the Lan-DeMets form. The number of looks is not increased after the start.
 
@@ -206,7 +210,8 @@ If the realised information fraction differs from the plan (for example a holida
 
 At look k the interval for a difference is `estimate +/- c_k x SE`, with c_1 = 3.1698 and c_2 = 2.2510. These repeated intervals hold their joint coverage across both looks, so they can be used for every statement the decision needs:
 
-- **Harm** on a primary: the upper limit is below 0.
+- **Harm** on a primary, by interval: the upper limit is below 0.
+- **Harm** on a primary, by the early rule (pre-registered, D-158): z at or below -2.0 at look 1. This one-sided rule is looser than the symmetric boundary because stopping a harmful candidate matters more than the cost of a false stop. It can only stop the experiment, so it cannot inflate the chance of a wrong promotion; its cost is a 2.3% chance per primary (at most 4.6% over both) of stopping a harmless candidate at look 1. With the planning variance it stops on an observed CSAT fall of 0.061 points (0.096 under the symmetric boundary) or an FCR fall of 0.77 points (1.21); against a true CSAT harm of 0.10 points it stops at look 1 with probability 0.90, against 0.55 for the symmetric boundary.
 - **Win** on a primary: the lower limit is above 0.
 - **Non-inferiority** on a primary: the lower limit is above minus the margin (CSAT 0.10, FCR 1.0 point).
 
@@ -215,6 +220,8 @@ In effect sizes, with the planning variance: at look 1 a CSAT difference must ex
 ### 7.4 Non-inferiority for Tier 0 rates
 
 Escalation rate, containment and handle time use the same repeated intervals against their margins (section 4.1). With 63,000 conversations per arm the standard error of a rate near 0.30 or 0.70 is 0.27 points, so when the true difference is zero the chance of showing non-inferiority at a 1.0-point margin at the final look is 0.93; for the CSAT margin of 0.10 it is 0.99. A candidate that cannot show non-inferiority is not promoted, even if nothing is significantly worse: the burden of proof is on the candidate.
+
+That burden applies to the whole population only. Showing non-inferiority at a 1.0-point margin with 80% power needs about 44,200 conversations per arm, 70% of the 14-day arm, so no slice can meet it: a slice holding 10% of traffic would show it with probability 0.14 even when the candidate changes nothing, and a slice holding a third with probability 0.46. Requiring it per slice would block every candidate. For slices the rule is therefore the weaker, testable one of section 4.1: no slice with at least 2,000 conversations per arm may have a repeated interval wholly beyond the margin. At that minimum size the interval half-width is 3.4 points, so the slice rule detects gross harm to a small language or channel, not small harm; that limit is stated in every report, and small slices are followed for longer through the 28-day monitoring.
 
 Hard-zero constraints are not statistical tests. They are monitored continuously, and any event stops the experiment. Continuous monitoring of a stop-only rule does not inflate the chance of a wrong promotion; it can only make promotion less likely.
 
@@ -227,11 +234,11 @@ Non-binding. At look 1 the conditional power for each primary is computed under 
 | Rule | Condition | Action | Decided by |
 |---|---|---|---|
 | S-1 safety stop | any circuit-breaker trip condition (`monitoring-dashboard.md` section 8) | automatic rollback, stages frozen, incident opened; restart only from 1% after the cause is fixed (playbook runbook R7) | automatic; incident commander confirms |
-| S-2 harm stop | repeated interval for a primary lies below 0 at a look, or a Tier 0 non-inferiority interval lies wholly beyond its margin | rollback; record the result | statistician and owner; Risk owner informed |
-| S-3 validity stop | sample ratio mismatch (section 9), instrumentation fault, or assignment leak | pause; fix; restart with a new salt; data so far is discarded for inference | statistician |
+| S-2 harm stop | z at or below -2.0 on a primary at look 1 (early harm rule, section 7.3), or the repeated interval for a primary lies below 0 at a look, or a Tier 0 non-inferiority interval lies wholly beyond its margin (for a slice: section 4.1) | rollback; record the result | statistician and owner; Risk owner informed |
+| S-3 validity stop | sample ratio mismatch on randomised units, a difference between arms in the rate of protected-flow or safe-mode conversations at p below 0.001 (section 9), instrumentation fault, or assignment leak | pause; fix; restart with a new salt; data so far is discarded for inference | statistician |
 | S-4 futility | conditional power below 10% on both primaries at look 1 | stop recommended (non-binding) | owner |
-| S-5 efficacy | a primary's repeated interval lies above 0 | recorded. Promotion is still not allowed before the minimum exposure of 14 days and the FCR maturity of section 7.1; an early crossing ends the experiment early only when the candidate fixes a confirmed S2 defect and the Risk owner agrees | owner with approvers |
-| S-6 completion | final looks done | decision by the success rule of section 4.2; promote, or retire the candidate | approvers of section 11 |
+| S-5 efficacy | a primary's repeated interval lies above 0 | recorded only. No promotion before the decision day: day 21, when both primaries have had their final look. Between day 14 and day 21 the arms stay frozen at 25% each. The one exception is a candidate that fixes a confirmed S2 defect: with the Risk owner's agreement it may be promoted after the CSAT final look on day 17 if FCR is not inferior at its first look, and the FCR final look is then read as post-deployment validation | owner with approvers |
+| S-6 completion | final looks done (day 21) and the late-rating sensitivity analysis read | decision by the success rule of section 4.2; promote, or retire the candidate | approvers of section 11 |
 | S-7 maximum duration | 28 days of exposure reached without a decision | the candidate is retired as inconclusive; it is not extended again | owner |
 
 There is no rule that allows promotion on a primary win while a Tier 0 constraint is unmet, and there is no manual override of S-1 inside the pipeline (case SS-LRN-13).
@@ -240,16 +247,18 @@ There is no rule that allows promotion on a primary win while a Tier 0 constrain
 
 | Topic | Rule |
 |---|---|
-| Estimand | intention to treat: every unit is analysed in the arm it was assigned to |
+| Estimand | intention to treat: every randomised unit is analysed in the arm it was assigned to, whatever happened in its conversations (safe mode, rate limiting, crisis or fraud flow, escalation, abandonment). Nothing observed after assignment removes a unit from the primary analysis. Analyses that drop such conversations are pre-registered sensitivity analyses and never replace the primary |
+| Exclusion-rate check | the share of conversations in protected flows, in safe mode and rate-limited is compared between arms at every look. A difference at p below 0.001 means the candidate is changing who lands in those flows, which is a finding in itself and a validity stop (S-3) |
+| CSAT maturity | ratings count at a look if received within 3 days of the conversation start (section 7.1); one late-rating sensitivity analysis on day 21 |
 | CSAT estimator | difference of post-stratified means using the cells of `csat-signals.md` section 6.2, cells fixed before the experiment; variance by the stratified formula with customer clustering. The unweighted difference of means (Welch) is reported beside it. Because ratings are ordinal, a rank-based test and the share of ratings of 4 or 5 are reported as robustness checks; they are not decisive |
 | FCR estimator | difference of proportions on matured cohorts, customer-clustered standard error |
 | Differential response | the response rates of the arms are compared first. If they differ at p below 0.01, the weighted analysis remains primary and a bounding analysis is added: the arm with the higher response rate is trimmed to the lower rate from the top and from the bottom of its rating distribution, giving a lower and an upper bound for the effect |
-| Sample ratio mismatch | chi-square test of the observed arm counts against the planned ratio at every look and daily; p below 0.001 invalidates the data (S-3). With 126,000 conversations a difference of 1,168 between arms trips it; a split of 63,412 against 62,588 gives chi-square 5.39, p = 0.020, and passes |
+| Sample ratio mismatch | chi-square test of the number of distinct randomised units (customers, and anonymous sessions) per arm against the planned ratio, at every look and daily; p below 0.001 invalidates the data (S-3). The unit is the customer because the customer is what was randomised: a candidate that makes customers return more often changes the conversation count without any assignment fault. The conversation ratio is reported as a diagnostic, and conversations per unit by arm as a secondary metric. Scale of the test: with 126,000 units a difference of 1,168 between arms trips it; a split of 63,412 against 62,588 gives chi-square 5.39, p = 0.020, and passes |
 | A/A tests | before the first real experiment and every quarter, two identical arms are run through the whole analysis. Over repeated A/A runs the share of "significant" primaries must be consistent with 2.5%, and the SRM alarm must stay silent |
 | Variance reduction | optional and pre-registered: adjustment for a pre-experiment covariate of the same customer (prior-period CSAT stratum or contact count). Not assumed in the sample sizes |
 | Segments | pre-registered only: language class, channel, the ten A1.2 intent categories, new against returning customers. Each segment estimate is exploratory unless the experiment was sized for it, and segment tests are corrected for multiplicity (false-discovery rate 10%). Segments are for finding harm; a segment-only win does not justify a segment-only rollout |
-| Fairness | Tier 0 margins are checked per language class and channel (section 4.1). The brief asks for "statistical fairness testing" (A11.3): the report includes the difference in escalation rate and in primary effects between slices with intervals |
-| Outliers and bots | sessions rate-limited by GR-ATK-08 and safe-mode sessions are excluded by rule before unblinding |
+| Fairness | the slice rule of section 4.1 is applied per language class and channel. The brief asks for "statistical fairness testing" (A11.3): the report includes the difference in escalation rate and in primary effects between slices with intervals, and states the smallest harm each slice could have shown |
+| Outliers and bots | no post-assignment exclusion in the primary analysis. Sessions rate-limited by GR-ATK-08 and safe-mode sessions are dropped only in a pre-registered sensitivity analysis, defined before unblinding |
 | Blinding | reviewers, and the statistician until the planned looks, do not see arm labels; dashboards show pooled figures between looks |
 | Reporting | effect, repeated interval, the look at which it was read, the raw and weighted CSAT, response rates, SRM result, every Tier 0 metric with its interval, deviations from the pre-registration |
 
@@ -288,8 +297,9 @@ Other surfaces: prompt layers 3 and 4 need the prompt owner and Risk Committee r
 ### 11.2 Workflow and roles
 
 ```
-DRAFT -> STAT REVIEW -> SAFETY AND ETHICS REVIEW -> OWNER APPROVAL -> REGISTERED (frozen)
-      -> offline gates G0-G5 -> SHADOW -> CANARY 1% -> CANARY 5% -> A/B 25% -> DECISION
+DRAFT (written with the hypothesis at DESIGN) -> STAT REVIEW and SAFETY AND ETHICS REVIEW (in parallel with gates G0-G4)
+      -> G5 OWNER APPROVAL: pre-registration frozen = REGISTERED
+      -> SHADOW -> CANARY 1% -> CANARY 5% -> A/B 25% (exposure to day 14, frozen to day 21) -> DECISION (day 21)
       -> PROMOTED (100% + holdback) or ROLLED BACK or RETIRED -> REPORT -> CLOSED
 ```
 
@@ -325,4 +335,4 @@ The statistical review and the safety and ethics review together are the "experi
 
 ## 13. Decisions
 
-D-107 (customer as randomisation unit, equal concurrent control, the A/B test as the 25% stage), D-108 (metric hierarchy, Bonferroni split, planning values, sample sizes), D-109 (two looks per primary with Lan-DeMets O'Brien-Fleming spending, repeated intervals, non-binding futility), D-110 (non-inferiority margins and the 14-day minimum, 28-day maximum, novelty checks and holdback), D-111 (pre-registration, roles and the per-owner approval workflow).
+D-107 (customer as randomisation unit, equal concurrent control, the A/B test as the 25% stage), D-108 (metric hierarchy, Bonferroni split, planning values, sample sizes), D-109 (two looks per primary with Lan-DeMets O'Brien-Fleming spending, repeated intervals, non-binding futility), D-110 (non-inferiority margins and the 14-day minimum, 28-day maximum, novelty checks and holdback), D-111 (pre-registration, roles and the per-owner approval workflow), D-158 (audit corrections: intention to treat without post-assignment exclusions, SRM on randomised units, CSAT maturity rule, slice harm rule, early harm rule, decision on day 21).

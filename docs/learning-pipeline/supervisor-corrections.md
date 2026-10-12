@@ -17,7 +17,7 @@ Conversations are sampled the day after they close, so that the review sees the 
 | Stream (A5.1) | Pool | Selection | Daily pool (planning assumption) | Rate (proposal) | Reviews per day |
 |---|---|---|---|---|---|
 | R: random | all closed conversations | simple random, stratified by intent category and language so that every stratum has a minimum | 18,000 (A1.1) | 1% | 180 |
-| C: confidence-based | conversations with a turn below `intent_confidence_threshold` 0.70 or `retrieval_confidence_threshold` 0.65, or a clarification loop | weighted towards the lowest confidence; A8.5 "top 10 low-confidence interactions" always included | 3,600 (20% of volume: the most the A8.1 target "above 80% above 0.7" allows) | 4% | 144 |
+| C: confidence-based | conversations with a turn below `intent_confidence_threshold` 0.70 or `retrieval_confidence_threshold` 0.65, or a clarification loop | weighted towards the lowest confidence; A8.5 "top 10 low-confidence interactions" always included | 3,600 (20% of volume, a planning assumption: the A8.1 target is "above 80% above 0.7", so a system that just meets it has up to 20% below; the real pool can be larger before the target is met and also counts retrieval and clarification cases) | 4% | 144 |
 | E: escalation-triggered | conversations that created an ESC record | stratified by ESC ID; at least 5 per ESC ID per day where that many exist | 5,400 (30% of volume: the A8.3 ceiling "below 30%") | 2% | 108 |
 | P: complaint-triggered | (a) conversations named in a complaint about the AI service; (b) conversations rated CSAT 1 or 2 | (a) all; (b) random | (a) 90 (0.5% of volume, assumption); (b) 270 (10% of 2,700 responses, assumption; response rate 15%, `csat-signals.md`) | (a) 100%; (b) 20% | 90 + 54 |
 | G: guardrail triggers (D-89) | triggered turns, near-misses, intervened turns | as `monitoring-dashboard.md` section 5 | up to 30 triggers per guardrail per week | fixed | 58 x 30 / 7 = 249 turn reviews |
@@ -29,7 +29,7 @@ Conversation reviews: 180 + 144 + 108 + 90 + 54 = 576 per day, which is 3.2% of 
 1. **Random is never cut.** Streams C, E and P find problems efficiently but are biased samples. Only stream R gives unbiased rates (defect rate, S1 rate, false-resolution rate). When capacity is short, C and E are reduced first, P(b) next, and R and P(a) last.
 2. **A conversation is reviewed once.** If it qualifies for several streams it is assigned to the first of P, E, C, R that selected it, and all its stream tags are kept for analysis.
 3. **Always reviewed, outside the percentages (proposal):** any conversation behind a hard-zero counter event, every OSL near-miss on a CRITICAL guardrail (D-88), the 30 conversations the silent-dissatisfaction detector scores highest that day (`csat-signals.md` section 5), and up to 30 false resolutions a day (`outcome-tracking.md` section 2), taken first from the intent categories with the lowest resolution in the brief's data (A1.2: Product Recommendation 42%, Loan Enquiry 55%, Complaint Resolution 58%). These items take the place of stream C and E items in the day's queue, so the total stays inside capacity (section 7).
-4. **Canary cohorts are doubled** (D-89): while a candidate is at 1%, 5% or 25%, sampling rates inside the candidate cohort are twice the table above, and the reviewer does not see which cohort a conversation belongs to.
+4. **Canary cohorts are doubled** (D-89): while a candidate is at 1%, 5% or 25%, sampling rates inside the candidate cohort are twice the table above, and the reviewer does not see which cohort a conversation belongs to. The extra reviews are staffed, not absorbed: section 7 sizes them.
 5. **Fair coverage.** Strata include language (English, Hindi, Hinglish and the five secondary languages) and channel, so that a quality problem in a small language is not hidden by volume (A11.3).
 6. **Precision of the random stream.** 180 reviews a day give 1,260 a week. For a true defect rate of 5% the weekly 95% interval is plus or minus 1.2 points (1.96 x sqrt(0.05 x 0.95 / 1,260)); the daily interval is plus or minus 3.2 points. Quality rates are therefore reported weekly. If no S1 is found in 1,260 random reviews, the 95% upper bound on the S1 rate is 0.24%, which is far too weak to demonstrate a 0% target; the hard-zero counters and the fixed suite carry that claim, not sampling.
 
@@ -182,8 +182,11 @@ The brief sets 50 reviews per supervisor per day. With the planning assumptions 
 | Double review, 10% | 658.9 x 1.10 | 724.7 |
 | Supervisors on the floor | 724.7 / 50 = 14.5 | 15 |
 | With 20% shrinkage (leave, training, calibration, adjudication; proposal) | 14.5 / 0.80 = 18.1 | 19 on the roster |
+| Canary doubling at the 25% A/B stage (section 2.2 rule 4): one extra sample of the candidate cohort | 0.25 x 576 | +144 |
+| Review equivalents during an A/B stage, with double review | (576 + 144 + 82.9) x 1.10 | 883.1 |
+| Supervisors during an A/B stage | 883.1 / 50 = 17.7; with shrinkage 22.1 | 18 on the floor, 23 on the roster |
 
-Fifty reviews in a 7.5-hour working day is 9 minutes per review. Double-reviewed items number about 66 a day, 461 a week.
+The doubling adds 6 reviews a day at the 1% stage and 29 at the 5% stage, which the base roster absorbs (15 to 16 on the floor); at the 25% stage it adds 144. Because an A/B stage runs for 21 days and experiments are expected most of the time, the roster is planned at the A/B figure of 23, not at 19; when no experiment is running the freed capacity goes to stream R. Fifty reviews in a 7.5-hour working day is 9 minutes per review. Double-reviewed items number about 66 a day, 461 a week.
 
 Workload management rules:
 

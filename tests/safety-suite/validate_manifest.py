@@ -6,9 +6,19 @@ Usage:
 
 Needs PyYAML. Light harness only: it checks the structure of the specification, it does not run any case
 against an agent. Rules are in tests/safety-suite/README.md and docs/learning-pipeline/safety-invariants.md.
---rebuild is add-only: it refuses to drop a case that the current manifest lists, and it never lowers case_floor.
+
+--rebuild is add-only and change-controlled (D-156):
+  * it refuses to drop a case, and never lowers case_floor;
+  * it refuses when the SHA, `kind` or `expected_action` of an existing case changed, unless each changed case is named:
+        --rebuild --accept-change <ID> [--accept-change <ID> ...] --decision <reference to the recorded decision>
+    accepted changes are appended to manifest.lock.yaml (id, old and new SHA, fields, decision, date);
+  * it refuses when manifest.lock.yaml is absent, unless --init (first build, or migration from a manifest without a lock).
+manifest.lock.yaml holds the floor and the accepted SHA, kind and expected_action of every case; validation compares the
+manifest and the case files with it. The lock only detects change relative to a copy the changer cannot write: it must be
+owned by the suite custodians (CODEOWNERS or equivalent), not by the learning pipeline.
 """
 import collections
+import datetime
 import glob
 import hashlib
 import json
@@ -21,6 +31,7 @@ import yaml
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(os.path.dirname(HERE))
 MANIFEST = os.path.join(HERE, "manifest.yaml")
+LOCK = os.path.join(HERE, "manifest.lock.yaml")
 REFERENCED = ["tests/adversarial/*.yaml", "tests/guardrails/*.yaml",
               "tests/escalation/*.yaml"]                                # Day 10 files and Day 12 escalation files, indexed by reference
 OWN = "tests/safety-suite/*.yaml"                                      # Day 11 SS-* files
@@ -160,7 +171,7 @@ def source_files():
     files = []
     for pattern in REFERENCED + [OWN]:
         files += sorted(glob.glob(os.path.join(ROOT, *pattern.split("/"))))
-    return [f for f in files if os.path.basename(f) != "manifest.yaml"]
+    return [f for f in files if os.path.basename(f) not in ("manifest.yaml", "manifest.lock.yaml")]
 
 
 def read_sources():
@@ -175,17 +186,61 @@ def read_sources():
     return out
 
 
+def lock_entry(r):
+    return collections.OrderedDict([("sha256", r["sha256"]), ("kind", r.get("kind") or "case"), ("expected_action", r["expected_action"])])
+
+
+def arg_values(flag):
+    return [sys.argv[i + 1] for i, a in enumerate(sys.argv[:-1]) if a == flag]
+
+
 def rebuild():
     sources = read_sources()
     rows = [row(c, f) for f, c in sources]
-    floor = len(rows)
-    if os.path.exists(MANIFEST):
-        old = load(MANIFEST)
-        missing = sorted({r["id"] for r in old.get("cases", [])} - {r["id"] for r in rows})
-        if missing:
-            sys.exit("REFUSED: rebuild would drop %d case(s) the manifest lists: %s. Cases are never removed by tooling "
-                     "(safety-invariants.md section 4)." % (len(missing), ", ".join(missing[:10])))
-        floor = max(floor, old.get("case_floor", 0))
+    accept = set(arg_values("--accept-change"))
+    decision = (arg_values("--decision") or [None])[-1]
+    init = "--init" in sys.argv
+    lock = load(LOCK) if os.path.exists(LOCK) else None
+    if lock is None:
+        if not init:
+            sys.exit("REFUSED: manifest.lock.yaml is absent. Without it the tool cannot tell an added case from a removed or "
+                     "weakened one. Restore it from version control; a first build needs --init.")
+        if os.path.exists(MANIFEST):      # migration: the existing manifest is the baseline
+            old = load(MANIFEST)
+            lock = {"case_floor": old.get("case_floor", 0), "accepted_changes": [],
+                    "cases": {r["id"]: lock_entry(r) for r in old.get("cases", [])}}
+        else:
+            lock = {"case_floor": 0, "cases": {}, "accepted_changes": []}
+    elif init:
+        sys.exit("REFUSED: --init is only for a first build; manifest.lock.yaml already exists.")
+    base = lock.get("cases") or {}
+    new = {r["id"]: r for r in rows}
+    missing = sorted(set(base) - set(new))
+    if missing:
+        sys.exit("REFUSED: rebuild would drop %d case(s) the lock lists: %s. Cases are never removed by tooling "
+                 "(safety-invariants.md section 4)." % (len(missing), ", ".join(missing[:10])))
+    changed = {}
+    for cid, b in base.items():
+        e = lock_entry(new[cid])
+        fields = [k for k in ("sha256", "kind", "expected_action") if e[k] != b.get(k)]
+        if fields:
+            changed[cid] = fields
+    unaccepted = sorted(set(changed) - accept)
+    if unaccepted:
+        sys.exit("REFUSED: %d existing case(s) changed (%s). A changed oracle is a reviewed decision: re-run with "
+                 "--accept-change <ID> for each and --decision <ref>." % (
+                     len(unaccepted), "; ".join("%s: %s" % (c, ",".join(changed[c])) for c in unaccepted[:10])))
+    if changed and not decision:
+        sys.exit("REFUSED: --accept-change needs --decision <reference to the recorded decision>.")
+    stray = sorted(accept - set(changed))
+    if stray:
+        sys.exit("REFUSED: --accept-change names case(s) that did not change: %s" % ", ".join(stray))
+    floor = max(len(rows), lock.get("case_floor", 0))
+    log = list(lock.get("accepted_changes") or [])
+    for cid in sorted(changed):
+        log.append(collections.OrderedDict([("id", cid), ("fields", changed[cid]), ("old_sha256", base[cid]["sha256"]),
+                                            ("new_sha256", new[cid]["sha256"]), ("decision", decision),
+                                            ("date", datetime.date.today().isoformat())]))
     by_file = collections.Counter(r["file"] for r in rows)
     by_cat = collections.Counter(r["suite_category"] for r in rows)
     head = ["# Fixed safety regression suite: manifest (brief A5.4, minimum 200 cases). GENERATED - do not edit by hand.",
@@ -218,7 +273,17 @@ def rebuild():
     text.encode("ascii")
     with open(MANIFEST, "w", encoding="ascii", newline="\n") as f:
         f.write(text)
-    print("manifest rebuilt: %d cases (%d referenced, %d new), case_floor %d" % (len(rows), doc["referenced_case_count"], doc["new_case_count"], floor))
+    lock_doc = collections.OrderedDict([("schema_version", "1.0"), ("case_floor", floor),
+                                        ("cases", collections.OrderedDict((r["id"], lock_entry(r)) for r in rows)),
+                                        ("accepted_changes", [collections.OrderedDict(x) for x in log])])
+    lock_head = ["# Lock for manifest.yaml: floor and accepted SHA-256, kind and expected_action of every case, plus the log of accepted changes.",
+                 "# Written only by validate_manifest.py --rebuild. Owned by the suite custodians; read-only to the learning pipeline (D-156).", ""]
+    ltext = "\n".join(lock_head) + yaml.dump(lock_doc, Dumper=D, sort_keys=False, width=200, allow_unicode=False)
+    ltext.encode("ascii")
+    with open(LOCK, "w", encoding="ascii", newline="\n") as f:
+        f.write(ltext)
+    print("manifest rebuilt: %d cases (%d referenced, %d new), case_floor %d; added %d, accepted changes %d" % (
+        len(rows), doc["referenced_case_count"], doc["new_case_count"], floor, len(set(new) - set(base)), len(changed)))
 
 
 def validate():
@@ -240,6 +305,26 @@ def validate():
         err("only %d cases; the brief requires at least %d" % (len(rows), MIN_CASES))
     if len(rows) < man.get("case_floor", 0):
         err("%d cases is below case_floor %s: cases were removed" % (len(rows), man.get("case_floor")))
+    # 2b. the lock: floor and accepted SHA, kind and expected_action
+    if not os.path.exists(LOCK):
+        err("manifest.lock.yaml is absent")
+    else:
+        lock = load(LOCK)
+        lc = lock.get("cases") or {}
+        if man.get("case_floor") != lock.get("case_floor"):
+            err("case_floor in the manifest (%s) differs from the lock (%s)" % (man.get("case_floor"), lock.get("case_floor")))
+        if len(rows) < lock.get("case_floor", 0):
+            err("%d cases is below the locked floor %s" % (len(rows), lock.get("case_floor")))
+        for cid in sorted(set(lc) - set(ids)):
+            err("%s: in the lock but not in the manifest (row removed)" % cid)
+        for r in rows:
+            b = lc.get(r.get("id"))
+            if b is None:
+                err("%s: in the manifest but not in the lock" % r.get("id"))
+                continue
+            for k, v in lock_entry(r).items():
+                if b.get(k) != v:
+                    err("%s: %s differs from the lock (changed without --accept-change)" % (r["id"], k))
     # 3. every referenced file and case exists; no orphan case in the source files
     sources = read_sources()
     src = {}
@@ -317,6 +402,10 @@ def validate():
             err("%s: intent %s" % (cid, c["intent"]))
         if not isinstance(c.get("input_turns"), list) or not c.get("input_turns"):
             err("%s: input_turns must be a non-empty list" % cid)
+        if c.get("kind") != "control" and not (c.get("must_not_contain") or c.get("must_contain") or c.get("expected_signal")):
+            err("%s: non-control case has an empty oracle (needs must_not_contain, must_contain or expected_signal)" % cid)
+        if c.get("kind") != "control" and not (c.get("expected_guardrails") or c.get("expected_escalation") or c.get("expected_signal")):
+            err("%s: non-control case names no guardrail, escalation or gate that must act" % cid)
         text = " ".join(strings(c))
         for ph in re.findall(r"\{\{([A-Z0-9_]+)", text):
             if ph not in PLACEHOLDERS:
@@ -324,6 +413,10 @@ def validate():
         plain = re.sub(r"re:\S+", "", text)
         if re.search(r"\d{9,}", plain) or re.search(r"\b\d{4}[ -]\d{4}[ -]\d{4}\b", plain):
             err("%s: sensitive-looking digit run" % cid)
+        if re.search(r"\b[A-Z]{5}\d{4}[A-Z]\b", plain):
+            err("%s: PAN-shaped literal (use {{SYN_PAN}})" % cid)
+        if re.search(r"(?i)\b(otp|cvv|pin|code)\b\D{0,12}\b\d{3,8}\b", plain) and not re.search(r"(?i)pin code", plain):
+            err("%s: credential-shaped digits after an OTP, CVV, PIN or code cue (use a placeholder)" % cid)
         try:
             text.encode("ascii")
         except UnicodeEncodeError:

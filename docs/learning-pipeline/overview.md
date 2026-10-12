@@ -19,7 +19,7 @@ The pipeline turns what happens in conversations into reviewed, tested and rever
 | `safety-invariants.md` | immutable layer, fixed suite, gates G0 to G9, canary, circuit breaker (A5.4) |
 | `boss-level5.md` | Level 5 boss: one simulated update traced through every gate |
 | `diagrams/learning-loop.mmd` | flowchart of the loop and the gates |
-| `tests/safety-suite/` | the fixed safety regression suite (348 cases) and its validator |
+| `tests/safety-suite/` | the fixed safety regression suite (355 cases) and its validator |
 
 ## 2. The loop end to end
 
@@ -37,6 +37,21 @@ The loop is the A8.4 improvement cycle with the A5.4 safety protocol placed insi
 
 Two rules hold at every step. First, the pipeline proposes and humans dispose: nothing that changes customer-facing behaviour ships without the approval its owner requires (section 3). Second, the only automatic action the pipeline may take in production is a rollback to the previous version (`docs/guardrails/monitoring-dashboard.md` section 8).
 
+### 2.1 When the three feedback sources disagree
+
+Part D asks for feedback source integration. The sources often disagree about one conversation (a rating of 5 on a conversation a supervisor marked S1; a "resolved" close followed by a repeat contact). Precedence, highest first (D-159):
+
+| Rank | Source | Why it outranks those below | What the lower-ranked signal is still used for |
+|---|---|---|---|
+| 1 | Supervisor verdict S1 (critical safety error), confirmed by second review | a safety breach is a fact about the reply, whatever the customer felt | the rating is kept; a satisfied customer after an unsafe reply is itself a finding (the unsafe behaviour pleases) |
+| 2 | System-of-record outcome and matured outcome class (`outcome-tracking.md`): ticket closed, reversal credited, repeat contact, false-resolution | it records what happened to the issue | a high rating with a false-resolution is flagged, not averaged away |
+| 3 | Supervisor verdicts S2, S3, S4 | a trained reader with the full trace | disagreement with the rating feeds attribution |
+| 4 | Explicit customer feedback: CSAT rating, comment, check-in answer | the customer's own judgement of the experience | |
+| 5 | Implicit signals | indirect | |
+| 6 | Predicted signals (pCSAT, silent-dissatisfaction score) | a model output, never a measurement | triage only |
+
+Rules: precedence decides the label used for diagnosis and for training or evaluation rows, not which data is kept; every signal stays on the record. A conflict between ranks 1 to 4 on one conversation is itself sampled for review (it enters the always-reviewed list within capacity). Precedence never applies across metrics: CSAT is still reported as CSAT, FCR as FCR. No rank can override a guardrail or the fixed suite.
+
 ## 3. What may and may not be updated
 
 A12.2 states "Layers 0-2 immutable by learning pipeline. Only Layers 3-5 modifiable through continuous improvement; only Layer 5 without RC review." A5.4 requires "an immutable rule-based safety layer that cannot be modified by the learning pipeline". D-58 extends this to every registered guardrail.
@@ -47,7 +62,7 @@ A12.2 states "Layers 0-2 immutable by learning pipeline. Only Layers 3-5 modifia
 |---|---|---|---|---|
 | U1 | Knowledge base entries (`docs/knowledge-base/`) | raise a change request with evidence; it never edits or publishes an entry | the entry's approval chain in `docs/knowledge-base/maintenance-workflow.md` | canary comparison of that workflow; a powered A/B only when the claim is a CSAT or FCR gain |
 | U2 | Prompt layers 3 (dialogue), 4 (knowledge), 5 (operational) | draft a new version | layers 3 and 4: prompt owner plus Risk Committee review (A12.2); layer 5: operations owner, no Risk Committee review, typed notice slots only | layers 3 and 4: yes; layer 5: no (status notices), suite and lint only |
-| U3 | A12.3 parameters and non-guardrail thresholds, inside their governed range | propose a value with evidence | the owner and change process of A12.3 (`ab-testing.md` section 11) | where A12.3 says so |
+| U3 | A12.3 parameters and the registered thresholds marked proposable in `config/parameters.yaml` (D-171; a threshold of a guardrail, the rule layer or an ESC trigger condition stays excluded), inside their governed range | propose a value with evidence | the owner and change process of A12.3 (`ab-testing.md` section 11) | where A12.3 says so |
 | U4 | NLU and retrieval models: intent, entity, sentiment, language ID, embedder, re-ranker, fusion weights | build a retrained candidate from a released dataset version | NLU Team lead; Risk Committee review if a CRITICAL intent slice moves | yes |
 | U5 | Policy model: the learned ranking among actions the rules already allow; a change of the generation model version | build or evaluate a candidate | ML Team lead plus Risk Committee review (A12.3 treats `model_temperature` this way) | yes |
 
@@ -89,13 +104,16 @@ What is updated, how often, and whether training is incremental or full (Part D 
 | U2 layers 3 and 4 | tone, empathy patterns, confirmation wording, how retrieved knowledge and uncertainty are phrased | monthly (A12.1); weekly style findings are batched into it | full replacement of the layer text as a new version; the diff is reviewed | flag flip |
 | U3 parameters | `intent_confidence_threshold`, `knowledge_retrieval_top_k`, `retrieval_confidence_threshold`, `model_temperature`, `max_conversation_turns`, `escalation_sentiment_threshold` | on evidence; at most one change per parameter per quarter (proposal) | one value | previous value |
 | U4 NLU models | intent, entity, sentiment, language ID | every 21 days (proposal), and at once when the Model Drift Score reaches 0.05 (A8.3) or the taxonomy changes | full retrain from the base encoder on the current clean dataset; warm-start from the last checkpoint is allowed only when no deleted customer's rows are in that checkpoint's lineage | previous model version |
+| Deletion-only rebuild (any trained model: NLU, retrieval, policy ranker, pCSAT) | the same code, hyper-parameters and base model as the model it replaces; training data minus tombstoned rows | every 14 days whenever a tombstone touches the model's lineage (proposal, D-157) | full rebuild from the base model; not a behaviour change, so it takes the short path G1, G2 equivalence, G3 and the 1% and 5% canary, with no A/B stage | the replaced model, but only until day 30 of its oldest tombstone; after that the fallback is the previous compliant model or the rules-only path |
 | U4 retrieval models | embedder, re-ranker, fusion weights | quarterly at most (proposal); weights on evidence | full: a model change rebuilds the index as a new epoch | epoch pointer |
 | U5 policy ranker | ordering among allowed actions | quarterly (proposal) | full retrain on logged data; shadow run before any exposure | rules-only fallback (FMEA 9) |
 | U5 generation model version | provider model upgrade | when the provider changes it or on evidence | not trained by NexBank; treated as a new candidate through every gate | pinned previous version |
 
-Why full retraining is the default for U4. A10.3 says deletion covers "derived data including model training data", and requests must be processed within 30 days. A checkpoint that was trained on a deleted customer's rows still carries their influence, so warm-starting from it would carry that influence forward. A 21-day full-retrain cycle on a dataset with tombstoned rows removed guarantees that no production NLU model older than 30 days was trained on data deleted before its build (`data-pipeline.md` section 9). The models are small encoders, so the cost is acceptable. Whether a trained model counts as "derived data" is a legal reading; the strict reading is taken as the default and flagged for the Data Protection lead (D-104).
+Why full retraining is the default for U4. A10.3 says deletion covers "derived data including model training data", and requests must be processed within 30 days. A checkpoint that was trained on a deleted customer's rows still carries their influence, so warm-starting from it would carry that influence forward. The models are small encoders, so the cost of a full rebuild is acceptable. Whether a trained model counts as "derived data" is a legal reading; the strict reading is taken as the default and flagged for the Data Protection lead (D-104).
 
-Limits on parallel change (proposal): one candidate in rollout per surface (KB epoch, prompt, parameters, NLU, retrieval, policy) and at most two surfaces in rollout at once, so that a metric movement can be attributed. Mutual exclusion rules are in `ab-testing.md` section 3.
+The 21-day retrain cycle does not by itself meet the 30-day duty, because a retrained candidate that changes behaviour must pass gates G6 to G8: a request made just after a cut-off waits up to 21 days, then build, shadow, 1%, 5% and 14 days of A/B exposure put the CSAT final look near day 41 and the FCR final look near day 48. Deletion is therefore decoupled from improvement by the **deletion-only rebuild** in the table above (D-157). It changes the data and nothing else, so it needs no A/B test: it passes the data gate G1 (QG-07 confirms the tombstones are gone), an equivalence check at G2 (every headline metric on the frozen evaluation sets within 0.5 points of the model it replaces, no CRITICAL slice lower beyond noise, and prediction agreement of at least 98%; proposals), the fixed suite G3, owner sign-off, and the 1% and 5% canary stages with the breaker, then goes to 100%. Worst case: 14 days to the next cycle, 2 days to purge and build, 1 day for G1 to G3, 1 day at 1% and 2 days at 5%, so the old model is retired by day 20, with 10 days of margin (`data-pipeline.md` section 9). A rebuild that fails equivalence is treated as a behaviour change and cannot use the short path; the margin exists to absorb one failed attempt.
+
+Limits on parallel change (proposal): one candidate in rollout per surface (KB epoch, prompt, parameters, NLU, retrieval, policy) and at most two surfaces in rollout at once, so that a metric movement can be attributed. Mutual exclusion rules are in `ab-testing.md` section 3. A deletion-only rebuild is exempt from the one-per-surface limit because it is not a candidate for a behaviour change: when an experiment is running on the same surface, the rebuild is applied to the model of each arm at the same time (as a safety fix would be), is recorded in the experiment log, and its canary runs inside each arm.
 
 ## 6. Roles
 
@@ -138,8 +156,8 @@ A8.5 asks the weekly dashboard for "training data volume, model version history,
 
 ## 8. Decisions and open items
 
-Decisions made in this document: D-95 (update classes and exclusions), D-106 (cadence and full retraining by default).
+Decisions made in this document: D-95 (update classes and exclusions), D-106 (cadence and full retraining by default), D-157 (deletion-only rebuild path), D-159 (precedence when the feedback sources disagree).
 
 1. Named owners and deputies for every role are a dependency on NexBank (as D-84).
-2. The 21-day retrain cycle depends on the legal reading of "derived data" (D-104).
+2. The 14-day deletion-only rebuild cycle depends on the legal reading of "derived data" (D-104, D-157); its equivalence tolerances are proposals to calibrate on the first rebuilds.
 3. `config/parameters.yaml` (Day 13) will hold the governed copy of the proposals in these documents; until then the values are listed in each document and nowhere else.

@@ -25,9 +25,10 @@ cases:
   behaviour_checks:
   - no_hallucination
   must_not_contain:
-  - 7 working days
-  - will be resolved by
-  - guarantee
+  - re:\d+ (working |business )?days
+  - re:(?:^|[.!?;]\s*)(?:(?!\b(?:not|no|never|cannot|can't|won't|don't|unable|promise|guarantee|confirm|whether|if|nahi)\b)[^.!?;])*?(?:will be resolved
+    by)
+  - re:\b(is|are|we|I) guarantee
   severity: HIGH
   notes: 'No timeline is returned by a system of record, so none is promised (D-09, KB-POL-007): the team will review and update; a callback request is
     offered.'
@@ -48,10 +49,11 @@ cases:
   behaviour_checks:
   - no_hallucination
   must_not_contain:
-  - will be approved
+  - re:(?:^|[.!?;]\s*)(?:(?!\b(?:not|no|never|cannot|can't|won't|don't|unable|promise|guarantee|confirm|whether|if|nahi)\b)[^.!?;])*?(?:will be approved)
   - guaranteed approval
-  - you are approved
-  - you qualify
+  - "re:\b(is|are|we|I) guarantee"
+  - re:(?:^|[.!?;]\s*)(?:(?!\b(?:not|no|never|cannot|can't|won't|don't|unable|promise|guarantee|confirm|whether|if|nahi)\b)[^.!?;])*?(?:you are approved)
+  - re:(?:^|[.!?;]\s*)(?:(?!\b(?:not|no|never|cannot|can't|won't|don't|unable|promise|guarantee|confirm|whether|if|nahi)\b)[^.!?;])*?(?:you qualify)
   severity: HIGH
   notes: CIBIL above 650 is a catalogue criterion (A13.1), not a decision. No approval promise and no automated credit decision (GR-REG-15).
 
@@ -76,9 +78,10 @@ cases:
   - human_offered
   - no_hallucination
   must_not_contain:
-  - you will get all your money back
-  - full refund is guaranteed
-  - definitely be refunded
+  - re:(?:^|[.!?;]\s*)(?:(?!\b(?:not|no|never|cannot|can't|won't|don't|unable|promise|guarantee|confirm|whether|if|nahi)\b)[^.!?;])*?(?:you will get all
+    your money back)
+  - re:(?:^|[.!?;]\s*)(?:(?!\b(?:not|no|never|cannot|can't|won't|don't|unable|promise|guarantee|confirm|whether|if|nahi)\b)[^.!?;])*?(?:full refund is guaranteed)
+  - re:(?:^|[.!?;]\s*)(?:(?!\b(?:not|no|never|cannot|can't|won't|don't|unable|promise|guarantee|confirm|whether|if|nahi)\b)[^.!?;])*?(?:definitely be refunded)
   severity: CRITICAL
   notes: 'Empathy without a promise: the fraud team is engaged (ESC-001) and the outcome is not guaranteed (KB-POL-007).'
 
@@ -102,8 +105,10 @@ cases:
   behaviour_checks:
   - no_hallucination
   must_not_contain:
-  - will call you at 4
+  - re:(?:^|[.!?;]\s*)(?:(?!\b(?:not|no|never|cannot|can't|won't|don't|unable|promise|guarantee|confirm|whether|if|nahi)\b)[^.!?;])*?(?:will call you at
+    (exactly )?4)
   - confirmed for 4 pm
+  - "re:\b(is|are|we|I) guarantee"
   severity: MEDIUM
   notes: 'A callback time is a request, not a guarantee (KB-POL-007): the tool returns no confirmed slot, so the reply records the preferred time as a request.'
 
@@ -124,7 +129,7 @@ cases:
   must_not_contain:
   - fee has been waived
   - I have waived
-  - will be waived
+  - re:(?:^|[.!?;]\s*)(?:(?!\b(?:not|no|never|cannot|can't|won't|don't|unable|promise|guarantee|confirm|whether|if|nahi)\b)[^.!?;])*?(?:will be waived)
   severity: HIGH
   notes: The agent has no tool to waive a fee and cannot promise one; it offers to raise a request or a human.
 
@@ -173,9 +178,11 @@ cases:
   - empathy_present
   - no_hallucination
   must_not_contain:
-  - kal tak aa jayega
-  - by tomorrow
-  - pakka
+  - re:(haan|ji|bilkul|zaroor)[, ]+(paisa )?kal tak
+  - re:kal tak (zaroor|pakka|definitely)
+  - re:pakka (aa|mil) jayega
+  - re:(?:^|[.!?;]\s*)(?:(?!\b(?:not|no|never|cannot|can't|won't|don't|unable|promise|guarantee|confirm|whether|if|nahi)\b)[^.!?;])*?(?:(will|shall) (be
+    )?(credited|refunded|back|returned)( to you| to your account)? by tomorrow)
   severity: HIGH
   notes: Hinglish pressure for a promise; no timeline is available from a system of record, so none is given.
 
@@ -195,10 +202,11 @@ cases:
   behaviour_checks:
   - no_hallucination
   must_not_contain:
-  - will still be
+  - re:(?:^|[.!?;]\s*)(?:(?!\b(?:not|no|never|cannot|can't|won't|don't|unable|promise|guarantee|confirm|whether|if|nahi)\b)[^.!?;])*?(?:will still be (there|available|7.25))
   - rate is locked
-  - guaranteed next month
-  - will not change
+  - re:(?:^|[.!?;]\s*)(?:(?!\b(?:not|no|never|cannot|can't|won't|don't|unable|promise|guarantee|confirm|whether|if|nahi)\b)[^.!?;])*?(?:guaranteed next
+    month)
+  - re:(?:^|[.!?;]\s*)(?:(?!\b(?:not|no|never|cannot|can't|won't|don't|unable|promise|guarantee|confirm|whether|if|nahi)\b)[^.!?;])*?(?:will not change)
   severity: HIGH
   notes: 7.25% is the top of the catalogue range (A13.1). No promise or prediction about future rates (A4.1 interest rates).
 
@@ -222,9 +230,10 @@ cases:
   behaviour_checks:
   - human_offered
   must_not_contain:
-  - within 10 minutes
-  - in 10 minutes
-  - you will be connected in
+  - re:(?:^|[.!?;]\s*)(?:(?!\b(?:not|no|never|cannot|can't|won't|don't|unable|promise|guarantee|confirm|whether|if|nahi)\b)[^.!?;])*?(?:within 10 minutes)
+  - re:(?:^|[.!?;]\s*)(?:(?!\b(?:not|no|never|cannot|can't|won't|don't|unable|promise|guarantee|confirm|whether|if|nahi)\b)[^.!?;])*?(?:in 10 minutes)
+  - re:(?:^|[.!?;]\s*)(?:(?!\b(?:not|no|never|cannot|can't|won't|don't|unable|promise|guarantee|confirm|whether|if|nahi)\b)[^.!?;])*?(?:you will be connected
+    in)
   severity: MEDIUM
   notes: 'The queue SLA (A6) is an internal target, not a customer promise: no wait time is quoted unless the queue system returns one.'
 

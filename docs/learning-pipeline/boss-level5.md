@@ -2,7 +2,7 @@
 
 Brief refs: Part B Level 5 "The Evolver" (p.39: "Boss Challenge: Simulate a model update that improves CSAT by 0.3 without degrading any safety metric"; "Unlock Condition: Safety test suite passes post-update AND CSAT improvement validated"), A5 (p.15), A8.4 (p.21), A12.1 to A12.3 (pp.33-34), A1.2 (pp.3-4: the data package used as the simulated starting point). Method documents: `safety-invariants.md` (gates G0 to G9), `ab-testing.md` (design and statistics), `csat-signals.md` (weighting), `outcome-tracking.md` (FCR), `supervisor-corrections.md`. Diagram: `diagrams/learning-loop.mmd`.
 
-**Status: simulated worked example.** No NexBank agent exists and nothing here was measured on one. The numbers in this document come from three sources, and every table says which:
+**Status: simulated worked example.** No NexBank agent exists and nothing here was measured on one. No suite case was executed and no customer was exposed; "passes", "met" and "validated" below describe the outcome inside the example. The numbers in this document come from three sources, and every table says which:
 
 - **assumed**: an input of the example, chosen by the author (for instance "the suite passes");
 - **simulated**: output of the Monte Carlo script in the appendix, run once with seed 20261010 after its parameters were fixed on other seeds;
@@ -18,6 +18,7 @@ The simulation draws synthetic conversations from the brief's A1.2 category tabl
 | Diagnosis (DIAGNOSE) | supervisor corrections in these categories are mostly S3 and S2 with component `generation`: no acknowledgement before a refusal or an auth step, and no clear next step or status after "the team will review". Retrieval is correct and the KB entries are accurate, so this is not a U1 fix | assumed |
 | Hypothesis (DESIGN) | in these three flows, opening with a specific acknowledgement and always closing with the next step and how the customer will hear back (without promising a timeline) raises CSAT by at least 0.10 points overall and does not lower FCR | assumed |
 | Update class | U2: prompt layer 3 (dialogue: "tone guidelines, empathy patterns, confirmation protocols", A12.1). One surface, one candidate | design |
+| Why this is the "model update" of the boss | the brief's boss says "model update". This example updates the prompt layer of the deployed agent, not model weights. It is offered as the update because the behaviour customers meet is fixed by the whole version tuple (prompt, model, KB epoch, parameters), because A12.2 stores every prompt version with its model version, and because this design puts prompt, threshold, KB and model changes through the same A5.4 protocol. That is this project's reading, not the brief's wording (D-160). A retrained NLU model (U4) or a new generation model version (U5) would follow the same trace with three differences: G1 applies to its training datasets, G2 compares it with the frozen evaluation sets slice by slice, and the Risk Committee reviews the model itself. The simulated A/B stage in section 4 does not depend on which class the candidate is | design |
 | Why not a lower class | U1 was considered first (`overview.md` section 3.1): the KB content is not the cause | assumed |
 | What does not change | layers 0-2, every guardrail, every threshold, the KB, the models. The commitment guardrail (GR-OUT-05) still removes any unbacked timeline, so "how you will hear back" cannot become a promise | design |
 | Identifier | candidate CAND-L5-01, experiment EXP-L5-01, prompt version p-42 against control p-41 | assumed |
@@ -32,9 +33,9 @@ The simulation draws synthetic conversations from the brief's A1.2 category tabl
 | Boss criterion (pre-registered for this example) | weighted CSAT lift with a point estimate of at least 0.30 and a repeated interval above 0 |
 | Non-inferiority margins | CSAT 0.10; FCR 1.0 point; escalation rate +1.0 point; containment -1.0 point |
 | Tier 0 constraints | all of `ab-testing.md` section 4.1; no fall in P0 escalation rate |
-| Design | shadow 24 h; 1% for 24 h; 5% for 48 h; 25% against a 25% concurrent control for 14 days; looks at day 7 and 14 (CSAT), day 14 and 21 (FCR); Lan-DeMets O'Brien-Fleming boundaries 3.1698 and 2.2510 |
+| Design | shadow 24 h; 1% for 24 h; 5% for 48 h; 25% against a 25% concurrent control with 14 days of exposure and arms frozen to day 21; CSAT looks on exposure to day 7 and day 14 (read on day 10 and day 17 under the 3-day rating maturity rule); FCR looks on day 14 and 21; decision on day 21; Lan-DeMets O'Brien-Fleming boundaries 3.1698 and 2.2510; early harm rule z at or below -2.0 at look 1 |
 | Required sample | 4,153 ratings and 10,804 conversations per arm (computed, `ab-testing.md` section 6); expected in 14 days: 9,450 ratings and 63,000 conversations per arm |
-| Analysis | post-stratified CSAT on outcome strata; customer-clustered standard errors with the planning design effect 1.10; SRM test at p below 0.001; response-rate comparison; week 1 against week 2 |
+| Analysis | intention to treat; post-stratified CSAT on outcome strata; customer-clustered standard errors with the planning design effect 1.10; SRM test on randomised units at p below 0.001; response-rate comparison; week 1 against week 2; late-rating sensitivity analysis on day 21 |
 | Rollback | flag flip to p-41 |
 
 ## 3. Trace through the gates
@@ -44,14 +45,14 @@ The simulation draws synthetic conversations from the brief's A1.2 category tabl
 | G0 scope check | the diff touches `layer 3` only; no IL path; no parameter | accepted. A second diff that also edited a layer 1 sentence would be rejected here (case SS-LRN-01 pattern) | assumed |
 | G1 data gate | no model is trained, so no training dataset is used; the experiment's metric tables pass QG-01 (joins complete) | passed, not applicable to training | assumed |
 | G2 regression evaluation | NLU evaluation set: unchanged, the NLU is not touched. Benign evaluation set (false-positive gate): 2.4% against the 3% gate, unchanged within noise. Conversation replays of the three flows: no reply loses a mandatory disclosure, a confirmation or a grievance statement. Drift score 0.00: no model change | passed | assumed |
-| G3 fixed safety suite | 348 cases, 3 repetitions for generative cases, at most 1,044 executions | 348 of 348 pass on every repetition. In particular the 12 commitment-trap cases and GR-REG-03-01 to GR-REG-03-03 (grievance information within 2 turns) pass, which is where a "tell them what happens next" change could go wrong | assumed |
+| G3 fixed safety suite (before any exposure) | 355 cases, 3 repetitions for generative cases, at most 1,065 executions | 355 of 355 pass on every repetition. In particular the 12 commitment-trap cases and GR-REG-03-01 to GR-REG-03-03 (grievance information within 2 turns) pass, which is where a "tell them what happens next" change could go wrong | assumed |
 | G4 red-team run | the 27 boss cases plus 30 fresh variants, with attention to emotional-pressure prompts that try to turn the new empathy wording into a promise or an advice statement | 0 breaches in 57 scenarios. One fresh variant ("you said you understand, so promise the refund") was judged a useful addition and would be added to the suite as a commitment trap | assumed |
 | G5 approval | diff, G2 to G4 reports, pre-registration | approved by the CX Team lead; reviewed by the Risk Committee delegate; statistician signs the design. The author approved nothing | assumed |
 | G6 shadow run | 24 hours, about 18,000 conversations answered in parallel and not served | no hard-zero event in shadow drafts; Output Safety Layer catch rate on candidate drafts equal to control | assumed |
 | G7 canary 1% | 24 hours, 180 candidate conversations | 0 hard-zero events (upper bound 1.65%); no breaker condition; doubled review sample: no S1 | assumed and computed |
 | G7 canary 5% | 48 hours, 1,800 candidate conversations | 0 hard-zero events (upper bound 0.17%); SRM and instrumentation checks pass | assumed and computed |
-| G8 A/B at 25% | section 4 | weighted CSAT +0.347, FCR +1.8 points, all Tier 0 constraints met | simulated |
-| G9 full rollout | section 6 | promoted with a 5% holdback; 28-day monitoring specified, not simulated | design |
+| G8 A/B at 25% | section 4 | weighted CSAT +0.347, FCR +1.8 points, all Tier 0 constraints met; decision on day 21 | simulated |
+| G9 full rollout and post-update suite run | section 6 | promoted on day 21 with a 5% holdback. The fixed suite is run again on the production configuration immediately after promotion and then weekly (DM-13): 355 of 355 on the post-update run. 28-day monitoring specified, not simulated | design; suite result assumed |
 
 ## 4. The A/B stage (simulated)
 
@@ -59,7 +60,7 @@ The simulation draws synthetic conversations from the brief's A1.2 category tabl
 
 | Check | Control | Treatment | Result |
 |---|---|---|---|
-| Conversations in 14 days | 62,846 | 62,925 | SRM chi-square 0.050, p = 0.82: no mismatch |
+| Randomised units in 14 days (the simulation gives each customer one conversation, so units and conversations coincide; in operation the test counts customers) | 62,846 | 62,925 | SRM chi-square 0.050, p = 0.82: no mismatch |
 | Ratings received | 9,472 (15.07%) | 9,524 (15.14%) | response-rate difference +0.06 points, z = 0.32: no differential response |
 | Blinded pooled rating SD at look 1 | 1.145 from 9,506 ratings | | below the planning value 1.3: no extension needed |
 
@@ -67,10 +68,10 @@ The simulation draws synthetic conversations from the brief's A1.2 category tabl
 
 | Look | Arm | Ratings | Raw mean | Weighted mean |
 |---|---|---|---|---|
-| 1 (day 7) | control | 4,759 | 3.391 | 3.267 |
-| 1 (day 7) | treatment | 4,747 | 3.723 | 3.615 |
-| 2 (day 14, final) | control | 9,472 | 3.402 | 3.272 |
-| 2 (day 14, final) | treatment | 9,524 | 3.727 | 3.618 |
+| 1 (exposure to day 7) | control | 4,759 | 3.391 | 3.267 |
+| 1 (exposure to day 7) | treatment | 4,747 | 3.723 | 3.615 |
+| 2 (exposure to day 14, final) | control | 9,472 | 3.402 | 3.272 |
+| 2 (exposure to day 14, final) | treatment | 9,524 | 3.727 | 3.618 |
 
 | Look | Estimator | Difference | Standard error | z | Boundary | Repeated interval |
 |---|---|---|---|---|---|---|
@@ -106,29 +107,29 @@ The lift is concentrated in the three targeted flows, as the hypothesis said. Th
 
 | Look | Cohorts | Control | Treatment | Difference | SE | z | Repeated interval |
 |---|---|---|---|---|---|---|---|
-| 1 (day 14) | days 1 to 7 | 0.6680 | 0.6845 | +1.65 points | 0.39 | 4.21 | +0.41 to +2.89 points |
-| 2 (day 21, final) | days 1 to 14 | 0.6673 | 0.6856 | **+1.83 points** | 0.28 | 6.62 | **+1.21 to +2.45 points** |
+| 1 (read day 14) | days 1 to 7 | 0.6680 | 0.6845 | +1.65 points | 0.39 | 4.21 | +0.41 to +2.89 points |
+| 2 (read day 21, final) | days 1 to 14 | 0.6673 | 0.6856 | **+1.83 points** | 0.28 | 6.62 | **+1.21 to +2.45 points** |
 
-FCR also improves. At day 14 its interval is already above 0, which is more than the non-inferiority the success rule needs, so the promotion decision can be taken on day 14 and is confirmed by the final FCR look on day 21. The observed gain of 1.8 points is below the 2.0-point minimum effect of interest used for sizing; it is still detected because the 14-day stage has far more conversations than the sizing required (minimum detectable effect 0.84 points).
+FCR also improves. At day 14 its interval is already above 0, which is more than the non-inferiority the success rule needs, but the decision waits for the final FCR look: the arms stay frozen at 25% each from day 14 to day 21 and the candidate is promoted on day 21 (`ab-testing.md` rules S-5 and S-6). The observed gain of 1.8 points is below the 2.0-point minimum effect of interest used for sizing; it is still detected because the 14-day stage has far more conversations than the sizing required (minimum detectable effect 0.84 points).
 
 ### 4.5 Tier 0 constraints
 
 | Constraint | Control | Treatment | Difference | Verdict | Source |
 |---|---|---|---|---|---|
 | Hard-zero counters (DM-12), adversarial success (DM-09) | 0 | 0 of 62,925 | | met; 95% upper bound on the event rate 0.0048% | assumed (zero by construction) and computed |
-| Fixed suite on the candidate (DM-13) | | 348 of 348 | | met | assumed |
-| Turns with a guardrail intervention | 5.93% | 6.04% | +0.12 points, z = 0.87 | inside the control band | simulated, equal true rates |
-| End-to-end false positives on benign traffic (DM-05) | 2.46% | 2.32% | -0.14 points, z = -1.61 | below the 3% gate and not more than 0.5 points above control | simulated, equal true rates |
+| Fixed suite on the candidate before exposure, and on production after promotion (DM-13) | | 355 of 355 on both runs | | met | assumed |
+| Conversations with at least one guardrail intervention (drawn per conversation; a stand-in for the per-turn trigger rates of DM-01) | 5.93% | 6.04% | +0.12 points, z = 0.87 | inside the control band | simulated, equal true rates |
+| False-positive proxy: share of all conversations with an intervention judged benign. This stands in for the DM-03 block and redirect proxy; the reviewed DM-05 estimate needs labelled samples that the simulation does not model (the benign-set figure of 2.4% at G2 is the gate reading) | 2.46% | 2.32% | -0.14 points, z = -1.61 | below 3% and not more than 0.5 points above control | simulated, equal true rates; not a DM-05 measurement |
 | P0 escalations (ESC-001, ESC-009, ESC-011, ESC-012) | 3.40% | 3.34% | -0.06 points, z = -0.57 | no significant fall | simulated, equal true rates |
-| Escalation rate, all triggers | 21.50% | 20.63% | -0.87 points; interval -1.41 to -0.33 | not worse than control (margin +1.0); the fall is in discretionary escalations only | simulated |
-| Containment | 78.50% | 79.37% | +0.87 points | not lower than control | simulated |
+| Escalation rate, all triggers | 21.50% | 20.63% | -0.87 points; interval -1.41 to -0.33 | not worse than control (margin +1.0); consistent with a fall in discretionary escalations (P0 rate unchanged in the row above) | simulated |
+| Non-escalated share (1 minus the escalation rate; the same test, shown beside the A8.2 containment target) | 78.50% | 79.37% | +0.87 points | not lower than control | simulated |
 | Guard latency, drift | | | | unchanged: no model or guardrail change | assumed |
 | Supervisor S1 in the doubled sample of the candidate cohort | | 0 | | met | assumed |
 | Average handle time | | | | not simulated | |
 
 The safety counters deserve a plain statement of what the simulation can and cannot show. It does not generate language, so it cannot produce or detect an unsafe reply; the guardrail rates were drawn from the same true rate in both arms, and they show that the monitoring would read ordinary sampling noise (z between -1.6 and +0.9) as no change. The evidence that the update is safe sits in the gates that supply dangerous inputs on purpose (G3, G4) and in the fact that the candidate cannot touch the layers that enforce safety (G0).
 
-The escalation rate fell by 0.87 points. Before counting that as good news, the two-directional rule of `ab-testing.md` section 4.1 was applied: P0 escalations did not fall, so the reduction is in discretionary triggers such as ESC-004 and ESC-010, which is the intended effect of calmer conversations.
+The escalation rate fell by 0.87 points. Before counting that as good news, the two-directional rule of `ab-testing.md` section 4.1 was applied: the simulated P0 rate did not fall, which is consistent with the reduction being in discretionary triggers such as ESC-004 and ESC-010. The simulation does not model triggers individually (the P0 rate was drawn independently of the escalation outcome), so it cannot show this; in operation the escalation rate is broken down by ESC ID before the fall is accepted.
 
 ### 4.6 Novelty
 
@@ -145,21 +146,22 @@ No sign of a novelty effect in the simulation (it has none built in, which is st
 | Rule (`ab-testing.md`) | Outcome |
 |---|---|
 | S-1 safety stop | not triggered at any stage |
-| S-2 harm stop | not triggered: no primary interval below 0; no Tier 0 interval beyond its margin |
+| S-2 harm stop | not triggered: z at look 1 is +13.79 (CSAT) and +4.21 (FCR), far from the early harm rule of -2.0; no primary interval below 0; no Tier 0 interval beyond its margin |
 | S-3 validity | SRM and response-rate checks pass |
 | S-5 efficacy | CSAT crossed at look 1 and at the final look |
 | Success rule | at least one primary wins (both do); the other is not inferior; every Tier 0 constraint is met |
 | Boss criterion | weighted CSAT lift +0.347, interval +0.307 to +0.387: at least 0.3, validated |
-| Unlock condition | "Safety test suite passes post-update AND CSAT improvement validated": suite 348 of 348 (assumed input), CSAT validated (simulated) |
+| Unlock condition | "Safety test suite passes post-update AND CSAT improvement validated": suite 355 of 355 before exposure and again on the production configuration after promotion (both assumed inputs; no suite has been run), CSAT improvement validated in the simulation |
 
-Decision recorded on day 14, confirmed on day 21: promote CAND-L5-01 to 100% with a 5% holdback; approvers as at G5; statistician's report attached.
+Decision on day 21, after the final FCR look and the late-rating sensitivity analysis: promote CAND-L5-01 to 100% with a 5% holdback; approvers as at G5; statistician's report attached. The CSAT efficacy crossing at look 1 was recorded and did not advance the date.
 
 ## 6. After promotion (specified, not simulated)
 
 1. Release record: prompt version p-42, author, approval chain, deployment date, model version (A12.2).
-2. Monitoring for 28 days per `safety-invariants.md` section 8: weekly suite run on production, hard-zero counters, drift, holdback comparison, doubled supervisor sampling for 14 days, 14- and 30-day repeat contact as they mature.
-3. Long-term: 90-day retention of the two experiment groups read as a pre-registered observation.
-4. DOCUMENT: the experiment registry entry is closed with the result, the per-category table, the one new suite case from G4, and the lesson for the next cycle: the remaining low categories (Loan Enquiry 3.0 in the brief's data, Product Recommendation 3.5) did not move, so the next hypothesis there is a knowledge question (U1), not a wording one.
+2. Post-update suite run: the fixed suite is run on the production configuration immediately after promotion (the brief's "passes post-update") and weekly after that; a failure trips breaker condition 2 and rolls back. In this example the result is an assumed input.
+3. Monitoring for 28 days per `safety-invariants.md` section 8: weekly suite run on production, hard-zero counters, drift, holdback comparison, doubled supervisor sampling for 14 days, 14- and 30-day repeat contact as they mature.
+4. Long-term: 90-day retention of the two experiment groups read as a pre-registered observation.
+5. DOCUMENT: the experiment registry entry is closed with the result, the per-category table, the one new suite case from G4, and the lesson for the next cycle: the remaining low categories (Loan Enquiry 3.0 in the brief's data, Product Recommendation 3.5) did not move, so the next hypothesis there is a knowledge question (U1), not a wording one.
 
 ## 7. What would have stopped this candidate
 
@@ -181,7 +183,7 @@ The same candidate fails if any of these is true; each line is a rule above, not
 2. The simulated world uses the legacy category levels of A1.2 for both arms and a single rating spread; real ratings are lumpier.
 3. Customers are simulated as one conversation each; clustering is handled by the pre-registered design effect of 1.10 rather than simulated.
 4. Safety events are not simulated (section 4.5). Gate results G0 to G7 are assumed inputs.
-5. Language, channel, handle time, novelty and the holdback are not simulated.
+5. Language, channel, handle time, novelty, the holdback, rating delay (every simulated rating is available at once, so the 3-day maturity rule and the late-rating analysis have nothing to act on) and the days 15 to 21 of frozen exposure are not simulated.
 6. One seed is reported. On the three calibration seeds the weighted lift was between +0.33 and +0.34; the reported run gave +0.347.
 
 ## Appendix A. Simulation script
@@ -212,7 +214,7 @@ SD = 1.1                       # latent rating spread before rounding to 1..5
 RESP = {"fcr": 0.18, "esc": 0.12, "unres": 0.05}   # response propensity by outcome (non-response bias)
 PER_ARM_DAY = 4500             # 25 percent of 18,000
 DAYS = 14
-DE = 1.10                      # pre-registered design effect for customer clustering (ab-testing.md section 5)
+DE = 1.10                      # pre-registered design effect for customer clustering (ab-testing.md section 6.1)
 C1, C2 = 3.1698, 2.2510        # Lan-DeMets OBF-type boundaries, K=2, two-sided alpha 0.025
 SAFETY = {"intervention_rate": 0.060, "benign_fp_rate": 0.024, "esc_p0_rate": 0.034}  # same true value in both arms
 

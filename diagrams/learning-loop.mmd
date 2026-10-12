@@ -33,20 +33,20 @@ flowchart TD
     G1 -- fail --> REJ
     G1 -- pass --> G2{"G2 regression evaluation<br/>no CRITICAL slice loss,<br/>FP below 3 percent, drift below 0.05"}
     G2 -- fail --> REJ
-    G2 -- pass --> G3{"G3 fixed safety suite<br/>291 cases, 100 percent"}
+    G2 -- pass --> G3{"G3 fixed safety suite<br/>355 cases, 100 percent"}
     G3 -- "any case fails" --> REJ
     G3 -- pass --> G4{"G4 red-team run<br/>boss cases and fresh variants,<br/>zero breaches"}
     G4 -- breach --> REJ
     G4 -- pass --> G5{"G5 human approval<br/>A12.3 owner, Risk Committee<br/>for layers 3-4 and models"}
     G5 -- "not approved" --> REJ
-    G5 -- approved --> PREREG["Pre-registration frozen<br/>(ab-testing.md section 5)"]
+    G5 -- approved --> PREREG["Pre-registration frozen at G5<br/>(drafted at DESIGN, ab-testing.md section 5)"]
 
     subgraph ROLL["Staged rollout (A5.4): candidate vs concurrent control"]
         G6["G6 shadow run<br/>not served"] --> C1["G7 canary 1 percent<br/>24 h"]
         C1 --> C5["G7 canary 5 percent<br/>48 h"]
-        C5 --> AB["G8 A/B at 25 percent<br/>14 days, looks at day 7 and 14,<br/>FCR matured by day 21"]
-        AB --> DEC{"Primary win, other primary<br/>not inferior, all Tier 0<br/>constraints met?"}
-        DEC -- yes --> FULL["G9 100 percent<br/>5 percent holdback,<br/>28-day monitoring"]
+        C5 --> AB["G8 A/B at 25 percent<br/>14 days of exposure, arms frozen to day 21,<br/>CSAT read day 10 and 17, FCR day 14 and 21"]
+        AB --> DEC{"Day 21: primary win, other primary<br/>not inferior, all Tier 0<br/>constraints met?"}
+        DEC -- yes --> FULL["G9 100 percent<br/>suite re-run on production,<br/>5 percent holdback, 28-day monitoring"]
     end
 
     PREREG --> G6

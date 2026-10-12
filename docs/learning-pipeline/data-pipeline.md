@@ -130,7 +130,7 @@ Requests are processed within 30 days; deletion includes all copies, backups and
 | 0 | request verified and accepted by the deletion workflow; a tombstone for the customer's pseudonymised id (and its pipeline re-key) is written to the tombstone registry | Data Protection lead |
 | 0 to 1 | the next tombstone snapshot (at most 24 hours later) is used by every dataset build from then on: QG-07 guarantees no new dataset version contains the customer | Data Engineering |
 | 1 to 7 | weekly purge run: the customer's rows are removed from every stored dataset revision, the feature store, label stores (corrections keep the verdict counts but lose the conversation link), CSAT and outcome tables, experiment assignment tables, and review-tool caches. Each affected dataset gets a new revision | Data Engineering |
-| 1 to 21 | models: every production model whose lineage includes a purged row is replaced by a model trained on a purged dataset revision. The 21-day full-retrain cycle of `overview.md` section 5 does this by design; a model outside that cycle (retrieval, policy ranker, pCSAT) is retrained on a deletion-triggered run if its next scheduled build would fall after day 30 | NLU Team, ML Team |
+| 1 to 20 | models: every production model (and every model in an experiment arm) whose lineage includes a purged row is replaced through the deletion-only rebuild of `overview.md` section 5 (D-157): same code, hyper-parameters and base model, data minus tombstones; gates G1, G2 equivalence, G3, then the 1% and 5% canary. The cycle runs every 14 days, so the worst case is 14 + 2 + 1 + 1 + 2 = day 20. Scheduled feature retrains (21-day cycle) are not the deletion mechanism: they pass G6 to G8 and can take 41 to 48 days from a request | NLU Team, ML Team |
 | by 30 | backups: backup sets that contain the rows expire or are purged; backup retention for learning stores is set below 30 days so that expiry completes the deletion (proposal) | Data Engineering |
 | by 30 | deletion certificate: lists the stores purged, the dataset revisions replaced (old and new hashes), the model versions retired and their replacements, the backup expiry dates, and any item under legal hold | Data Protection lead |
 
@@ -138,7 +138,7 @@ Requests are processed within 30 days; deletion includes all copies, backups and
 
 1. **Row-level lineage.** Every dataset row carries the pipeline re-key of the customer id, so the rows of a customer can be found in every revision without re-identifying anyone else.
 2. **Models are treated as derived data.** The strict reading is the default: a model trained on a deleted customer's rows is replaced inside the 30 days. If Legal advises that trained weights are outside "derived data", the retrain trigger can be relaxed to the normal schedule; the purge of datasets cannot.
-3. **No warm start across a purge.** A checkpoint that saw purged rows is not used to initialise the replacement (`overview.md` section 5).
+3. **No warm start across a purge.** A checkpoint that saw purged rows is not used to initialise the replacement (`overview.md` section 5). For the same reason a rollback to the replaced model is allowed only until day 30 of its oldest tombstone; after that the rollback target is the previous compliant model or the rules-only path.
 4. **Aggregates.** Published aggregate metrics (a weekly CSAT mean) are not recomputed for a single deletion; they contain no personal data. Tables at conversation grain are purged.
 5. **Evaluation sets and the safety suite** contain synthetic text only, so deletions do not touch them. This is a reason, beyond privacy, why real customer text never enters the suite.
 6. **Audit logs.** The A10 retention periods and the deletion duty meet in the audit store, which is outside the learning pipeline (Day 14 audit specification). The pipeline's rule is simple: it keeps nothing the audit store has deleted.
@@ -151,7 +151,7 @@ QG-07 on every build; a monthly reconciliation that samples tombstones and searc
 
 ## 10. Decisions and open items
 
-D-104 (consent purposes, default exclusion, deletion propagation, models as derived data), D-105 (dataset manifest, splits by customer, quality gates QG-01 to QG-08 and their thresholds).
+D-104 (consent purposes, default exclusion, deletion propagation, models as derived data), D-157 (deletion-only rebuild path that meets the 30-day duty independently of the improvement cycle), D-105 (dataset manifest, splits by customer, quality gates QG-01 to QG-08 and their thresholds).
 
 1. The consent notice, its legal basis and the handling of customers who never answer it are for the Data Protection lead and Legal (dependency G-05).
 2. Whether trained model weights are "derived data" under A10.3 needs a legal reading; the default here is yes.

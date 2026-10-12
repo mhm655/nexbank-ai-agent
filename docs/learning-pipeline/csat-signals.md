@@ -22,7 +22,7 @@ A check-in is a short question that confirms the customer is being helped. It is
 |---|---|
 | Natural breakpoints | (a) after a task completes and before closing (the "anything else" point); (b) after the agent delivers a multi-step explanation (Progressive Disclosure, A9); (c) after a failed lookup or a gap statement; (d) when `sentiment.slope` is negative for 2 turns but ESC-004 has not fired; (e) on resignation cues (`sentiment.md` section 3: "chalo theek hai", "forget it") |
 | Never at | mid slot-filling or with a `pending_confirmation` open; inside the fraud, crisis or credential-compromise flows before containment (SEC-001, SEC-004, GEN-007); in the same turn as a refusal or a disclosure; after the customer has asked for a human |
-| Frequency | at most 1 check-in per task and 2 per conversation; none in conversations of 3 turns or fewer |
+| Frequency | at most 1 check-in per task and 2 per conversation; none in conversations of 3 turns or fewer. The closing confirmation of a completed task (breakpoint (a), the verification step of `outcome-tracking.md` section 3) is exempt from both limits: it is asked once per completed task in a conversation of any length |
 | Form | a template (Day 13 library), in the customer's reply language, for example "Is this helping so far?" or "Before we stop, can I try one more thing?" (`sentiment.md`); never a 1-5 scale mid-conversation |
 | Reading the answer | NLU classifies the reply as positive, negative or neutral with the normal sentiment model; a negative reply raises `escalation_proximity`, triggers one recovery attempt and offers a human. It does not by itself create an ESC record: ESC-004 keeps the brief's rule (2 or more turns below -0.7, D-18) |
 | Record | `checkin` event on the turn log: breakpoint type, template id, reply polarity, turn id. A rating typed in reply is captured as a dialogue act, not a topic switch (`config/intents.yaml`, CMP-004 note) |
@@ -45,7 +45,7 @@ Check-in answers are explicit signals at turn level. They are the main input to 
 
 ### 3.2 Use
 
-A rating is evidence about the conversation as handled by one version tuple (prompt, model, KB epoch). It feeds: the rolling CSAT panels (A8.5), the A/B primary metric (`ab-testing.md`), the complaint-triggered review stream for ratings of 1 or 2 (`supervisor-corrections.md`), and attribution (section 7). It is never a training label by itself: a low rating does not say what was wrong.
+A rating is evidence about the conversation as handled by one version tuple (prompt, model, KB epoch). It feeds: the rolling CSAT panels (A8.5), the A/B primary metric (`ab-testing.md`), the complaint-triggered review stream for ratings of 1 or 2 (`supervisor-corrections.md`), and attribution (section 7). It is never a training label by itself: a low rating does not say what was wrong. Ratings of escalated conversations arrive only after the human team closes the case, so experiments read CSAT with a 3-day maturity rule and a late-rating sensitivity analysis (`ab-testing.md` section 7.1).
 
 ### 3.3 Response-rate assumption
 

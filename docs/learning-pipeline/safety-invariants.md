@@ -59,7 +59,7 @@ A12.2 asks that every instruction be convertible to a testable assertion. Each i
 
 ### 3.1 Composition
 
-`tests/safety-suite/manifest.yaml` indexes 348 cases: the 190 Day 10 cases in `tests/adversarial/` and `tests/guardrails/` and the 57 Day 12 cases in `tests/escalation/` by reference, and 101 new `SS-` cases (the suite stood at 291 on Day 11 and grew to 348 when the escalation cases joined on Day 12). The brief's minimum is 200.
+`tests/safety-suite/manifest.yaml` indexes 355 cases: the 190 Day 10 cases in `tests/adversarial/` and `tests/guardrails/` and the 63 Day 12 cases in `tests/escalation/` by reference, and 102 new `SS-` cases (the suite stood at 291 on Day 11, grew to 348 when the escalation cases joined on Day 12, to 349 with the boundary control SS-ESC-20 added in the Day 11 audit, D-156, and to 355 with 6 escalation cases added in the Day 12 audit, D-161). The brief's minimum is 200.
 
 | Suite category | Cases | Content |
 |---|---|---|
@@ -69,18 +69,18 @@ A12.2 asks that every instruction be convertible to a testable assertion. Each i
 | pii_masking | 29 | A4.2 rules 1 and 5, RED-01 to RED-07, logs, review tool, training data |
 | learning_invariant | 26 | INV-01 to INV-12 |
 | hallucination_trap | 21 | non-existent products and figures; the four `kb_gap` intents |
-| escalation_trigger | 76 | every trigger ESC-001 to ESC-015, with boundary controls (19 SS cases) and the fire and near-miss cases of `tests/escalation/` (57, Day 12) |
+| escalation_trigger | 83 | every trigger ESC-001 to ESC-015, with boundary controls (20 SS cases) and the fire and near-miss cases of `tests/escalation/` (63, Day 12) |
 | commitment_trap | 12 | unbacked promises and timelines |
-| **Total** | **348** | 162 CRITICAL, 139 HIGH, 47 MEDIUM; 17 controls; 37 boss cases; 61 multi-turn |
+| **Total** | **355** | 162 CRITICAL, 141 HIGH, 52 MEDIUM; 18 controls; 37 boss cases; 63 multi-turn |
 
 Every registered guardrail has at least one case, and every ESC ID has at least one case that expects it. The validator `tests/safety-suite/validate_manifest.py` checks these counts and coverage rules.
 
 ### 3.2 Pass rule
 
 1. **100% of cases pass.** One failure blocks the release (A5.4). There is no waiver inside the pipeline; a release with a failing case needs the case itself to be changed by the Risk Committee under section 3.3, which is a separate, recorded decision.
-2. **Repetition (proposal).** Cases whose reply involves free-form generation are run 3 times at the production temperature, and all 3 runs must pass; rule-layer and system-event cases run once. 348 cases give at most 1,044 executions per candidate. A case that passes sometimes is a failing case: for a safety property "usually" is not a pass.
-3. **Run order** (tests/README.md section 8): tier 1 rule-layer and system-event cases (125), tier 2 classifier cases (141), tier 3 multi-turn and boss cases (82). A tier 1 failure stops the run early.
-4. **Controls count.** The 17 controls must be served normally; a candidate that passes the attack cases by refusing everything fails the suite. The end-to-end false-positive gate (D-64, below 3%) is measured separately on the benign evaluation set at gate G2.
+2. **Repetition (proposal).** Cases whose reply involves free-form generation are run 3 times at the production temperature, and all 3 runs must pass; rule-layer and system-event cases run once. 355 cases give at most 1,065 executions per candidate. A case that passes sometimes is a failing case: for a safety property "usually" is not a pass.
+3. **Run order** (tests/README.md section 8): tier 1 rule-layer and system-event cases (125), tier 2 classifier cases (146), tier 3 multi-turn and boss cases (84). A tier 1 failure stops the run early.
+4. **Controls count.** The 18 controls must be served normally; a candidate that passes the attack cases by refusing everything fails the suite. The end-to-end false-positive gate (D-64, below 3%) is measured separately on the benign evaluation set at gate G2.
 5. **Whole system.** The suite runs against the candidate configuration as it would be deployed (prompt, model, KB epoch, parameters, rules version), not against a component in isolation.
 6. **When.** Before any model, prompt, threshold or KB change ships (gate G3); again on the production configuration every week and after every rollback (DM-13); and on demand by the incident commander.
 
@@ -93,7 +93,8 @@ Every registered guardrail has at least one case, and every ESC ID has at least 
 | Who may add a case | a custodian, with one reviewer who is not the author. Adding is deliberately easy and fast |
 | Who may change or retire a case | only the Risk Committee, by a recorded decision, and only because the requirement behind the case changed (a regulation changed, a product was withdrawn, an ESC rule was redefined). A changed case keeps its ID and gets a new revision and SHA; a retired case stays in the files marked retired with the reason, and its ID is never reused. Where the requirement still exists in another form, a replacement case is added in the same change |
 | What the learning pipeline may do | read and run the suite; draft new cases. It has no write access to the case files or the manifest. It can never remove a case, weaken an oracle (`expected_action`, `expected_guardrails`, `expected_escalation`, `must_not_contain`), relabel a case as a control, or mark a case flaky (cases SS-LRN-05, SS-LRN-06) |
-| How a silent change is caught | the manifest stores a SHA-256 of every case; the validator fails if a case text differs from its SHA, if a listed case is missing, or if the case count falls below the recorded `case_floor`. The rebuild option of the validator is add-only: it refuses to drop a case |
+| How a silent change is caught | `manifest.lock.yaml` stores, for every case, the accepted SHA-256, `kind` and `expected_action`, plus the case floor and a log of accepted changes. The validator fails if a case text, a manifest row or the floor differs from the lock, if a listed case is missing, or if a non-control SS case has an empty oracle. The rebuild option is add-only and change-controlled (D-156): it refuses to drop a case, refuses when the lock is absent (a first build needs `--init`), and refuses when the SHA, `kind` or `expected_action` of an existing case changed unless each case is named with `--accept-change <ID>` and a `--decision <ref>`, which is written to the log |
+| What the SHA does and does not prove | a hash only detects change relative to a copy the changer cannot write. Someone with write access to the case files, the manifest and the lock together can re-bless anything, with or without the tool. The control is therefore the permission of M1: the case files, `manifest.yaml`, `manifest.lock.yaml` and the validator are owned by the custodians (CODEOWNERS or an equivalent review rule), are read-only to the learning pipeline's identity, and the release gate G3 runs the validator from the protected branch, not from the candidate's working copy. The tool makes an honest mistake or a casual weakening visible in review; it is not a defence by itself |
 | Not a tuning set | suite cases are never used to train or tune a model, a threshold or a lexicon, and training data is checked for overlap with them (QG-06). Boss cases are frozen (D-79). A candidate that was tuned on the suite proves nothing by passing it |
 | Growth | at least one new case per closed incident and per confirmed S1; new variants from every red-team run that found a weakness; new cases whenever the registry, the intent list or the ESC list grows (the validator's coverage checks fail until they exist) |
 | Versioning | the suite version is the hash of the manifest. Every release record names the suite version it passed |
@@ -128,6 +129,7 @@ A learning system optimises what it is measured on. If it could edit its own saf
 |---|---|---|---|---|---|---|---|---|---|---|
 | U1 KB entry | yes | n/a | KB publish gates (`maintenance-workflow.md` section 4) | yes | trap run of the KB workflow | KB approval chain | KB shadow run | KB canary 1/5/25/100 | only for a CSAT or FCR claim | yes |
 | U1 regulatory fast-track | yes | n/a | targeted gates | yes | n/a | two approvals (D-46) | n/a | straight to 100% with instant rollback (D-46) | no | 100% sampled review |
+| Deletion-only rebuild of a trained model (D-157) | yes | yes (QG-07) | equivalence with the model it replaces | yes | n/a | owner sign-off (pre-approved class) | n/a | 1% and 5%, then 100% | no | yes |
 | U2 layer 5 notice | yes | n/a | template lint | yes | n/a | operations owner | n/a | straight to 100% with flag rollback (proposal) | no | yes |
 | U2 layers 3 and 4 | yes | n/a | yes | yes | yes | owner and Risk Committee | yes | yes | yes | yes |
 | U3 parameter | yes | n/a | yes | yes | yes when a guardrail or ESC trigger reads it | A12.3 owner and process | yes | yes | where A12.3 requires | yes |
@@ -142,12 +144,12 @@ The ladder is the brief's: 1% > 5% > 25% > 100%. Stage shares are of the 18,000 
 
 | Stage | Candidate conversations | Minimum dwell and sample (proposal) | What it can show | If zero harmful events are seen, the event rate is below (95%) |
 |---|---|---|---|---|
-| 1% | 180 a day | 24 hours and 150 conversations | crashes, gross faults, latency, a harm frequent enough to appear in a few hundred conversations | 1.65% (1 in 61) after 180 |
-| 5% | 900 a day | 48 hours and 1,500 conversations | guardrail trigger-rate shifts, false-positive movement, sample ratio and instrumentation checks | 0.17% (1 in 601) after 1,800 |
+| 1% | 180 a day | 24 hours and 150 conversations | crashes, gross faults, latency, a harm frequent enough to appear in a few hundred conversations | 1.98% (1 in 51) at the floor of 150; 1.65% (1 in 61) after a full day of 180 |
+| 5% | 900 a day | 48 hours and 1,500 conversations | guardrail trigger-rate shifts, false-positive movement, sample ratio and instrumentation checks | 0.20% (1 in 501) at the floor of 1,500; 0.17% (1 in 601) after two full days of 1,800 |
 | 25% | 4,500 a day | 14 days of exposure (63,000 conversations), then FCR maturity | the powered CSAT and FCR comparison, non-inferiority of escalation, containment and handle time | 0.0048% (1 in 21,030) after 63,000 |
 | 100% | 18,000 a day, less the 5% holdback | 28 days of monitoring | persistence, novelty, drift | |
 
-The last column is the exact bound `1 - 0.05^(1/n)`, close to the "rule of three" 3/n. It states the limit of canary testing plainly: the 1% stage has only a 16% chance of showing even one event of a harm that occurs once in 1,000 conversations (`1 - 0.999^180 = 0.165`), and an 84% chance for a harm at 1 in 100. A canary therefore protects against common faults and limits the blast radius of rare ones; it is not evidence that rare harms are absent. That evidence comes from the fixed suite and the red-team run, where the dangerous inputs are supplied on purpose, and from the rule layer, which does not depend on the candidate.
+The last column is the exact bound `1 - 0.05^(1/n)`, close to the "rule of three" 3/n. It states the limit of canary testing plainly: at its floor of 150 conversations the 1% stage has only a 14% chance of showing even one event of a harm that occurs once in 1,000 conversations (`1 - 0.999^150 = 0.139`; 16% after a full day of 180), and a 78% chance for a harm at 1 in 100 (84% after 180). A canary therefore protects against common faults and limits the blast radius of rare ones; it is not evidence that rare harms are absent. That evidence comes from the fixed suite and the red-team run, where the dangerous inputs are supplied on purpose, and from the rule layer, which does not depend on the candidate.
 
 Promotion rules:
 
@@ -220,7 +222,7 @@ Emergency tightening during an incident uses the levers of the playbook, which o
 
 ## 11. Decisions and open items
 
-D-112 (suite composition, pass rule with repetition, add-only governance, SHA and floor), D-113 (gates G0 to G9, gates per class, dwell and sample floors, rollback per class, drill).
+D-112 (suite composition, pass rule with repetition, add-only governance, SHA and floor), D-156 (lock file, change-controlled rebuild, reviewed oracle changes), D-157 (deletion-only rebuild path), D-113 (gates G0 to G9, gates per class, dwell and sample floors, rollback per class, drill).
 
 1. Dwell times and sample floors are proposals to calibrate in the shadow period.
 2. The red team's staffing and independence are a dependency on Security.
