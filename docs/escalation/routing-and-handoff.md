@@ -29,7 +29,7 @@ The brief gives SLAs but not what they measure. Definition used (D-118):
 
 | Term | Definition |
 |---|---|
-| Clock start | The moment the escalation record is created, which is the turn on which the owner trigger fires. On an upgrade the new trigger's clock starts at the upgrade |
+| Clock start | The moment the escalation record is created, which is the turn on which the owner trigger fires. When the owner changes, the deadline is the earlier of the pending deadline and the new trigger's SLA counted from the change; it never moves later (`triggers.md` section 4.1 rule 6) |
 | Clock stop, `warm` and `discreet` | The human's first message to the customer in the conversation |
 | Clock stop, `silent_case` | The case is accepted by an analyst of the target queue |
 | SLA met | Clock stop minus clock start is below the brief's SLA |
@@ -51,7 +51,7 @@ The brief gives SLAs but not what they measure. Definition used (D-118):
 
 ### 4.2 Decision table
 
-One row per trigger. "Segment" is the effect of customer tier or segment on routing. Hours are the proposals in the rules file (`24x7` or `extended`, 08:00 to 22:00 IST).
+One row per trigger. "Segment" is the effect of customer tier or segment on routing. Hours are the proposals in the rules file (`24x7` or `extended`, 08:00 to 22:00 IST). The brief sets no hours and no hours exemption, so the "After hours" column is a deviation from A6 that needs Risk Committee sign-off; where the brief's target queue does not pick up inside the SLA the case is an SLA miss in EQ-07, and an on-call rota is the SLA-compliant alternative (`queue-management.md` section 4, D-163).
 
 | Trigger | Queue in hours (brief) | Segment effect | Language rule | After hours |
 |---|---|---|---|---|
@@ -59,13 +59,13 @@ One row per trigger. "Segment" is the effect of customer tier or segment on rout
 | ESC-009 | Security Operations | none | First available agent | 24x7 |
 | ESC-001 | Fraud Investigation | none | First available agent; sub-rule f is a silent case | 24x7 |
 | ESC-012 | AML Compliance (case) | none | Not applicable (no customer contact) | 24x7 |
-| ESC-015 | Enhanced Due Diligence | the trigger is the PEP flag itself | Match if inside the SLA | Account-specific requests wait for the desk; callback offered; generic information still served |
-| ESC-002 | Senior Resolution Mgr | none | Match if inside the SLA | Next Available Agent takes the conversation; case opened for the next opening; callback offered |
+| ESC-015 | Enhanced Due Diligence: a case on every identified contact; live discreet handoff when the request is account-specific | the trigger is the PEP flag itself | Match if inside the SLA | Case opened at once; a live handoff waits for the desk (SLA miss); callback offered; generic information still served |
+| ESC-002 | Senior Resolution Mgr | none | Match if inside the SLA | Next Available Agent takes the conversation; case opened for the next opening; callback offered. SLA counted to the target queue |
 | ESC-005 | Dispute Resolution | none | Match if inside the SLA | Next Available Agent completes the intake; case opened; callback offered |
 | ESC-007 | Relationship Manager | the trigger is the 5L line itself | Match if inside the SLA | Next Available Agent records the reason; Relationship Manager callback |
 | ESC-004 | Customer Retention | none | Match preferred: tone is the point of this queue | Next Available Agent; case opened |
-| ESC-008 | Compliance Helpdesk | none | Match if inside the SLA | Callback only; no generalist answers the regulatory question |
-| ESC-013 | Wealth Advisory | none | Match if inside the SLA | Callback only; no generalist gives advice |
+| ESC-008 | Compliance Helpdesk | none | Match if inside the SLA | Callback only; no generalist answers the regulatory question (SLA miss) |
+| ESC-013 | Wealth Advisory | none | Match if inside the SLA | Callback only; no generalist gives advice (SLA miss) |
 | ESC-006 | Next Available Agent | none | Match from the General Support and Next Available Agent pools | 24x7 |
 | ESC-014 | Technical Support | none | Match if inside the SLA | General Support with honest status; incident stays open |
 | ESC-003 | General Support | none | Match strongly preferred: low confidence is often a language problem (D-20) | 24x7 |
@@ -213,16 +213,16 @@ The agent stays in the conversation until a human accepts. What it may do depend
 
 | Situation | The agent does | The agent does not |
 |---|---|---|
-| P0 crisis (ESC-011) | Stays present with the template's follow-up lines; answers the customer briefly and calmly | Any banking task, any question about accounts, any product, any survey |
+| P0 crisis (ESC-011) | Stays present with the template's follow-up lines; answers the customer briefly and calmly. A banking blocker the customer mentioned (for example a declined card in a medical emergency) is written into the package so the crisis handler can have a card or payments colleague joined at once | Any banking task, any question about accounts, any product, any survey. This limit binds the agent, not the human handler |
 | P0 fraud or access (ESC-001, ESC-009) | Completes confirmed protective steps; tells the customer what is already protected; gives the credential-change instruction where it applies | New unrelated tasks; cross-sell; promises about refunds; asking for evidence that contains credentials |
 | P1 and P2, `warm` | Keeps working on the same problem where it safely can (Case Study 5): looks up status, fills intake slots that are still empty, answers generic questions. Posts an honest status at most every 60 seconds, each one adding something | Re-asks anything already given; repeats the same wait message; starts a write action that the incoming specialist should decide |
 | ESC-008, ESC-013 | Offers factual KB information on request | Any answer to the uncertain regulatory point; any advice |
-| ESC-015, `discreet` | Serves generic information | Any account-specific action; any hint of the reason |
+| ESC-015 | Generic request: answers it normally while the case is open (`silent_case`). Account-specific request: `discreet` handoff, and generic information meanwhile | Any account-specific action; any hint of the reason or of the case |
 | `silent_case` | Continues the conversation normally within the rules | Any reference to the case |
 
 Rules that apply throughout the wait:
 
-1. Triggers keep being evaluated. A higher-ranked trigger upgrades the pending escalation (`triggers.md` section 4.1 rule 6).
+1. Triggers keep being evaluated. A higher-ranked trigger changes the owner of the pending escalation; the deadline is the earlier of the two and never moves later (`triggers.md` section 4.1 rule 6).
 2. The 5-minute inactivity rule still applies (A4.2 rule 7, GR-SEC-R7). The longest SLAs (10 and 15 minutes) are longer than the timeout, so a customer who goes quiet loses the authenticated level; the package records the level at the trigger and at the handoff.
 3. At 70 percent of the SLA with no acceptance, the supervisor of the queue is alerted and the customer is offered the choice to keep waiting or to request a callback (P1, P2). A P0 customer is not offered a way out of the queue.
 4. Everything the customer adds while waiting is appended to the package, so the human sees the conversation up to the second they join.
@@ -318,7 +318,7 @@ Safeguards against using cancellation to improve containment figures:
 
 ## 12. Decisions and open items
 
-Decisions: D-04 (the eight elements, Day 1), D-118 (SLA clock and IMMEDIATE), D-121 (routing factors; history may reorder a queue but not change a threshold), D-122 (hours and after-hours), D-123 (failed handoff), D-124 (behaviour while waiting), D-125 (de-escalation and cancellation).
+Audit amendments: D-163 (after-hours deviation), D-164 (ESC-015 literal), D-166 (deadline on a change of owner), D-167 (joined colleague in a medical emergency). Decisions: D-04 (the eight elements, Day 1), D-118 (SLA clock and IMMEDIATE), D-121 (routing factors; history may reorder a queue but not change a threshold), D-122 (hours and after-hours), D-123 (failed handoff), D-124 (behaviour while waiting), D-125 (de-escalation and cancellation).
 
 Open items:
 

@@ -10,13 +10,13 @@ Brief refs: A6 pp.16-17 (the 15 triggers), A9.2 p.25 (Premature Escalation, -10 
 |---|---|---|
 | `triggers-p0.yaml` | 11 | ESC-001, ESC-009, ESC-011, ESC-012: fire and near-miss cases |
 | `triggers-p1.yaml` | 17 | ESC-002, ESC-004, ESC-005, ESC-007, ESC-008, ESC-013, ESC-015 |
-| `triggers-p2.yaml` | 9 | ESC-003, ESC-006, ESC-010, ESC-014 |
-| `extras.yaml` | 10 | The additions XTR-01 to XTR-07 (not brief triggers) |
+| `triggers-p2.yaml` | 11 | ESC-003, ESC-006, ESC-010, ESC-014 |
+| `extras.yaml` | 14 | The additions XTR-01 to XTR-07 (not brief triggers) |
 | `boss-level6.yaml` | 10 | Level 6 boss: ambiguous edge cases with expected owner, priority, queue and reasoning |
 | `validate_escalation.py` | | Structural validator for the rules file, these cases and the Day 12 documents |
 | `README.md` | | This file |
 
-Totals: 37 cases for the brief's 15 triggers (18 fire, 19 near-miss), 10 cases for the additions, 10 boss cases; 57 in all.
+Totals: 39 cases for the brief's 15 triggers (19 fire, 20 near-miss), 14 cases for the additions (7 fire, 7 near-miss), 10 boss cases; 63 in all.
 
 ## 2. Schema
 
@@ -66,19 +66,19 @@ IDs are never reused. A new case for a trigger takes the next number; the rules 
 |---|---|---|---|---|
 | ESC-001 | P0 | ESC-T-001-01, ESC-T-001-03 | ESC-T-001-02 | Escalating an unrecognised merchant name before the customer denies the payment |
 | ESC-002 | P1 | ESC-T-002-01 | ESC-T-002-02 | Treating a question about the ombudsman route as a threat |
-| ESC-003 | P2 | ESC-T-003-01 | ESC-T-003-02 | Escalating when the third turn is clear |
+| ESC-003 | P2 | ESC-T-003-01 | ESC-T-003-02, ESC-T-003-03 | Escalating when the third turn is clear; a turn at exactly 0.40 |
 | ESC-004 | P1 | ESC-T-004-01, ESC-T-004-04 | ESC-T-004-02, ESC-T-004-03 | A single blunt message; a score exactly at the threshold; an uncertain score |
 | ESC-005 | P1 | ESC-T-005-01 | ESC-T-005-02 | A dispute of exactly INR 50,000 |
 | ESC-006 | P2 | ESC-T-006-01 | ESC-T-006-02 | One request where the customer then accepts the agent's offer |
 | ESC-007 | P1 | ESC-T-007-01 | ESC-T-007-02 | A closure below the 5L line; unequal tone across the line |
 | ESC-008 | P1 | ESC-T-008-01 | ESC-T-008-02 | A regulatory question the KB answers with confidence |
 | ESC-009 | P0 | ESC-T-009-01, ESC-T-009-03 | ESC-T-009-02 | A customer who forgot their own password |
-| ESC-010 | P2 | ESC-T-010-01 | ESC-T-010-02 | A long conversation that keeps resolving topics |
+| ESC-010 | P2 | ESC-T-010-01 | ESC-T-010-02, ESC-T-010-03 | A long conversation that keeps resolving topics; message 15 exactly |
 | ESC-011 | P0 | ESC-T-011-01 | ESC-T-011-02, ESC-T-011-03 | An idiom; the word emergency as a savings purpose |
 | ESC-012 | P0 | ESC-T-012-01 | ESC-T-012-02 | High legitimate business volume |
 | ESC-013 | P1 | ESC-T-013-01 | ESC-T-013-02 | An advisor offer the customer declines |
 | ESC-014 | P2 | ESC-T-014-01 | ESC-T-014-02, ESC-T-014-03 | A timeout the retry absorbs; a knowledge gap mistaken for a system error |
-| ESC-015 | P1 | ESC-T-015-01 | ESC-T-015-02, ESC-T-015-03 | Generic information for a flagged customer (depends on D-126); inferring the flag from a remark |
+| ESC-015 | P1 | ESC-T-015-01 (live discreet handoff), ESC-T-015-02 (generic request: record and case only, no transfer) | ESC-T-015-03 | Inferring the flag from a remark by an unflagged customer |
 
 ### 4.2 Additions
 
@@ -87,10 +87,10 @@ IDs are never reused. A new case for a trigger takes the next number; the rules 
 | XTR-01 | XTR-T-01-01 | XTR-T-01-02 |
 | XTR-02 | XTR-T-02-01 | XTR-T-02-02 |
 | XTR-03 | XTR-T-03-01 | XTR-T-03-02 |
-| XTR-04 | XTR-T-04-01 | |
-| XTR-05 | XTR-T-05-01 | |
-| XTR-06 | XTR-T-06-01 | |
-| XTR-07 | XTR-T-07-01 | |
+| XTR-04 | XTR-T-04-01 | XTR-T-04-02 |
+| XTR-05 | XTR-T-05-01 | XTR-T-05-02 |
+| XTR-06 | XTR-T-06-01 | XTR-T-06-02 |
+| XTR-07 | XTR-T-07-01 | XTR-T-07-02 |
 
 ### 4.3 Boss set (Level 6)
 
@@ -127,12 +127,15 @@ Handoff package checks apply to every fire case even though they are not repeate
 | 4 | Every name used in a `fire_when` expression is a defined signal, constant, proposal or parameter |
 | 5 | The eight handoff package elements equal KB-ESC-001, in order |
 | 6 | Cases: YAML parses, `case_count` matches, IDs are unique and follow the scheme, required fields are present, personas are the six A13.2 personas, authentication levels and intents and tertiaries exist, guardrail and trigger IDs exist, each brief trigger has at least one fire and one near-miss case, fire cases carry the trigger's priority, queue and SLA, near-misses list their own trigger in `must_not_escalate`, the rules file and the cases list each other, the boss set has 10 cases whose owner outranks its secondaries, no sensitive-looking digit run appears, files are ASCII |
-| 7 | The Day 12 documents, the diagram and the rules file mention only IDs that exist (ESC, XTR, GR, KB, intents, DM, KPI and EQ, test IDs, decisions up to D-134), are ASCII, and `triggers.md` and the diagram mention all 15 triggers |
+| 7 | The Day 12 documents, the diagram and the rules file mention only IDs that exist (ESC, XTR, GR, KB, intents, DM, KPI and EQ, test IDs, decisions up to D-170), are ASCII, and `triggers.md` and the diagram mention all 15 triggers |
+| 8 | The seven A6 constants equal the brief's values; each threshold trigger uses the brief's comparison (ESC-003 `>=` 3, ESC-004 `>=` 2, ESC-005 strict `>`, ESC-006 `>=` 3, ESC-010 strict `>`); ESC-015 is the literal status condition; XTR-06 cannot raise ESC-010 at or below 15 turns; a P0 queue's overflow starts with a human P0 queue, never `callback` |
+| 9 | The A6 table in `triggers.md`, the queue table in `queue-management.md` and section 2 of `kpi-framework.md` equal the rules file and transcriptions of A6 and A8 held in the validator; the glossary definition of containment is quoted |
+| 10 | For cases whose fixture fully determines the rule (injected confidence, sentiment, amount, request count, turn counters, record flags, OTP events), the expected fire or no-fire is recomputed and compared with `expect`; PAN-shaped and phone-shaped values are rejected; `must_not_contain` strings of 4 characters or fewer must be `re:` patterns |
 
 ## 7. Open items
 
 1. Expected replies depend on template wording that is written on Day 13 (`routing-and-handoff.md` section 11); `must_not_contain` strings may need alignment then.
 2. Hinglish wording is unreviewed by a native speaker; the Gujarati case uses placeholders and depends only on injected scores (D-22).
-3. ESC-T-015-02 depends on the ESC-015 scope decision (D-126). If the Risk Committee chooses the literal reading, it becomes a fire case.
+3. ESC-T-015-02 follows the literal reading of ESC-015 (D-164): a generic request by a flagged customer creates the record and the case with no live transfer. Short `must_not_contain` strings use `re:` word-boundary patterns so a correct reply is not failed by a substring (for example AML inside "seamless").
 4. Fixtures assume a harness that can inject classifier outputs, record flags, tool faults and timers; none exists yet.
 5. `tests/README.md` section 5.6 still says four triggers have no case; it predates this folder and the Day 11 suite and needs a one-line update by the coordinator.

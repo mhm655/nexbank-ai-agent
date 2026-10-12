@@ -42,7 +42,7 @@ The brief (A8.5): "Live conversation volume, active escalations, system health i
 | active conversations   --  | uptime (30 d)      --   ok | CSAT (n=--)        --   ok | !! --:-- fraud spike  |
 | started / 5 min        --  | first response p95 --s  ok | containment        --%  ok | !  --:-- ESC volume   |
 | vs same hour last wk   --% | turn latency p95   --s  ok | escalation rate    --%  ok | !  --:-- tool errors  |
-| concurrent / capacity  --% | error rate         --%  ok | resolved by AI     --%     | ok --:-- resolved     |
+| concurrent / capacity  --% | error rate         --%  ok | non-escalated      --%     | ok --:-- resolved     |
 | [sparkline 60 min]         | tools: -- up  -- degraded  | unresolved-dropped --%     | [ack] [runbook] [mute]|
 |                            | KB epoch age       --      | [3 sparklines 60 min]      |                       |
 +----------------------------+----------------------------+----------------------------+-----------------------+
@@ -69,7 +69,7 @@ The brief (A8.5): "Live conversation volume, active escalations, system health i
 |---|---|---|---|---|
 | A Live volume | "Live conversation volume" | Active conversations; conversations started per 5 minutes; deviation from the same-hour baseline; concurrent conversations as a share of tested capacity (KPI-O4) | By channel, language, intent | Volume above or below band; capacity above 80 percent of the tested level |
 | B System health | "system health indicators" | KPI-O3 uptime; KPI-L1 first response time; per-turn latency; error rate; tool and queue-platform status; KB epoch age; guard latency (DM-10); fallback load (DM-15) | By component and tool; to the incident if one is open | Uptime, latency, tool circuit open, template-only mode |
-| C Rolling 1-hour outcomes | "Rolling 1-hour CSAT, containment rate, and escalation rate" | KPI-G1 (rolling, with `n`), KPI-G4, KPI-O2, with the resolved-by-AI and unresolved-dropped shares as counter-metrics | By intent and language; to the daily dashboard | KPI thresholds for the rolling window |
+| C Rolling 1-hour outcomes | "Rolling 1-hour CSAT, containment rate, and escalation rate" | KPI-G1 (rolling, with `n`), KPI-G4, KPI-O2, with the non-escalated and unresolved-dropped shares as counter-metrics | By intent and language; to the daily dashboard | KPI thresholds for the rolling window |
 | D Alert panel | "Alert panel for anomalous patterns (fraud report spikes, unusual escalation volume, system errors)" | Open alerts from all three threshold sources, deduplicated per signal, with severity, age, owner and runbook link | To the panel that owns the signal; acknowledge, mute with reason | Fraud reports (ESC-001 plus ESC-009) against baseline; trigger volume; SLA breach; system errors; hard-zero events; rule-replay miss |
 | E Active escalations | "active escalations" | Per queue: waiting count, oldest wait, SLA, rolling attainment (EQ-07), agents available, overflow in use, state; totals by priority; pending de-escalations (EQ-09); callbacks; failed handoffs (EQ-06) | To the queue view (entitled roles only); to a handoff package for the receiving agent | Warn at 70 percent of an SLA; breach; queue unavailable; surge |
 | F Escalations by trigger | "unusual escalation volume" | Count per trigger and addition against the same-hour baseline; premature flags from wrap-up codes; rule-replay misses | By sub-rule, source (customer or system), language | 2 times and 3 times baseline |
@@ -99,7 +99,7 @@ The brief (A8.5): "24-hour trend lines for all leading and lagging indicators"; 
 | L1 first response time p95     [trend .........]            --s    <5 s        --     --      ok            |
 | L2 intent accuracy (n=--)      [trend .........]            --%    >92%        --     --      ok            |
 | L3 entity accuracy (n=--)      [trend .........]            --%    >95%        --     --      ok            |
-| L4 sentiment slope             [trend .........]            --     >=0         --     --      ok            |
+| L4 sentiment slope             [trend .........]            --     pos/stable  --     --      ok            |
 | L5 retrieval relevance         [trend .........]            --     >0.85       --     --      ok            |
 | L6 guardrail false positives   [trend .........]            --%    <3%         --     --      ok            |
 | L7 confidence above 0.7        [trend .........]            --%    >80% (wk)   --     --      ok            |
@@ -167,11 +167,14 @@ The brief (A8.5): "Week-over-week improvement trends for all KPIs"; "A/B test re
 | A  KPI SCORECARD (week over week)             this wk   last wk   change   13-wk trend     target   state   |
 | CSAT (G1)                                       --        --       --      [..........]     >=4.5    ok      |
 | First contact resolution (G3)                   --%       --%      --      [..........]     >=70%    ok      |
-| Containment (G4) / resolved by AI               --% / --% --%      --      [..........]     >=70%    ok      |
+| Containment (G4) / non-escalated share          --% / --% --%      --      [..........]     >=70%    ok      |
 | Incorrect advice (G6)                           --        --       --      [..........]     0%       ok      |
 | Escalation rate (O2) / premature / missed       --% --% -- --%     --      [..........]     <30%     ok      |
 | Handle time (O1)                                --m       --m      --      [..........]     <8 m     ok      |
+| First response time p95 (L1)                    --s       --s      --      [..........]     <5 s     ok      |
 | Intent (L2) / entity (L3) accuracy              --% / --% --%      --      [..........]     >92/95%  ok      |
+| Sentiment slope (L4)                            --        --       --      [..........]     pos/stbl ok      |
+| Confidence above 0.7 (L7)                       --%       --%      --      [..........]     >80%     ok      |
 | Retrieval relevance (L5) / KB coverage (O5)     -- / --%  --       --      [..........]     >0.85/90 ok      |
 | Guardrail FP (L6) / hard-zero events            --% / --  --%      --      [..........]     <3% / 0  ok      |
 | Uptime (O3) / capacity test (O4) / drift (O6)   --% -- -- --       --      [..........]     99.9/10k ok      |

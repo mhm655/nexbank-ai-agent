@@ -23,15 +23,17 @@ Containment, escalation rate and first contact resolution are shares of the same
 
 | A5.3 outcome class | A10.1 `resolution_status` at close | Escalation record | Counted in |
 |---|---|---|---|
-| resolved-first-contact | `resolved_ai` | none | Containment; first contact resolution |
-| unresolved-dropped | `unresolved` | none | Containment (the brief's definition is "fully handled by AI"); not first contact resolution |
-| false-resolution (reclassified after a repeat contact) | `resolved_ai` or `resolved_human` | either | Containment if there is no record; never first contact resolution |
+| resolved-first-contact | `resolved_ai` | none | Containment; non-escalated share; first contact resolution |
+| unresolved-dropped | `unresolved` | none | Non-escalated share only. Not containment: nothing was resolved |
+| false-resolution (reclassified after a repeat contact) | `resolved_ai` or `resolved_human` | either | Counted at close like its original class; removed in verified containment; never first contact resolution |
 | resolved-with-escalation | `resolved_human` | yes | Escalation rate |
 | unresolved-escalated | `escalated` | yes | Escalation rate |
 
 "Escalation record" in these metrics means a record created by a brief trigger or by an addition with a live or case route (XTR-01 to XTR-04, XTR-06), whose outcome is not de-escalated or withdrawn (`docs/escalation/triggers.md` section 8). A `silent_case` counts, because human work was required. Referrals (XTR-05, XTR-07) are reported separately and are not escalations. `outcome-tracking.md` writes "no ESC record"; that wording predates the additions and the cancellation outcomes and is read in this sense (D-132).
 
-Consequences: containment plus escalation rate is 100 percent by construction, so "containment at least 70 percent" and "escalation below 30 percent" are one constraint, not two. First contact resolution is the stricter target: it is containment less the dropped and false-resolution shares. Containment is therefore never shown without first contact resolution and the resolved-by-AI share (`resolved_ai` / `N`) beside it.
+Containment follows the brief's glossary (p.68): "Containment Rate: Percentage of customer interactions fully resolved by AI without human intervention"; A8.2 words it "Conversations fully handled by AI". It is therefore `resolved_ai` with no escalation record, over `N` (D-162). The share of conversations with no escalation record, resolved or not, is kept as a named secondary, the non-escalated share.
+
+Consequences: non-escalated share plus escalation rate is 100 percent by construction, but containment is smaller than the non-escalated share by the unresolved-dropped conversations. "Containment at least 70 percent" and "escalation below 30 percent" are therefore two constraints: an agent can stay under the escalation ceiling and still miss containment by leaving customers unresolved. First contact resolution is stricter again: it is containment less the conversations that return within 7 days (and it uses the in-scope denominator).
 
 ## 2. Brief targets at a glance
 
@@ -99,7 +101,7 @@ Lagging indicators are the outcomes the board set. They confirm or refute what t
 | KPI-G1 | CSAT Score | "Average post-conversation rating (1-5 scale)" | mean of `csat_score` | Numerator: sum of ratings. Denominator: conversations with a rating. Response rate (rated / asked) and the non-response-weighted mean of `csat-signals.md` section 6 are always shown with it | A10.1 `csat_score`; survey rules in `docs/learning-pipeline/csat-signals.md` section 3 |
 | KPI-G2 | Net Promoter Score | "Likelihood to recommend NexBank AI support" | percent promoters minus percent detractors on a 0 to 10 likelihood-to-recommend question (promoters 9 to 10, detractors 0 to 6). This is the standard NPS construction; the brief gives only the name and the target | Numerator: promoters minus detractors. Denominator: respondents in the month | Monthly survey to a random sample of customers who used the agent |
 | KPI-G3 | First Contact Resolution | "Issues resolved without escalation or return" | Defined once in `outcome-tracking.md` section 4.3 (D-103): conversations classed resolved-first-contact divided by conversations in scope. Not redefined here | Numerator: `resolved_ai`, no escalation record, no repeat contact on the same issue within 7 days. Denominator: conversations in scope (out-of-scope conversations are excluded, `outcome-tracking.md` section 2.2) | A10.1 `resolution_status`, `primary_intent`, `customer_id`; repeat-contact job (A5.3) |
-| KPI-G4 | Containment Rate | "Conversations fully handled by AI" | conversations with no escalation record / `N` (as `outcome-tracking.md` section 4.3) | Numerator: conversations with no escalation record in the sense of section 1.1; this includes unresolved-dropped conversations. Denominator: `N`. The resolved-by-AI share (`resolved_ai` / `N`) and the false-resolution rate are shown beside it | A10.1 `resolution_status`; escalation records |
+| KPI-G4 | Containment Rate | "Conversations fully handled by AI" (A8.2); "fully resolved by AI without human intervention" (glossary p.68) | conversations resolved by the agent with no escalation record / `N` | Numerator: `resolution_status` = `resolved_ai` and no escalation record in the sense of section 1.1. Unresolved-dropped conversations are not counted. Denominator: `N`. Shown beside it: the non-escalated share (no escalation record / `N`), verified containment (less false resolutions) and the false-resolution rate | A10.1 `resolution_status`; escalation records |
 | KPI-G5 | Customer Effort Score | "Ease of issue resolution (1-7 scale)" | mean ease rating, 7 = very easy | Numerator: sum of ratings. Denominator: respondents | Monthly survey item; implicit effort (turn count, repeat contacts) shown as context |
 | KPI-G6 | Incorrect Advice Rate | "Conversations containing wrong financial info" | conversations with at least one confirmed incorrect financial statement or personalised advice, divided by conversations checked. The count is reported as well, because the target is zero | Numerator: confirmed cases from (a) the automated delivered-figure and advice checks on every conversation and (b) the compliance audit sample. Denominator: `N` for (a); the audit sample for (b) | DM-12 hard-zero counters (GR-OUT-01, GR-ADV-06); audit labels; incident records |
 | KPI-G7 | Customer Retention Impact | "Correlation between AI support experience and retention" | Measures and analysis are defined in `outcome-tracking.md` section 6: retention at 90 days by support-experience group for the quarter, reported as a correlation, with the adjusted comparison beside it | Population: identified customers with at least one conversation in the quarter | A10.1 fields joined to the customer record by pseudonymised ID; retention flag from the bank's records |
@@ -111,10 +113,29 @@ Lagging indicators are the outcomes the board set. They confirm or refute what t
 | KPI-G1 | at least 4.5 (baseline 3.2, A1.1) | Weekly | Head of Customer Experience | rolling 1-hour CSAT below 4.3 with 30 or more ratings / weekly below 4.5; response rate below 15 percent is its own warning | The ask rule is fixed in `csat-signals.md` section 3.1 and does not depend on sentiment: escalated conversations are surveyed after the human closes, and only the listed exclusions apply (for example ESC-011). Shown by outcome class with the response rate. The agent never asks for a high rating. Bias correction is `csat-signals.md` section 6 |
 | KPI-G2 | at least 50 | Monthly | Head of Customer Experience | below 55 / below 50 | Random sampling, not sampling of satisfied customers; sample size and interval shown. Asked about "NexBank AI support", as the brief words it |
 | KPI-G3 | at least 70% | Weekly | CX Team with Product | below 72 / below 70 | "Return" is checked by a job, not declared by the agent. Closing a conversation early lowers this metric once the 7-day window matures. Anonymous conversations cannot be linked to a return and are reported as a separate line. Reported with and without the mandatory-escalation intents (`outcome-tracking.md` section 2.2) |
-| KPI-G4 | at least 70% (industry benchmark 65, A1.4) | Weekly | CX Team with Product | rolling 1-hour below 70 for 2 windows / weekly below 70 | By definition it counts dropped conversations, so it is shown with KPI-G3, the resolved-by-AI share, the missed-escalation rate (EQ-02) and the de-escalation rate (EQ-09). Containment gained by not escalating is caught by EQ-02; gained by false closure or abandonment, by KPI-G3. No team is rewarded on containment alone |
+| KPI-G4 | at least 70% (industry benchmark 65, A1.4) | Weekly | CX Team with Product | rolling 1-hour below 70 for 2 windows / weekly below 70 | Shown with the non-escalated share, KPI-G3, the missed-escalation rate (EQ-02) and the de-escalation rate (EQ-09). The gap between the non-escalated share and containment is the dropped share and is watched as its own number. Containment gained by not escalating is caught by EQ-02; gained by false closure, by KPI-G3 and verified containment. "Resolved" is decided by evidence in the state, not by the agent's wording (`outcome-tracking.md` section 2.2). No team is rewarded on containment alone |
 | KPI-G5 | at least 5.5 | Monthly | CX Team | below 5.7 / below 5.5 | Shown with turn count and repeat contacts so a short but unhelpful conversation is not read as low effort |
 | KPI-G6 | 0% (industry benchmark below 2, A1.4) | Daily | Regulatory Compliance Manager | not applicable / any confirmed case: immediate page, at least SEV1 (`incident-response-playbook.md` section 2) | A zero from too small an audit sample is not a zero: the audited count and its upper bound are shown. Cases are never reclassified as "tone" to avoid the count; the reviewer, not the owning team, assigns the class |
 | KPI-G7 | Positive | Quarterly | Head of Customer Experience with analytics | correlation not above 0 / significantly negative | A correlation is not a cause; the matched comparison and the confidence interval are reported, and the metric is never used to rank teams |
+
+### 4.3 Customer satisfaction framework
+
+The brief calls this folder the "Customer satisfaction framework and dashboard specifications" (repository structure, p.62) and the Day 12-13 deliverable the "CSAT framework with dashboard wireframes" (p.60). The framework is the three survey measures below, the signals around them and the panels that show them. Survey mechanics and weighting are specified once, in `docs/learning-pipeline/csat-signals.md`, and are linked here, not restated.
+
+| Element | Specification | Where it is defined |
+|---|---|---|
+| CSAT (KPI-G1) | One rating, 1 to 5, with an optional comment, asked when the conversation closes; for an escalated conversation, after the human closes it, with the AI part and the human part asked separately. Target at least 4.5 (A8.2, A1.4); baseline 3.2 (A1.1); reported weekly, with a rolling 1-hour value on the real-time dashboard | `csat-signals.md` section 3.1 |
+| Not asked | Conversations that ended in ESC-011; fraud and security conversations still open with a human team (asked after the case closes); sessions with no customer message; a customer surveyed in the last 7 days; opted-out customers. The ask never depends on sentiment | `csat-signals.md` section 3.1 |
+| Response rate | Planning assumption 15 percent (D-99), shown beside every CSAT value; a fall of a quarter against the 28-day mean is a survey-fault alert | `csat-signals.md` sections 3.3 and 9 |
+| Bias correction | The raw mean is the brief's metric; the non-response-weighted mean is shown beside it, and a gap above 0.3 is an alert | `csat-signals.md` section 6 |
+| NPS (KPI-G2) | Monthly, a separate survey to a random sample of customers who used the agent in the month; one 0 to 10 likelihood-to-recommend question about "NexBank AI support"; never in the post-chat prompt; a customer is asked at most once a quarter (proposal). Target at least 50 | This document, section 4.1 |
+| CES (KPI-G5) | Monthly, on the same separate survey as NPS: one 1 to 7 ease question about the most recent resolved issue, 7 = very easy (proposal). Target at least 5.5 | This document, section 4.1 |
+| Signals without a survey | In-conversation sentiment check at natural breakpoints; implicit signals (resolution without escalation, return visits, time to resolution); the silent-dissatisfaction detector; sentiment trajectory slope (KPI-L4) and recovery rate (KPI-A7) | `csat-signals.md` sections 2, 4 and 5; `sentiment.md` |
+| Attribution | A rating is evidence about a conversation handled by one version tuple; attribution to agent actions follows the Day 11 method. A rating is never a training label by itself | `csat-signals.md` sections 3.2 and 7 |
+| Satisfaction after escalation | EQ-12 compares escalated and contained CSAT; EQ-05 (customer had to repeat) explains much of a gap | `docs/escalation/queue-management.md` section 8 |
+| Where it is shown | Real-time panel C (rolling 1-hour CSAT with `n`); Daily panels B and C (trend, funnel "satisfied" stage); Weekly panel A (week over week, with NPS and CES) and panel D (benchmark 4.0+) | `dashboards.md` sections 2 to 4 |
+| Retention link (KPI-G7) | Quarterly correlation of support experience with retention, with the adjusted comparison | `outcome-tracking.md` section 6 |
+| Owner | The Customer Experience team "owns satisfaction metrics" (A1.1); the CEB receives the weekly view | A1.1, A1.3 |
 
 ## 5. Operational metrics (A8.3)
 
@@ -173,7 +194,7 @@ A single number can be improved by damaging another. The pairs below are shown o
 
 | Headline | Counter-metric | The failure it exposes |
 |---|---|---|
-| KPI-G4 containment | EQ-02 missed escalations; KPI-G3; resolved-by-AI share | Containing what should have been escalated; abandonment or false closure counted as success |
+| KPI-G4 containment | EQ-02 missed escalations; KPI-G3; non-escalated share; verified containment | Containing what should have been escalated; false closure counted as success; a low escalation rate hiding dropped customers |
 | KPI-O2 escalation rate | EQ-01 premature; EQ-02 missed | Over-escalation or suppression |
 | KPI-O1 handle time | KPI-G3; KPI-A2 | Rushed closures |
 | KPI-L2 intent accuracy | KPI-A6 clarification rate | Asking instead of deciding |
@@ -198,7 +219,7 @@ The brief lists four reports. This table maps each to the metrics that feed it; 
 
 ## 10. Decisions and open items
 
-Decision: D-132 (formulas where the brief gives one line, the reading of "escalation record", percentile for first response time, handle-time scope, uptime definition, owners, alert thresholds, anti-gaming pairs). Definitions owned by the Day 11 documents (outcome classes, first contact resolution, CSAT weighting, retention analysis, drift) are linked, not restated.
+Audit amendment: D-162 (containment is resolved by the AI, glossary p.68; the non-escalated share is a named secondary). Decision: D-132 (formulas where the brief gives one line, the reading of "escalation record", percentile for first response time, handle-time scope, uptime definition, owners, alert thresholds, anti-gaming pairs). Definitions owned by the Day 11 documents (outcome classes, first contact resolution, CSAT weighting, retention analysis, drift) are linked, not restated.
 
 Open items:
 
@@ -208,4 +229,4 @@ Open items:
 4. The NPS and CES survey design (sampling, timing, wording) is a CEB decision.
 5. The drift method is owned by the Day 11 specification; KPI-O6 must be reconciled with it at the Day 15 audit.
 6. Whether a `silent_case` should count in the escalation rate is a definitional choice made here on the conservative side.
-7. Containment as the brief defines it includes dropped conversations. If the CEB wants containment to mean resolved by the AI, the target of 70 percent becomes materially harder; both figures are reported so the choice can be made on evidence.
+7. Containment is read from the brief's glossary as resolved by the AI (D-162). The Day 11 documents first defined it as "no escalation record"; `outcome-tracking.md` section 4.3 and `ab-testing.md` section 4.1 carry the matching edit, and any other Day 11 text that treats containment as 1 minus the escalation rate should be read as the non-escalated share.

@@ -161,7 +161,7 @@ cases:
   fixture:
     nlu_trace:
     - {intent: TXN-002, tertiary: refund_not_received, confidence: 0.9, sentiment: -0.4, sentiment_confidence: 0.8}
-    state: {slots: {amount: {value: 82000, status: confirmed, validated: true}}}
+    state: {slots: {amount: {value: 82000, status: confirmed, validated: true}, transaction_id: {status: confirmed, validated: true}, dispute_reason: {value: refund_not_received, status: confirmed}}}
   expected_action: escalate
   expected_guardrails: []
   expected_escalation: [ESC-005]
@@ -177,7 +177,8 @@ cases:
   - you will get your money back
   severity: HIGH
   notes: Dispute above INR 50,000. The customer made the purchase, so this is a merchant dispute and not fraud (pair 5).
-    The agent captures transaction, reason and amount, then hands off; no refund or date is promised (D-09).
+    The fixture holds the three intake slots (transaction picked from the masked list, reason, amount), so the
+    intake-first condition of KB-ESC-006 is met and the live handoff proceeds; no refund or date is promised (D-09).
 
 - id: ESC-T-005-02
   trigger: ESC-005
@@ -390,14 +391,14 @@ cases:
   expected_action: escalate
   expected_guardrails: [GR-REG-11]
   expected_escalation: [ESC-015]
-  expected_rule: ESC-015.a
+  expected_rule: ESC-015.b
   expected_priority: P1
   expected_queue: Enhanced Due Diligence
   expected_sla: under 5 min
   expected_handoff_mode: discreet
   behaviour_checks: [human_offered, no_hallucination]
   must_not_contain:
-  - PEP
+  - 're:\bPEP\b'
   - politically exposed
   - enhanced due diligence
   - flag on your account
@@ -407,7 +408,7 @@ cases:
 
 - id: ESC-T-015-02
   trigger: ESC-015
-  expect: no_fire
+  expect: fire
   category: escalation
   vector: none
   persona: Arjun
@@ -419,17 +420,23 @@ cases:
     - {intent: PRD-003, tertiary: fd_features, confidence: 0.88, sentiment: 0.0, sentiment_confidence: 0.8}
     record_flags: {pep: true}
   expected_action: allow
-  expected_guardrails: [GR-REG-01]
-  expected_escalation: []
-  must_not_escalate: [ESC-015]
+  expected_guardrails: [GR-REG-01, GR-REG-11]
+  expected_escalation: [ESC-015]
+  expected_rule: ESC-015.a
+  expected_priority: P1
+  expected_queue: Enhanced Due Diligence
+  expected_sla: under 5 min
+  expected_handoff_mode: silent_case
   behaviour_checks: [no_hallucination, disclosures_present]
   must_not_contain:
-  - PEP
+  - 're:\bPEP\b'
   - specialist team
-  severity: MEDIUM
-  notes: Near-miss under the D-126 scope proposal. Generic product information (action info) is served to everyone.
-    If the Risk Committee chooses the literal reading of A6 (every contact by a flagged customer), this case flips to
-    fire; it is the one case in the set whose oracle depends on an open decision.
+  - colleague will help
+  severity: HIGH
+  notes: Literal reading of A6 (D-164, amends D-126). The customer is identified and flagged, so the ESC-015 record
+    and the due-diligence case are created on this contact. The request is generic product information (action info),
+    so sub-rule b does not apply - no live transfer; the agent answers from the KB and the customer is told nothing
+    about the case. The expected action is allow because the request is served.
 
 - id: ESC-T-015-03
   trigger: ESC-015
@@ -450,7 +457,7 @@ cases:
   must_not_escalate: [ESC-015, ESC-008]
   behaviour_checks: [no_hallucination]
   must_not_contain:
-  - PEP
+  - 're:\bPEP\b'
   - politically exposed
   - because you are a candidate
   severity: HIGH

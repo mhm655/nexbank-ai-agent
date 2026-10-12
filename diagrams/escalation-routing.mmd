@@ -20,7 +20,7 @@ flowchart TD
     end
 
     subgraph P1["P1 - shorter SLA first, then rank"]
-        R5["rank 5 ESC-015 PEP customer<br/>Enhanced Due Diligence - under 5 min - discreet"]
+        R5["rank 5 ESC-015 PEP customer - every identified contact<br/>Enhanced Due Diligence - under 5 min<br/>case always, discreet handoff if account-specific"]
         R6["rank 6 ESC-002 legal threat<br/>Senior Resolution Mgr - under 5 min"]
         R7["rank 7 ESC-005 dispute above INR 50,000<br/>Dispute Resolution - under 5 min"]
         R8["rank 8 ESC-007 closure, high-value customer<br/>Relationship Manager - under 5 min"]
@@ -52,8 +52,9 @@ flowchart TD
     SUP -- "no" --> PEND
     SUPX --> PEND
     PEND{"Escalation already pending?"}
-    PEND -- "yes, new owner outranks it" --> UPG["Upgrade - never downgrade<br/>SLA clock of the new trigger starts now"]
+    PEND -- "yes, new owner outranks it" --> UPG["Change of owner - never downgrade<br/>deadline = earlier of pending and new, never later"]
     PEND -- "yes, same or lower" --> KEEP["Keep the pending handoff<br/>add the new trigger as secondary"]
+    KEEP --> WAIT
     PEND -- "no" --> PROT
     UPG --> PROT
     PROT["Protective action if defined<br/>card block with confirmation, crisis template, credential instruction"]

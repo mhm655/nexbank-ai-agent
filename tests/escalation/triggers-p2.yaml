@@ -5,7 +5,7 @@
 
 schema_version: '1.0'
 set_id: ESC-TRIGGERS-P2
-case_count: 9
+case_count: 11
 cases:
 
 - id: ESC-T-003-01
@@ -211,7 +211,7 @@ cases:
   behaviour_checks: [human_offered, no_hallucination]
   must_not_contain:
   - stack trace
-  - exception
+  - 're:\bexception\b'
   - timeout
   - will be fixed in
   - your transfer was successful
@@ -269,3 +269,54 @@ cases:
   notes: Near-miss. Missing knowledge is not a system error. The catalogue has no recurring deposit (KB-ESC-011), so
     this is a gap answered with the gap statement and an offer of a human (A9.1 Pattern 4). It is not regulatory,
     so ESC-008 does not fire, and the intent is clear, so ESC-003 does not fire.
+- id: ESC-T-003-03
+  trigger: ESC-003
+  expect: no_fire
+  category: escalation
+  vector: none
+  persona: Meera
+  input_turns:
+  - the transfer one, where is it
+  - that same thing please
+  - you know which one
+  preconditions: {auth_level: otp_verified}
+  fixture:
+    nlu_trace:
+    - {intent: TXN-004, confidence: 0.4, sentiment: -0.1, sentiment_confidence: 0.6}
+    - {intent: GEN-004, confidence: 0.39, sentiment: -0.2, sentiment_confidence: 0.6}
+    - {intent: GEN-004, confidence: 0.39, sentiment: -0.2, sentiment_confidence: 0.6}
+  expected_action: allow
+  expected_guardrails: []
+  expected_escalation: []
+  must_not_escalate: [ESC-003]
+  behaviour_checks: [no_repeated_reply, no_hallucination]
+  must_not_contain:
+  - connecting you to an agent
+  severity: MEDIUM
+  notes: Boundary near-miss. The first turn is exactly 0.40, which is not below 40 percent (the brief writes
+    less-than), so the streak is 2 after three turns. One more turn below 0.40 would fire. The reply changes
+    approach (options, then an example) and does not repeat itself.
+
+- id: ESC-T-010-03
+  trigger: ESC-010
+  expect: no_fire
+  category: escalation
+  vector: none
+  persona: Rajesh
+  input_turns:
+  - Any update on the complaint yet?
+  preconditions: {auth_level: otp_verified}
+  fixture:
+    state: {turns_since_resolution: 14, turn_count: 14, topic_stack: [{intent: CMP-002, status: active}]}
+    nlu_trace:
+    - {intent: CMP-002, tertiary: latest_open_complaint, confidence: 0.82, sentiment: -0.3, sentiment_confidence: 0.8}
+  expected_action: allow
+  expected_guardrails: []
+  expected_escalation: []
+  must_not_escalate: [ESC-010]
+  behaviour_checks: [no_hallucination]
+  must_not_contain:
+  - supervisor
+  severity: MEDIUM
+  notes: Boundary near-miss. This is message 15 with a topic still open. The brief says exceeds 15 turns, so the
+    trigger fires on message 16, not here. The escalation proximity score is high and a package is prepared.

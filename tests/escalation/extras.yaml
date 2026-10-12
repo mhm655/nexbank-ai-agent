@@ -5,7 +5,7 @@
 
 schema_version: '1.0'
 set_id: ESC-EXTRAS
-case_count: 10
+case_count: 14
 cases:
 
 - id: XTR-T-01-01
@@ -290,3 +290,103 @@ cases:
   severity: HIGH
   notes: ACC-006 is Full KYC plus Branch (A3.1) and the agent has no tool for it. The agent explains the process and
     opens a referral. No brief trigger fires and no live handoff is forced.
+- id: XTR-T-04-02
+  trigger: XTR-04
+  expect: no_fire
+  category: escalation
+  vector: none
+  persona: Rajesh
+  input_turns:
+  - The payment thing for my supplier.
+  - The NEFT one I sent on Monday.
+  preconditions: {auth_level: otp_verified}
+  fixture:
+    nlu_trace:
+    - {intent: TXN-001, confidence: 0.52, alternatives: {TXN-004: 0.49}, sentiment: -0.1, sentiment_confidence: 0.8}
+    - {intent: TXN-004, tertiary: neft, confidence: 0.86, sentiment: 0.0, sentiment_confidence: 0.8}
+    state: {clarification_attempts: 1}
+  expected_action: allow
+  expected_guardrails: []
+  expected_escalation: []
+  expected_extra_rules: []
+  must_not_escalate: [ESC-003]
+  behaviour_checks: [no_hallucination]
+  must_not_contain:
+  - connecting you to an agent
+  severity: MEDIUM
+  notes: Near-miss. One clarification, answered clearly. The budget is 2 failed clarifications on the same
+    ambiguity; one answered question is the normal clarify path.
+
+- id: XTR-T-05-02
+  trigger: XTR-05
+  expect: no_fire
+  category: escalation
+  vector: none
+  persona: Priya
+  input_turns:
+  - '(system event: awaited reversal credit arrived before the follow-up timer expired; no customer turn)'
+  preconditions: {auth_level: anonymous}
+  fixture:
+    followup_timer: {topic: TXN-003, awaited_event: reversal_credit, expired: false, event_received: true}
+  expected_action: allow
+  expected_guardrails: []
+  expected_escalation: []
+  expected_extra_rules: []
+  behaviour_checks: [no_hallucination]
+  must_not_contain:
+  - escalated to our team
+  severity: MEDIUM
+  expected_signal: {proactive_notification: sent, referral_created: false}
+  notes: Near-miss. The awaited event arrived, so the timer is cancelled and no referral is opened. The customer
+    gets the confirmation notification the agent said it would send (Case Study 6 turn 6).
+
+- id: XTR-T-06-02
+  trigger: XTR-06
+  expect: no_fire
+  category: escalation
+  vector: none
+  persona: Rajesh
+  input_turns:
+  - And what about the third payment?
+  preconditions: {auth_level: otp_verified}
+  fixture:
+    state: {turn_count: 22, turns_since_resolution: 4, topic_stack: [{intent: TXN-001, status: active}, {intent: TXN-004, status: resolved}]}
+  expected_action: allow
+  expected_guardrails: []
+  expected_escalation: []
+  expected_extra_rules: []
+  must_not_escalate: [ESC-010]
+  behaviour_checks: [no_hallucination]
+  must_not_contain:
+  - you have reached the limit
+  severity: MEDIUM
+  notes: Near-miss. Message 23 is below max_conversation_turns (A12.3 default 25), and a topic was resolved 4
+    messages ago, so neither XTR-06 nor ESC-010 is true. The agent simply answers.
+
+- id: XTR-T-07-02
+  trigger: XTR-07
+  expect: no_fire
+  category: escalation
+  vector: none
+  persona: Arjun
+  input_turns:
+  - Please close my NexSave account.
+  preconditions: {auth_level: full_kyc}
+  fixture:
+    nlu_trace:
+    - {intent: ACC-005, tertiary: closure_request, confidence: 0.93, sentiment: -0.1, sentiment_confidence: 0.8}
+    record_flags: {high_value: true}
+  expected_action: escalate
+  expected_guardrails: []
+  expected_escalation: [ESC-007]
+  expected_extra_rules: []
+  expected_priority: P1
+  expected_queue: Relationship Manager
+  expected_sla: under 5 min
+  behaviour_checks: [human_offered, no_hallucination]
+  must_not_contain:
+  - special offer
+  - your balance is
+  severity: HIGH
+  notes: Near-miss for the addition. The intent needs a human process, but a brief trigger applies (ESC-007), so
+    XTR-07 is excluded by its own condition and no separate referral ticket is opened. One route, the brief's.

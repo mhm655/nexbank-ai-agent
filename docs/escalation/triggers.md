@@ -47,7 +47,7 @@ Observations that shape the design:
 2. Priority and SLA are not the same thing. ESC-008 and ESC-013 are P1 with a 10-minute SLA, the same SLA as the P2 triggers ESC-003, ESC-006 and ESC-014. Precedence therefore uses priority first and SLA second (section 4).
 3. Every trigger has its own queue: 15 triggers, 15 queues. No queue is shared, so overflow has to borrow from another trigger's queue (`queue-management.md` section 3).
 4. ESC-011 has no number. "IMMEDIATE" is read operationally in `routing-and-handoff.md` section 3 (D-118).
-5. ESC-015 is a property of the customer, not of the conversation. A literal reading would hand every contact by a flagged customer to a human; the scope used here is in section 3.15 (D-126).
+5. ESC-015 is a property of the customer, not of the conversation. The brief's condition is the status alone, so the trigger is kept literal: the record and the due-diligence case are created on every contact by an identified, flagged customer, and only the live handoff is scoped (section 3.15, D-164).
 
 ## 3. Trigger specifications
 
@@ -57,7 +57,7 @@ Each block gives the detection signal, the owning component, the dialogue-state 
 
 | Item | Specification |
 |---|---|
-| Detection signal | (a) SEC-001 at confidence 0.50 or more (flow-entry gate, D-19) with tertiary `unauthorised_transaction`, `card_misuse`, `scam_victim` or `identity_theft`. (b) SEC-004 `deny_not_me`. (c) The customer denies knowing a merchant or payment after the pair 5 question, or states a scam cue (shared OTP, clicked a link, fake bank call, remote-access app). (d) After a card block the customer confirms payments they did not make (pair 6). (e) A phishing report (SEC-002) where the customer already clicked, shared a credential or paid. (f) System source: an authority claim with a request (D-60), or the second flagged turn with a data target (D-72, D-91) |
+| Detection signal | (a) SEC-001 at confidence 0.50 or more (flow-entry gate, D-19) with tertiary `unauthorised_transaction`, `card_misuse`, `scam_victim` or `identity_theft`. (b) SEC-004 `deny_not_me`. (c) The customer denies knowing a merchant or payment after the pair 5 question, or states a scam cue (shared OTP, clicked a link, fake bank call, remote-access app, a demand for money under threat or coercion). In a multi-intent turn, sub-rule (a) also matches SEC-001 as an alternative hypothesis at 0.50 or more (D-167). (d) After a card block the customer confirms payments they did not make (pair 6). (e) A phishing report (SEC-002) where the customer already clicked, shared a credential or paid. (f) System source: an authority claim with a request (D-60), or the second flagged turn with a data target (D-72, D-91) |
 | "Suspected" means | The 0.50 gate. Execution of any protective action still needs 0.85 and explicit confirmation (D-19) |
 | Detected by | Input Guard, NLU Service, Policy Engine |
 | State fields | `intent`, `intent.confidence`, `intent.layer_path`, `auth_level`, `guardrails.triggered`, `actions_taken`, `sentiment.trajectory` |
@@ -106,7 +106,7 @@ Each block gives the detection signal, the owning component, the dialogue-state 
 
 | Item | Specification |
 |---|---|
-| Detection signal | (a) Two consecutive customer turns whose sarcasm-adjusted raw score is below `escalation_sentiment_threshold` (A12.3 default -0.70) with sentiment confidence of 0.70 or more; an uncertain turn neither adds to nor resets the streak (D-18, `sentiment.md` section 5.1). (b) Secondary languages only: smoothed score at or below the threshold with a falling slope for 3 customer turns |
+| Detection signal | (a) Two consecutive customer turns whose sarcasm-adjusted raw score is below `escalation_sentiment_threshold` (A12.3 default -0.70) with sentiment confidence of 0.70 or more; an uncertain turn neither adds to nor resets the streak (D-18, `sentiment.md` section 5.1). (b) Secondary languages only: the same two consecutive raw scores strictly below the threshold, with the sentiment-confidence gate waived, and the smoothed score strictly below the threshold. Route (b) waives only the confidence gate; it never relaxes the brief's count of 2 turns or its strict threshold, so no language has a lower effective threshold (A11.3, D-165). `sentiment.md` section 5.1 words this route as "at or below, falling slope for 3 turns"; the stricter rule here prevails |
 | Comparison | Strictly below the threshold, as the brief writes it. Exactly -0.70 does not count (ESC-T-004-03) |
 | Detected by | NLU Service (sentiment head), State Tracker |
 | State fields | `sentiment.trajectory`, `sentiment.current`, `sentiment.slope`, `sentiment.sarcasm_suspected`, `sentiment.emotions` |
@@ -143,7 +143,7 @@ Note on Case Study 5. The brief's own example has customer scores of -0.9 (turn 
 | Item | Specification |
 |---|---|
 | Detection signal | `human_request_count` >= 3. Explicit and implicit requests both count (GEN-003 enters at 0.50) |
-| Role | Hard backstop. A human request is honoured earlier through XTR-01 (section 5, D-117); at the third request there is no further question and no counter-offer. If an XTR-01 handoff is already pending, its record is relabelled ESC-006 and keeps its original clock, so the customer does not lose their place |
+| Role | Hard backstop. A human request is honoured earlier through XTR-01 (section 5, D-117); at the third request there is no further question and no counter-offer. If an XTR-01 handoff is already pending, its record is relabelled ESC-006 and keeps its original clock, so the customer does not lose their place. Reporting: because XTR-01 usually fires first, ESC-006 volume is reported as "ESC-006 plus relabelled XTR-01" beside the XTR-01 count, so the brief trigger stays visible in the metrics (D-169) |
 | Detected by | NLU Service, State Tracker |
 | State fields | `human_request_count`, `intent`, `topic_stack` |
 | Handoff mode | `warm` |
@@ -228,6 +228,7 @@ Note on Case Study 5. The brief's own example has customer scores of -0.9 (turn 
 | Detected by | Input Guard, NLU Service (two independent detectors; either is enough) |
 | State fields | `intent`, `intent.confidence`, `intent.layer_path`, `language.primary` |
 | On the same turn | The banking task stops. Reviewed crisis template in the customer's language, encouragement to contact emergency services or someone trusted, no account questions, no products, no CSAT ask (KB-ESC-004). Sentiment never downgrades this path (`sentiment.md` section 8) |
+| Banking blocker in an emergency | The "no banking content" rule binds the agent, not the human. For `medical_emergency` with a banking blocker (a declined card, a blocked payment), the package carries the blocker and the crisis handler has a card or payments colleague joined to the conversation at once; the joined colleague works under the Crisis Response handler's lead and no second queue wait is started (D-167, ESC-BOSS-L6-05) |
 | Handoff mode | `warm`, with pre-emption: the request interrupts lower-priority work in the queue |
 | Cancellable | Never |
 | Intents | GEN-007 |
@@ -290,19 +291,19 @@ Note on Case Study 5. The brief's own example has customer scores of -0.9 (turn 
 
 | Item | Specification |
 |---|---|
-| Detection signal | The customer is identified (`auth_level` above `anonymous`), the record carries the PEP flag, and the request is account-specific (the intent's `action` in `config/intents.yaml` is not `info`) |
-| Scope (proposal, D-126) | The brief's condition is the status alone. Read literally, a flagged customer could never ask the agent a product question. The scope used: generic information is served to everyone; any account-specific request by a flagged customer goes to Enhanced Due Diligence. The literal reading is listed as an alternative for the Risk Committee; one test oracle depends on it (ESC-T-015-02) |
+| Detection signal | (a) The customer is identified (`auth_level` above `anonymous`) and the record carries the PEP flag: the ESC-015 record is created and the parallel due-diligence case is opened, on every such contact. (b) In addition the request is account-specific (the intent's `action` in `config/intents.yaml` is not `info`): live discreet handoff to Enhanced Due Diligence |
+| Reading (D-164, amends D-126) | Literal, as the brief writes it: the condition is the status, with no qualifier (A6 p.17; A4.3 p.13 "PEP flags must trigger enhanced due diligence protocols"). The trigger therefore fires whenever its condition is true. What is scoped is only the live transfer: a generic information request is answered by the agent while the case is open (sub-rule a, `silent_case`); an account-specific request is transferred (sub-rule b, `discreet`) |
 | Never | The flag is a record attribute read through a tool. It is never inferred from conversation, never set or cleared by what a customer says, never placed in a prompt and never revealed (GR-REG-11, A11.3) |
 | Detected by | Tool Orchestrator (record read), Policy Engine, State Tracker |
 | State fields | `auth_level`, `customer_ref`, `intent` |
-| Handoff mode | `discreet`: a specialist colleague will help, and no reason is given |
+| Handoff mode | Sub-rule a: `silent_case` (case for the desk; SLA measured to analyst acceptance; the customer is not told). Sub-rule b: `discreet` (a specialist colleague will help, and no reason is given) |
 | Parallel case | Always |
 | Cancellable | Never |
 | Intents | none linked in `config/intents.yaml` (the trigger is record-driven); GR-REG-11 names ACC-005, ACC-008 and TXN-006 as the typical flows |
 | Guardrails | GR-REG-11 |
 | KB | KB-ESC-009, KB-ESC-010, KB-REG-004 |
-| Does not fire | A remark about politics by an unflagged customer; an anonymous question about PEP rules (that is ESC-008, GR-REG-11-02) |
-| Tests | ESC-T-015-01, ESC-T-015-02, ESC-T-015-03; boss ESC-BOSS-L6-08 |
+| Does not fire | An anonymous conversation (the flag cannot be known); a remark about politics by an unflagged customer; an anonymous question about PEP rules (that is ESC-008, GR-REG-11-02) |
+| Tests | ESC-T-015-01, ESC-T-015-02 (generic request: case only), ESC-T-015-03; boss ESC-BOSS-L6-08 |
 
 ## 4. Precedence and conflict resolution
 
@@ -315,7 +316,7 @@ Several triggers are often true at once: a fraud report above INR 50,000 from an
 3. **Rank.** Within the same priority and SLA, the precedence rank of section 4.2.
 4. **One owner, nothing dropped.** The fired trigger with the lowest rank owns the live handoff. Every other fired trigger is written into the package as a secondary trigger with its reason, and its queue is informed through the package. One handoff, not several.
 5. **Parallel cases.** ESC-012 and ESC-015 always open their own case, whoever owns the conversation.
-6. **Upgrade, never downgrade.** If a higher-ranked trigger fires while an escalation is pending, the pending record is moved to the new queue and the new trigger's SLA clock starts at the upgrade. A lower-ranked trigger firing later is added as secondary and changes nothing else.
+6. **Upgrade, never downgrade.** If a higher-ranked trigger fires while an escalation is pending, the pending record is moved to the new owner's queue. The deadline after a change of owner is the earlier of the pending deadline and the new trigger's SLA counted from the change; a change of owner, at the same or a higher priority, never moves the customer's deadline later (D-166). Example: 14 minutes into ESC-010 (15 minutes) a customer triggers ESC-003; General Support receives the conversation with 1 minute left, not a fresh 10 minutes. This is the same principle as the XTR-01 to ESC-006 relabel in section 3.6. A lower-ranked trigger firing later is added as secondary and changes nothing else.
 7. **Suppression.** When ESC-012 or a system-sourced ESC-001 (sub-rule f) fires, offers that would assist the customer's aim are suppressed: no ESC-013 advisor offer and no ESC-008 handoff for the same request (ESC-BOSS-L6-10). The suppressed triggers are recorded in the case only.
 8. **Additions.** An XTR rule that raises a brief trigger takes that trigger's rank. XTR rules with their own route rank after all 15.
 
@@ -362,9 +363,9 @@ The brief allows more than 15 triggers ("at least 10"). Seven additions are spec
 | XTR-01 | Customer-requested human handoff before the third request | An explicit human request and fewer than 3 requests so far | P2, Next Available Agent, under 10 min (the ESC-006 route). Request 1: preparation starts and the reply may carry one concrete offer. Request 2: handoff with no counter-offer. An implicit request is counted and answered with the human option | A11.3 p.31 (right to a human at any point); KB-ESC-003; D-117 |
 | XTR-02 | Repeated authentication failure | Three failed OTP entries in the secure widget | Raises ESC-009 (sub-rule c) | D-65, confirmed by D-115 |
 | XTR-03 | Care flag on an explicit vulnerability disclosure | The customer states a bereavement, a serious illness or disability affecting use of the service, or financial hardship | An offer, not a forced handoff: plainer wording and one offer of a human (Next Available Agent route). The care note is in the customer's words and is not stored on the profile | A1.3 p.4 (accessibility); persona Meera; A11.3 (no inference or storage of sensitive attributes) |
-| XTR-04 | Clarification budget exhausted | Two failed clarifications on the same ambiguity in the clarify band | The pair's safe default if it has one; otherwise a human offer on the General Support route (the ESC-003 route) | `dialogue-management.md` sections 2 and 4.4; A9.2 Robotic Loop |
+| XTR-04 | Clarification budget exhausted | Two failed clarifications on the same ambiguity in the clarify band (the counter rises only in the CLARIFY state; turns below 0.40 do not count, so XTR-04 cannot pre-empt ESC-003) | The pair's safe default if it has one; otherwise a human offer on the General Support route (the ESC-003 route) | `dialogue-management.md` sections 2 and 4.4; A9.2 Robotic Loop |
 | XTR-05 | Scheduled follow-up deadline missed | A follow-up timer the agent set has expired | A back-office referral with a proactive notification. Not a live handoff and not counted in the escalation rate | Case Study 6 turn 6 pp.55-56 |
-| XTR-06 | Conversation turn ceiling reached | `turn_count` reaches `max_conversation_turns` | With an open topic: raises ESC-010. With everything resolved: polite close, no record | A12.3 p.34 |
+| XTR-06 | Conversation turn ceiling reached | `turn_count` reaches `max_conversation_turns` and is above 15 (the guard keeps ESC-010 from being raised before the brief's 15 turns if the parameter is set low) | With an open topic: raises ESC-010. With everything resolved: polite close, no record | A12.3 p.34 |
 | XTR-07 | Intent that needs a human process and fires no brief trigger | The intent's action is `handoff` and no brief trigger applies (ACC-005 below the 5L line, ACC-006) | A referral ticket for the branch or specialist process. A customer who wants a person now uses XTR-01 | A3.1 (Full KYC + Branch); KB-POL-005 |
 
 Two limits on XTR-03. It responds only to what the customer states in the current session; age, language, persona and balance are never signals (XTR-T-03-02). It changes no threshold of any brief trigger, so A11.3 ("escalation thresholds must be consistent across all customer segments") holds.
@@ -434,29 +435,29 @@ Cases are in `tests/escalation/` and are specified, not run. Each brief trigger 
 |---|---|---|---|
 | ESC-001 | ESC-T-001-01, ESC-T-001-03 | ESC-T-001-02 | ESC-BOSS-L6-01 |
 | ESC-002 | ESC-T-002-01 | ESC-T-002-02 | ESC-BOSS-L6-07 |
-| ESC-003 | ESC-T-003-01 | ESC-T-003-02 | |
+| ESC-003 | ESC-T-003-01 | ESC-T-003-02, ESC-T-003-03 | |
 | ESC-004 | ESC-T-004-01, ESC-T-004-04 | ESC-T-004-02, ESC-T-004-03 | ESC-BOSS-L6-03, ESC-BOSS-L6-04 |
 | ESC-005 | ESC-T-005-01 | ESC-T-005-02 | ESC-BOSS-L6-01 |
 | ESC-006 | ESC-T-006-01 | ESC-T-006-02 | ESC-BOSS-L6-09 |
 | ESC-007 | ESC-T-007-01 | ESC-T-007-02 | ESC-BOSS-L6-08 |
 | ESC-008 | ESC-T-008-01 | ESC-T-008-02 | ESC-BOSS-L6-10 (suppressed) |
 | ESC-009 | ESC-T-009-01, ESC-T-009-03 | ESC-T-009-02 | |
-| ESC-010 | ESC-T-010-01 | ESC-T-010-02 | |
+| ESC-010 | ESC-T-010-01 | ESC-T-010-02, ESC-T-010-03 | |
 | ESC-011 | ESC-T-011-01 | ESC-T-011-02, ESC-T-011-03 | ESC-BOSS-L6-02, ESC-BOSS-L6-05, ESC-BOSS-L6-06 |
 | ESC-012 | ESC-T-012-01 | ESC-T-012-02 | ESC-BOSS-L6-10 |
 | ESC-013 | ESC-T-013-01 | ESC-T-013-02 | ESC-BOSS-L6-10 (suppressed) |
 | ESC-014 | ESC-T-014-01 | ESC-T-014-02, ESC-T-014-03 | ESC-BOSS-L6-09 |
-| ESC-015 | ESC-T-015-01 | ESC-T-015-02, ESC-T-015-03 | ESC-BOSS-L6-08 |
+| ESC-015 | ESC-T-015-01, ESC-T-015-02 | ESC-T-015-03 | ESC-BOSS-L6-08 |
 
-Additions: XTR-T-01-01, XTR-T-01-02, XTR-T-02-01, XTR-T-02-02, XTR-T-03-01, XTR-T-03-02, XTR-T-04-01, XTR-T-05-01, XTR-T-06-01, XTR-T-07-01.
+Additions: XTR-T-01-01, XTR-T-01-02, XTR-T-02-01, XTR-T-02-02, XTR-T-03-01, XTR-T-03-02, XTR-T-04-01, XTR-T-04-02, XTR-T-05-01, XTR-T-05-02, XTR-T-06-01, XTR-T-06-02, XTR-T-07-01, XTR-T-07-02.
 
 ## 11. Decisions and open items
 
-Decisions: D-115 (Day 12 confirmations), D-116 (precedence), D-117 (human requests and ESC-006), D-118 (IMMEDIATE and the SLA clock), D-119 (turn unit and "without resolution"), D-120 (state additions), D-126 (ESC-015 scope and the reading of 5L), D-129 (additions).
+Decisions: D-115 (Day 12 confirmations), D-116 (precedence), D-117 (human requests and ESC-006), D-118 (IMMEDIATE and the SLA clock), D-119 (turn unit and "without resolution"), D-120 (state additions), D-126 (the reading of 5L; its ESC-015 scope is amended by D-164), D-129 (additions). Audit amendments: D-164 (ESC-015 literal), D-165 (ESC-004 route b), D-166 (deadline on a change of owner), D-167 (coercion cue, multi-intent match, `dispute_open`, joined colleague), D-169 (ESC-006 reporting, XTR-04 and XTR-06 guards).
 
 Open items:
 
-1. Risk Committee: the ESC-015 scope (account-specific requests) against the literal reading (every contact); the precedence ranks inside P0 and inside the 5-minute P1 group; the ESC-009 extension to failed authentication and its P0 cost (`queue-management.md` section 6).
+1. Risk Committee: the scoping of the ESC-015 live handoff to account-specific requests (the record and case are literal, D-164); the precedence ranks inside P0 and inside the 5-minute P1 group; the ESC-009 extension to failed authentication and its P0 cost (`queue-management.md` section 6); the after-hours deviation (`queue-management.md` section 4).
 2. CEB: honouring the first explicit human request (XTR-01) lowers containment; the alternative is to require a second request. The EMA route for secondary languages is still awaiting a CEB view (D-18).
 3. AML Compliance: the indicator list for ESC-012 (G-03).
 4. Product: the meaning of "5L" (total deposit balance is the reading used) and of a "turn" (message is the reading used).

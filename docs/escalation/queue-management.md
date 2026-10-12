@@ -18,7 +18,7 @@ The queue names, the trigger each serves, the priority and the SLA are the brief
 | Security Operations | ESC-009 | P0 | <2 min | live | 24x7 | Also receives the adversarial alert feed (`monitoring-dashboard.md` section 6) |
 | Fraud Investigation | ESC-001 | P0 | <2 min | live; case for system-sourced records | 24x7 | Largest P0 queue |
 | AML Compliance | ESC-012 | P0 | <2 min | case (no customer contact) | 24x7 | SLA measured to analyst acceptance |
-| Enhanced Due Diligence | ESC-015 | P1 | <5 min | live, discreet | extended | Sees the PEP flag; other queues do not |
+| Enhanced Due Diligence | ESC-015 | P1 | <5 min | case on every flagged contact; live, discreet for account-specific requests | extended | Sees the PEP flag; other queues do not |
 | Senior Resolution Mgr | ESC-002 | P1 | <5 min | live | extended | Legal-threat handling |
 | Dispute Resolution | ESC-005 | P1 | <5 min | live | extended | Also receives XTR-05 referrals |
 | Relationship Manager | ESC-007 | P1 | <5 min | live | extended | Small volume; callback is common after hours |
@@ -38,10 +38,10 @@ Because each trigger has its own queue, overflow borrows from another brief queu
 
 | Queue | Overflow chain (proposal, D-127) | Rule for the borrowed queue |
 |---|---|---|
-| Crisis Response | Senior Resolution Mgr, Security Operations, Next Available Agent | Any human with the crisis script is better than none; the crisis template stays on screen; no callback-only outcome |
+| Crisis Response | Security Operations, Fraud Investigation, Senior Resolution Mgr, Next Available Agent | Any human with the crisis script is better than none; the crisis template stays on screen; no callback-only outcome |
 | Security Operations | Fraud Investigation, Senior Resolution Mgr, callback | The two security queues back each other up |
 | Fraud Investigation | Security Operations, Senior Resolution Mgr, callback | Protective actions already taken stay in place |
-| AML Compliance | Enhanced Due Diligence, Compliance Helpdesk | Case queues only; no customer contact |
+| AML Compliance | Enhanced Due Diligence, Compliance Helpdesk | Case queues only; no customer contact. At night both overflow queues are closed: with no qualified analyst the case waits with an incident alert and is never shown to another queue (overflow rule 1 does not apply to case queues) |
 | Enhanced Due Diligence | AML Compliance, Compliance Helpdesk, callback | Only roles permitted to see the flag |
 | Senior Resolution Mgr | Customer Retention, Supervisor Review, callback | Borrowed agent takes the conversation; the case stays owned by the Senior Resolution Mgr queue |
 | Dispute Resolution | General Support, callback | General Support completes the intake only |
@@ -64,17 +64,19 @@ Overflow rules:
 
 ## 4. After-hours routing
 
-The brief gives no hours. Proposal (D-122): the four P0 queues, Next Available Agent and General Support are staffed 24x7; the other nine queues are staffed in extended hours.
+The brief gives no operating hours and no hours exemption: A6 states an SLA and a named target queue for every trigger and asks for "SLA-compliant handoff protocols". The proposal below (D-122) closes nine queues from 22:00 to 08:00. **That is a deviation from the brief and needs Risk Committee sign-off (D-163).** For 10 hours a day the SLAs of ESC-008 (under 10 minutes), ESC-013 (under 10 minutes) and ESC-015 (under 5 minutes) cannot be met by the target queue, and for ESC-002, ESC-004, ESC-005 and ESC-007 the customer reaches a generalist, not the brief's queue. The four P0 queues, Next Available Agent and General Support are staffed 24x7; the other nine queues are staffed in extended hours.
 
 | Trigger class | Outside extended hours |
 |---|---|
 | P0 (ESC-001, ESC-009, ESC-011, ESC-012) | No change. 24x7 |
-| P1 with a generalist intake: ESC-002, ESC-004, ESC-005, ESC-007 | Live handoff to Next Available Agent with the full package. The specialist case is opened in the target queue for the next opening. A callback request is offered. The 5-minute SLA is measured to the generalist's first message; the time to specialist contact is reported separately |
-| P1 with no generalist substitute: ESC-008, ESC-013 | Callback request only. The agent keeps giving factual KB information |
-| ESC-015 | Account-specific requests wait for the desk; callback offered; generic information is still served |
+| P1 with a generalist intake: ESC-002, ESC-004, ESC-005, ESC-007 | Live handoff to Next Available Agent with the full package. The specialist case is opened in the target queue for the next opening. A callback request is offered. Both times are reported: generalist pickup and target-queue pickup. Only the target-queue pickup counts toward the brief SLA, so an after-hours case that the target queue picks up next morning is an SLA miss |
+| P1 with no generalist substitute: ESC-008, ESC-013 | Callback request only. The agent keeps giving factual KB information. Counted as an SLA miss in EQ-07 |
+| ESC-015 | The due-diligence case is opened at once. A live handoff for an account-specific request waits for the desk; callback offered; generic information is still served. Counted as an SLA miss in EQ-07 when the desk does not accept inside 5 minutes |
 | P2: ESC-003, ESC-006 | No change. 24x7 |
 | P2: ESC-010, ESC-014 | The overflow chain (General Support), then callback |
 | Referrals: XTR-05, XTR-07 | Worked at the next opening |
+
+SLA-compliant alternative (proposal for the Risk Committee): an on-call rota for Enhanced Due Diligence (a compliance queue, where a miss is a regulatory matter) and Compliance Helpdesk, so that ESC-015 and ESC-008 are picked up inside their SLAs at any hour; the same rota model can be extended to the other seven queues if the committee does not accept the deviation. The capacity model in section 6 sizes the extended-hours proposal, not the rota. Reporting: EQ-07 is shown in-hours and all-hours, so the cost of the deviation is visible every day.
 
 After-hours honesty: the customer is told which team is and is not available now, in plain words, and is never told a specialist will join when none is on shift (A9.2 False Confidence). Persona Arjun (A13.2, Dubai time zone) makes this path routine rather than rare.
 
@@ -121,7 +123,7 @@ None of the following is in the brief. Each is a planning assumption to be repla
 | Assumption | Value | Basis |
 |---|---|---|
 | Category mix of live traffic | the A1.2 shares | Assumption A2 (the table is the data) |
-| Share of each category that escalates, by queue | table 6.3 | Judgement; fraud is 100 percent because rule 6 forbids containing it |
+| Share of each category that escalates, by queue | table 6.3 | Judgement. Fraud and security is assumed 100 percent as a conservative upper bound, not as a rule: a phishing report with no action taken, a self-inflicted lockout and two failed OTP entries stay with the agent (`triggers.md` sections 3.1 and 3.9), and A1.2 shows 89 percent resolution for the category. Sensitivity at 60 percent in 6.6 |
 | Cross-category flows as a share of all interactions | Crisis 0.05 percent, AML 0.05 percent, PEP 0.1 percent, high-value closure 0.05 percent | Placeholders; no data exists |
 | Arrival profile | 4 hours at 3.0 times the average hourly rate, 10 hours at 1.0, 10 hours at 0.2 (sums to 24) | The 3x peak-to-average ratio of `latency-scalability-cost.md` |
 | Human handling time per escalation | Crisis 30 min; Fraud and Security 15; AML, Due Diligence and Senior Resolution 20; Relationship Manager 15; Disputes and Retention 12; Compliance, Technical and Supervisor 10; General and Next Available 8; Wealth Advisory 30 | Judgement, except Wealth Advisory (Case Study 3) |
@@ -129,7 +131,12 @@ None of the following is in the brief. Each is a planning assumption to be repla
 | Attainment target used for sizing | 95, 90, 85 percent for P0, P1, P2 | Section 5 |
 | Minimum seats | 2 for a P0 queue, 1 otherwise | A P0 queue is never single-staffed |
 | Shrinkage, working week, occupancy cap | 30 percent, 40 hours, 80 percent | Common planning values, stated as assumptions |
-| After-hours P1 volume | the night share (8.3 percent) of the extended-hours P1 queues is carried at night by Next Available Agent | Section 4 |
+| After-hours P1 volume | the night share (8.3 percent) of the four P1 queues with a generalist intake (ESC-002, ESC-004, ESC-005, ESC-007) is carried at night by Next Available Agent | Section 4 |
+| Night share of the other extended-hours queues | counted in workload hours, placed in no night seat; callbacks and the next-morning backlog are not modelled | Section 4; a known gap |
+| Meaning of "replace 60% of first-line support" | read as 60 percent of headcount, leaving 180 of 450 | A1.1 gives only the sentence; it could also mean 60 percent of interactions |
+| Legacy agents | the 450 agents are treated as 450 FTE at 40 hours with 30 percent shrinkage | A1.1 gives only "450 agents" |
+| XTR-01 and XTR-02 volume | not modelled separately. First-request handoffs (XTR-01) are taken to be inside the Next Available Agent shares of table 6.3, and three-failed-OTP handoffs (XTR-02) inside the Security Operations share; if they are additional, both queues and the escalation rate rise | D-117, D-115; to be measured in the shadow period |
+| ESC-015 volume | 0.1 percent of interactions covers every contact by a flagged customer; under the literal reading most are case-only and need analyst time but no live seat | D-164; placeholder |
 
 ### 6.3 Assumed escalation share by category and queue
 
@@ -150,7 +157,7 @@ None of the following is in the brief. Each is a planning assumption to be repla
 
 For each queue: daily volume from table 6.3; peak-hour arrivals at 3.0 times the average; offered load in Erlangs = arrivals per hour times handling time in hours; the smallest number of seats `N` for which the Erlang C probability of waiting no longer than the SLA reaches the attainment target, `1 - C(N, a) * exp(-(N - a) * T / AHT)`, with `T` the SLA in seconds (60 for Crisis Response). Two headcount views are reported, because they answer different questions:
 
-- **FTE by workload** = handling hours a day times 7, divided by (40 hours times 0.70 times 0.80). This is the pooled lower bound: it assumes work can be shared perfectly.
+- **FTE by workload** = handling hours a day times 7, divided by (40 hours times 0.70 times 0.80). This is a pooled estimate at 80 percent occupancy. It is not a strict lower bound for a single queue: for Wealth Advisory it exceeds the seat-cover figure, because only this view applies the occupancy cap and the seat-cover view leaves the night share unstaffed.
 - **FTE by seat cover** = seat-hours a day (peak seats for 4 hours, day seats for 10 hours, night seats for 10 hours on 24x7 queues) times 7, divided by (40 hours times 0.70). This is the cost of keeping 15 separate queues staffed to their SLAs.
 
 The script is a scratch file outside the repository; its inputs are the tables above and `config/escalation_rules.yaml`. All figures below were produced by it and are reproduced unedited.
@@ -172,18 +179,19 @@ Result of the model run: design mix (assumption): escalations/day 3638 = 20.2 pe
 | Customer Retention | ESC-004 | P1 | 300 | extended | 455 | 56.9 | 12 | 11.38 | 15 | 94.8% | 6 | 0 | 91.1 | 28.5 | 30.0 |
 | Compliance Helpdesk | ESC-008 | P1 | 600 | extended | 269 | 33.7 | 10 | 5.61 | 8 | 97.5% | 4 | 0 | 44.9 | 14.0 | 18.0 |
 | Wealth Advisory | ESC-013 | P1 | 600 | extended | 350 | 43.7 | 30 | 21.87 | 26 | 92.4% | 11 | 0 | 175.0 | 54.7 | 53.5 |
-| Next Available Agent | ESC-006 | P2 | 600 | 24x7 | 577 | 72.1 | 8 | 9.62 | 11 | 89.7% | 5 | 4 | 76.9 | 24.0 | 33.5 |
+| Next Available Agent | ESC-006 | P2 | 600 | 24x7 | 577 | 72.1 | 8 | 9.62 | 11 | 89.7% | 5 | 3 | 76.9 | 24.0 | 31.0 |
 | Technical Support | ESC-014 | P2 | 600 | extended | 136 | 17.0 | 10 | 2.84 | 4 | 86.2% | 2 | 0 | 22.7 | 7.1 | 9.0 |
 | General Support | ESC-003 | P2 | 600 | 24x7 | 233 | 29.1 | 8 | 3.88 | 5 | 87.4% | 3 | 1 | 31.1 | 9.7 | 15.0 |
 | Supervisor Review | ESC-010 | P2 | 900 | extended | 236 | 29.5 | 10 | 4.92 | 6 | 88.9% | 3 | 0 | 39.4 | 12.3 | 13.5 |
-| **Total** | | | | | **3638** | | | | **146** | | | | **825.3** | **257.9** | **353.5** |
+| **Total** | | | | | **3638** | | | | **146** | | | | **825.3** | **257.9** | **351.0** |
 
-- after-hours P1 volume carried by Next Available Agent at night: 133/day (night share 8.3 percent)
+- night-share volume of the other extended-hours queues (callback or next opening; in workload hours, in no night seat): 85/day
+- after-hours P1 volume carried by Next Available Agent at night: 78/day (night share 8.3 percent)
 - by priority/day: P0 865, P1 1591, P2 1182
 - mean human handling time per escalation: 13.6 min
-- containment (no escalation record): 79.8 percent (target >= 70 percent)
+- non-escalated share (not containment; containment also needs resolution by the AI): 79.8 percent
 - FTE by workload: 258 = 57 percent of the legacy 450; 143 percent of 180 (the 40 percent left after a 60 percent replacement)
-- FTE by seat cover: 354 = 79 percent of the legacy 450; 196 percent of 180 (the 40 percent left after a 60 percent replacement)
+- FTE by seat cover: 351 = 78 percent of the legacy 450; 195 percent of 180 (the 40 percent left after a 60 percent replacement)
 
 ### 6.6 Scenario B: every flow scaled to the 30 percent ceiling
 
@@ -202,27 +210,41 @@ Result of the model run: every flow scaled to the 30 percent ceiling (factor 1.4
 | Customer Retention | ESC-004 | P1 | 300 | extended | 676 | 84.5 | 12 | 16.90 | 21 | 95.4% | 9 | 0 | 135.2 | 42.3 | 43.5 |
 | Compliance Helpdesk | ESC-008 | P1 | 600 | extended | 400 | 50.0 | 10 | 8.33 | 10 | 90.9% | 5 | 0 | 66.6 | 20.8 | 22.5 |
 | Wealth Advisory | ESC-013 | P1 | 600 | extended | 519 | 64.9 | 30 | 32.46 | 37 | 92.5% | 14 | 0 | 259.7 | 81.2 | 72.0 |
-| Next Available Agent | ESC-006 | P2 | 600 | 24x7 | 857 | 107.1 | 8 | 14.28 | 16 | 93.4% | 6 | 5 | 114.2 | 35.7 | 43.5 |
+| Next Available Agent | ESC-006 | P2 | 600 | 24x7 | 857 | 107.1 | 8 | 14.28 | 16 | 93.4% | 6 | 4 | 114.2 | 35.7 | 41.0 |
 | Technical Support | ESC-014 | P2 | 600 | extended | 202 | 25.2 | 10 | 4.21 | 6 | 94.4% | 3 | 0 | 33.7 | 10.5 | 13.5 |
 | General Support | ESC-003 | P2 | 600 | 24x7 | 346 | 43.2 | 8 | 5.76 | 7 | 88.6% | 3 | 2 | 46.1 | 14.4 | 19.5 |
 | Supervisor Review | ESC-010 | P2 | 900 | extended | 351 | 43.8 | 10 | 7.30 | 9 | 96.4% | 4 | 0 | 58.4 | 18.3 | 19.0 |
-| **Total** | | | | | **5400** | | | | **201** | | | | **1225.1** | **382.8** | **468.5** |
+| **Total** | | | | | **5400** | | | | **201** | | | | **1225.1** | **382.8** | **466.0** |
 
-- after-hours P1 volume carried by Next Available Agent at night: 197/day (night share 8.3 percent)
+- night-share volume of the other extended-hours queues (callback or next opening; in workload hours, in no night seat): 127/day
+- after-hours P1 volume carried by Next Available Agent at night: 116/day (night share 8.3 percent)
 - by priority/day: P0 1284, P1 2361, P2 1755
 - mean human handling time per escalation: 13.6 min
-- containment (no escalation record): 70.0 percent (target >= 70 percent)
+- non-escalated share (not containment; containment also needs resolution by the AI): 70.0 percent
 - FTE by workload: 383 = 85 percent of the legacy 450; 213 percent of 180 (the 40 percent left after a 60 percent replacement)
-- FTE by seat cover: 468 = 104 percent of the legacy 450; 260 percent of 180 (the 40 percent left after a 60 percent replacement)
+- FTE by seat cover: 466 = 104 percent of the legacy 450; 259 percent of 180 (the 40 percent left after a 60 percent replacement)
+
+Sensitivity A60 (totals only). Result of the model run: design mix with 60 percent of the fraud and security category escalated instead of 100 percent: escalations/day 3393 = 18.9 percent of 18000.
+
+| **Total** | | | | | **3393** | | | | **136** | | | | **763.7** | **238.6** | **331.0** |
+
+- night-share volume of the other extended-hours queues (callback or next opening; in workload hours, in no night seat): 85/day
+- after-hours P1 volume carried by Next Available Agent at night: 78/day (night share 8.3 percent)
+- by priority/day: P0 620, P1 1591, P2 1182
+- mean human handling time per escalation: 13.5 min
+- non-escalated share (not containment; containment also needs resolution by the AI): 81.2 percent
+- FTE by workload: 239 = 53 percent of the legacy 450; 133 percent of 180 (the 40 percent left after a 60 percent replacement)
+- FTE by seat cover: 331 = 74 percent of the legacy 450; 184 percent of 180 (the 40 percent left after a 60 percent replacement)
 
 ### 6.7 Reading the results
 
-1. **The escalation ceiling and the containment target are one constraint; first contact resolution is the binding one.** Containment is the share of conversations with no escalation record (`docs/metrics/kpi-framework.md` section 1.1), so 30 percent escalation is exactly 70 percent containment. The first contact resolution target of at least 70 percent (A8.2) is stricter: at 30 percent escalation it is met only if no contained conversation is dropped or returns within 7 days. The working aim therefore has to sit below the ceiling. The design mix gives 20.2 percent, which leaves about 10 points for dropped and returning conversations.
-2. **P0 volume is set by the mix, not by tuning.** Fraud and security conversations are 3.4 percent of volume (612 a day) and all of them escalate, by rule. In scenario A the P0 queues take 865 escalations a day. This cannot be reduced by improving the agent; only the handling time and the split between Fraud Investigation and Security Operations can change.
-3. **Meeting the 30 percent ceiling does not by itself deliver the 60 percent staffing reduction.** Under these assumptions the pooled workload view needs about 258 FTE in scenario A and 383 FTE in scenario B, against 180 agents remaining after a 60 percent replacement of 450. The seat-cover view (15 separately staffed queues) is higher: about 354 and 468. The model's break-even points: 180 FTE carry 2,541 escalations a day (14.1 percent) at the model's mean handling time of 13.6 minutes, 3,456 a day (19.2 percent) at 10 minutes, and 4,320 a day (24.0 percent) at 8 minutes. The staffing aim therefore depends on three levers, in this order of effect: the escalation rate, the human handling time (which the handoff package is designed to cut), and pooling of queues.
+1. **The escalation ceiling and the containment target are two constraints.** The brief's glossary defines containment as interactions "fully resolved by AI without human intervention" (p.68), so a conversation that is neither escalated nor resolved is not contained (`docs/metrics/kpi-framework.md` section 1.1). The model gives only the non-escalated share: 79.8 percent in scenario A and exactly 70.0 percent at the ceiling. Containment is that share less the dropped and falsely resolved conversations, so at 30 percent escalation the 70 percent containment target is met only if nothing is dropped. The working aim has to sit below the ceiling; the design mix leaves about 10 points for dropped conversations, and first contact resolution (A8.2, at least 70 percent) is stricter still because it also removes returns within 7 days.
+2. **P0 volume is set mostly by the mix.** Fraud and security conversations are 3.4 percent of volume (612 a day). The model assumes all of them escalate, as a conservative upper bound: the rules themselves leave some inside the agent (a phishing report with no action taken, a self-inflicted lockout, two failed OTP entries), and the A1.2 data shows 89 percent resolution for the category. With that assumption the P0 queues take 865 escalations a day in scenario A; with 60 percent of the category escalated (sensitivity A60) they take 620, the escalation rate is 18.9 percent and the workload view needs about 239 FTE instead of 258.
+3. **Meeting the 30 percent ceiling does not by itself deliver the 60 percent staffing reduction.** Under these assumptions the workload view needs about 258 FTE in scenario A and 383 FTE in scenario B, against 180 agents remaining if "replace 60% of first-line support" is read as 60 percent of 450 heads. The seat-cover view (15 separately staffed queues) is higher: about 351 and 466. The model's break-even points: 180 FTE carry 2,541 escalations a day (14.1 percent) at the model's mean handling time of 13.6 minutes, 3,456 a day (19.2 percent) at 10 minutes, and 4,320 a day (24.0 percent) at 8 minutes. The staffing aim therefore depends on three levers, in this order of effect: the escalation rate, the human handling time (which the handoff package is designed to cut), and pooling of queues.
 4. **Small 24x7 queues are expensive per conversation.** Crisis Response needs about 13 FTE by seat cover for about 9 conversations a day, because it must never be single-staffed at any hour. That is the price of the IMMEDIATE SLA and is not a candidate for saving; sharing trained crisis handlers with Security Operations at night is the realistic economy (section 3).
 5. **Wealth Advisory is the largest P1 workload** (175 handling hours a day in scenario A) because each consultation is 30 minutes. Its volume depends directly on how many customers accept the ESC-013 offer, which the offer wording controls. A scheduled consultation instead of a live 10-minute pickup would remove most of the peak seats, but A6 sets the SLA at under 10 minutes; this is raised as an open question, not changed.
 6. **The implied legacy handling time is short.** With the same productivity assumptions, 450 agents handling 18,000 interactions implies 4.8 minutes each. The model's 13.6-minute mean for escalated work assumes that what reaches a human is the hard residue. If measured handling times are closer to the legacy figure, the staffing gap in point 3 closes.
+7. **What the night figures leave out.** Only the four P1 queues with a generalist intake spill to Next Available Agent at night (78 a day in scenario A). The night share of the other extended-hours queues (85 a day) is in the workload hours but in no seat: it becomes callbacks and a next-morning backlog, which the model does not size. Under the after-hours rule those are also SLA misses for ESC-008, ESC-013 and ESC-015 (section 4).
 
 Sensitivity lines from the script, for reference: productive handling hours per FTE per calendar day: 3.20; legacy implied handling time: 450 FTE x 3.20 h / 18000 = 4.80 min per interaction; break-even: 180 FTE carry 2541 escalations/day at 13.6 min each = 14.1 percent escalation rate; break-even: 180 FTE carry 3456 escalations/day at 10.0 min each = 19.2 percent escalation rate; break-even: 180 FTE carry 4320 escalations/day at 8.0 min each = 24.0 percent escalation rate.
 
@@ -285,7 +307,7 @@ Where missed escalations are looked for beyond the random stream (all are biased
 | EQ-04 | Late escalation rate | Reviewed escalations labelled late, divided by `Er`; with the mean number of turns late | at most 5 percent | CX Team |
 | EQ-05 | Repeat-information rate | Live handoffs where the wrap-up says the customer had to repeat something, divided by live handoffs | at most 2 percent (the package exists to make this zero) | CX Team |
 | EQ-06 | Failed-handoff rate | Handoffs with a failure of `routing-and-handoff.md` section 8, divided by handoffs attempted; by failure type | at most 1 percent; 0 for P0 | Platform on-call |
-| EQ-07 | SLA attainment | Escalations whose SLA was met, divided by `E`; per trigger, with overflow and after-hours share shown | P0 at least 95 percent, P1 at least 90, P2 at least 85 (section 5). The SLA values are the brief's | Queue owners |
+| EQ-07 | SLA attainment | Escalations whose SLA was met by the brief's target queue (or its overflow), divided by `E`; per trigger. Reported twice: in-hours and all-hours. After-hours ESC-008, ESC-013 and ESC-015 handoffs not picked up inside the SLA are misses; for ESC-002, ESC-004, ESC-005 and ESC-007 the generalist pickup time is shown separately and does not count as meeting the SLA (D-163) | P0 at least 95 percent, P1 at least 90, P2 at least 85 (section 5). The SLA values are the brief's | Queue owners |
 | EQ-08 | Package completeness | Packages with all 8 elements filled, divided by packages sent | at least 99 percent | NLU Team with platform |
 | EQ-09 | De-escalation rate | Pending escalations cancelled under `routing-and-handoff.md` section 9.2, divided by escalations fired; with the share followed by a repeat contact within 7 days | No target (a target would invite gaming); the repeat-contact share at most 5 percent | CX Team |
 | EQ-10 | Queue abandonment rate | Customers who left before a human accepted, divided by live handoffs queued; by priority | P0 at most 1 percent; P1 and P2 at most 5 percent | Queue owners |
@@ -319,7 +341,7 @@ Evaluated on 5-minute windows and shown on the Real-time Operations dashboard. T
 
 ## 10. Decisions and open items
 
-Decisions: D-122 (hours and after-hours), D-127 (overflow chains and rebalancing), D-128 (breach handling, warn fraction, attainment targets, alerts), D-130 (capacity assumptions and method), D-131 (escalation quality metrics and labelling).
+Audit amendments: D-162 (containment reading), D-163 (after-hours deviation, attainment reporting, rota alternative), D-168 (capacity inputs), D-169 (overflow order). Decisions: D-122 (hours and after-hours), D-127 (overflow chains and rebalancing), D-128 (breach handling, warn fraction, attainment targets, alerts), D-130 (capacity assumptions and method), D-131 (escalation quality metrics and labelling).
 
 Open items:
 

@@ -66,19 +66,19 @@ signals:
   intent:                 {source: state.intent.label, in_schema: true, type: string}
   intent_conf:            {source: state.intent.confidence, in_schema: true, type: number}
   tertiary:               {source: "state.intent.layer_path[2]", in_schema: true, type: string}
-  tertiary_conf:          {source: state.intent.layer_confidence.tertiary, in_schema: true, type: number}
+  tertiary_conf:          {source: state.intent.layer_confidence.tertiary, in_schema: true, type: number, note: "not used in a fire_when; input to the legal_threat signal"}
   low_conf_streak:        {source: state.consecutive_low_conf, in_schema: true, type: integer, note: "customer turns with secondary confidence below 0.40; any turn at or above 0.40, or an answered clarification, resets it (nlu-pipeline-overview.md rule 4)"}
   human_requests:         {source: state.human_request_count, in_schema: true, type: integer, note: "explicit and implicit requests (GEN-003)"}
   explicit_human_request: {source: "nlu: GEN-003 tertiary first_request or repeated_request on this turn at flow_entry_confidence", in_schema: false, type: boolean}
-  clarify_failures:       {source: state.clarification_attempts, in_schema: true, type: integer}
+  clarify_failures:       {source: state.clarification_attempts, in_schema: true, type: integer, note: "incremented only in the CLARIFY state (confidence 0.40 to 0.70, same ambiguity); FAIL_SAFE turns below 0.40 do not increment it, so XTR-04 cannot pre-empt ESC-003 (D-169)"}
   neg_sentiment_streak:   {source: state.escalation.neg_sentiment_streak, in_schema: false, type: integer, note: "consecutive customer turns whose sarcasm-adjusted raw score is below escalation_sentiment_threshold with sentiment confidence at or above 0.70; an uncertain turn neither adds nor resets (sentiment.md 5.1, D-18)"}
-  sentiment_ema_route:    {source: "derived from state.sentiment.current and state.sentiment.slope", in_schema: false, type: boolean, note: "secondary languages only: smoothed score at or below the threshold with a falling slope for 3 customer turns (sentiment.md 5.1)"}
-  latest_sentiment:       {source: "last element of state.sentiment.trajectory", in_schema: true, type: number}
+  sentiment_ema_route:    {source: "derived from state.sentiment.trajectory and state.sentiment.current", in_schema: false, type: boolean, note: "secondary languages only (D-18, D-165): at least const.esc004_consecutive_turns consecutive customer turns whose raw score is strictly below the threshold, with the sentiment-confidence gate waived, and the smoothed score strictly below the threshold. Only the confidence gate is waived; the brief's count and strict threshold are never relaxed"}
+  latest_sentiment:       {source: "last element of state.sentiment.trajectory", in_schema: true, type: number, note: "not used in a fire_when; used by the ESC-004 recovery condition (routing-and-handoff.md section 9.2)"}
   turn_count:             {source: "A10.1 turn_count (messages by customer and agent)", in_schema: false, type: integer}
   turns_since_resolution: {source: state.escalation.turns_since_resolution, in_schema: false, type: integer, note: "messages since the conversation started or since a topic last reached status resolved, whichever is later"}
   open_topic:             {source: "any state.topic_stack[].status in (active, parked)", in_schema: true, type: boolean}
   dispute_amount_inr:     {source: "state.slots.amount.value for a TXN-002 dispute, validated; the system-of-record amount replaces the stated amount once the transaction is looked up; several transactions in one dispute are summed", in_schema: true, type: number}
-  dispute_open:           {source: "active topic is TXN-002 and the dispute intake has started", in_schema: true, type: boolean}
+  dispute_open:           {source: "a TXN-002 topic is active or parked and its amount slot is validated (D-167). When ESC-005 owns the handoff the live transfer waits until transaction_id and dispute_reason are also captured (KB-ESC-006 intake_first); as a secondary trigger under a P0 owner it is recorded at once", in_schema: true, type: boolean}
   legal_threat:           {source: "rule lexicon (court, lawyer, legal notice, consumer forum, sue, ombudsman complaint as a threat) in a first-person threat frame, or CMP-003 tertiary legal_threat at legal_threat_tertiary_confidence (disambiguation.md pair 4)", in_schema: false, type: boolean}
   fraud_signal:           {source: "sub_rules of ESC-001", in_schema: false, type: boolean}
   access_report:          {source: "sub_rules of ESC-009", in_schema: false, type: boolean}
@@ -116,8 +116,8 @@ queues:
   - {name: Compliance Helpdesk,    trigger: ESC-008, mode: live, hours: extended, overflow: [callback]}
   - {name: Security Operations,    trigger: ESC-009, mode: live, hours: 24x7,     overflow: [Fraud Investigation, Senior Resolution Mgr, callback]}
   - {name: Supervisor Review,      trigger: ESC-010, mode: live, hours: extended, overflow: [Senior Resolution Mgr, General Support, callback]}
-  - {name: Crisis Response,        trigger: ESC-011, mode: live, hours: 24x7,     overflow: [Senior Resolution Mgr, Security Operations, Next Available Agent]}
-  - {name: AML Compliance,         trigger: ESC-012, mode: case, hours: 24x7,     overflow: [Enhanced Due Diligence, Compliance Helpdesk]}
+  - {name: Crisis Response,        trigger: ESC-011, mode: live, hours: 24x7,     overflow: [Security Operations, Fraud Investigation, Senior Resolution Mgr, Next Available Agent]}
+  - {name: AML Compliance,         trigger: ESC-012, mode: case, hours: 24x7,     overflow: [Enhanced Due Diligence, Compliance Helpdesk], no_qualified_analyst: "the case waits with an incident alert; it is never shown to another queue"}
   - {name: Wealth Advisory,        trigger: ESC-013, mode: live, hours: extended, overflow: [callback]}
   - {name: Technical Support,      trigger: ESC-014, mode: live, hours: extended, overflow: [General Support, callback]}
   - {name: Enhanced Due Diligence, trigger: ESC-015, mode: live, hours: extended, overflow: [AML Compliance, Compliance Helpdesk, callback]}
@@ -126,13 +126,15 @@ queue_hours:               # proposals (D-122); the brief gives no operating hou
   "24x7": "always staffed"
   extended: "08:00-22:00 IST, all days; outside these hours the after-hours rule of the trigger applies"
 
-after_hours:               # proposals (D-122); P0 queues are 24x7 so they have no after-hours rule
+after_hours:               # proposals (D-122, D-163). The brief sets no hours and no hours exemption, so this block is a DEVIATION from A6 that needs Risk Committee sign-off
   P1: "live handoff to Next Available Agent (24x7) with the full package and the specialist case opened in the target queue for the next opening; callback offered; a callback time is a request, not a guarantee (D-09)"
   P2: "the queue's own overflow chain; General Support and Next Available Agent are 24x7"
   exceptions:
     ESC-008: "no generalist answers the regulatory question; callback from the Compliance Helpdesk"
     ESC-013: "no generalist gives advice; callback from Wealth Advisory (TPL-ADV-ADVISOR-UNAVAILABLE)"
-    ESC-015: "account-specific requests wait for Enhanced Due Diligence; generic information is still served"
+    ESC-015: "the due-diligence case is opened at once (silent); a live handoff for an account-specific request waits for the desk, callback offered; generic information is still served"
+  sla_counting: "EQ-07 is reported in-hours and all-hours. After-hours ESC-008, ESC-013 and ESC-015 live handoffs that the target queue does not pick up inside the brief SLA are SLA misses. For ESC-002, ESC-004, ESC-005 and ESC-007 the generalist pickup and the target-queue pickup are both reported; only the target-queue pickup counts toward the brief SLA"
+  sla_compliant_alternative: "an on-call rota for Enhanced Due Diligence and Compliance Helpdesk (and, if the Risk Committee requires, the other seven extended-hours queues), which removes the deviation"
 
 languages:                 # proposals (D-121)
   all_queues: [en, hi, hinglish]
@@ -148,7 +150,7 @@ precedence:
     - "1. Priority: P0 before P1 before P2 (P0 always wins)."
     - "2. Within a priority: the shorter SLA first (IMMEDIATE, then 2, 5, 10, 15 minutes)."
     - "3. Within the same priority and SLA: precedence_rank (life safety, then containment of live access, then loss investigation, then compliance case, then the most specific specialist queue, then generic signals)."
-    - "4. A pending escalation is upgraded, never downgraded, when a higher-ranked trigger fires; the SLA clock of the new trigger starts at the upgrade."
+    - "4. A pending escalation is upgraded, never downgraded, when a higher-ranked trigger fires. The deadline after a change of owner is the earlier of the pending deadline and the new trigger's SLA counted from the change; a change of owner never moves the customer's deadline later (D-166)."
     - "5. XTR rules that raise a brief trigger take that trigger's rank; XTR rules with their own route rank after all 15."
   ranked: [ESC-011, ESC-009, ESC-001, ESC-012, ESC-015, ESC-002, ESC-005, ESC-007, ESC-004, ESC-008, ESC-013, ESC-006, ESC-014, ESC-003, ESC-010]
 
@@ -176,9 +178,9 @@ triggers:
   intent_scope: linked
   fire_when: "fraud_signal || adversarial_escalate"
   sub_rules:
-    - {id: ESC-001.a, when: "intent == 'SEC-001' && intent_conf >= prop.flow_entry_confidence && tertiary in ['unauthorised_transaction', 'card_misuse', 'scam_victim', 'identity_theft']", source: customer_report}
+    - {id: ESC-001.a, when: "intent == 'SEC-001' && intent_conf >= prop.flow_entry_confidence && tertiary in ['unauthorised_transaction', 'card_misuse', 'scam_victim', 'identity_theft']", source: customer_report, note: "in a multi-intent turn SEC-001 also matches as an alternative hypothesis at prop.flow_entry_confidence or more (D-167)"}
     - {id: ESC-001.b, when: "intent == 'SEC-004' && tertiary == 'deny_not_me'", source: customer_report, note: "becomes SEC-001 unauthorised_transaction at once (config/intents.yaml)"}
-    - {id: ESC-001.c, when: "customer denies knowing the merchant or the payment after the pair 5 question (TXN-002 unrecognised_charge), or states a scam cue (shared OTP, clicked a link, fake bank call, remote-access app)", source: customer_report, note: "Case Study 2 turn 5; disambiguation.md pair 5"}
+    - {id: ESC-001.c, when: "customer denies knowing the merchant or the payment after the pair 5 question (TXN-002 unrecognised_charge), or states a scam cue (shared OTP, clicked a link, fake bank call, remote-access app, a demand for money under threat or coercion)", source: customer_report, note: "Case Study 2 turn 5; disambiguation.md pair 5"}
     - {id: ESC-001.d, when: "after a CRD-001 block the customer confirms payments they did not make (pair 6)", source: customer_report}
     - {id: ESC-001.e, when: "SEC-002 where the customer already clicked, shared a credential or paid", source: customer_report, note: "reclassified SEC-001 scam_victim; a phishing report with no action taken is a ticket, not ESC-001"}
     - {id: ESC-001.f, when: "adversarial_escalate", source: system, handoff_mode: silent_case, note: "D-60, D-72, D-91: authority claim with a request, or second flagged turn with a data target; the customer sees the neutral refusal and the human option, never an accusation"}
@@ -191,7 +193,7 @@ triggers:
   kb_entries: [KB-ESC-002, KB-ESC-010, KB-POL-011, KB-TRB-003, KB-TRB-005, KB-TRB-008]
   templates: [TPL-ESC-FRAUD-P0, TPL-ESC-HANDOFF-WARM]
   tests: [ESC-T-001-01, ESC-T-001-02, ESC-T-001-03]
-  decisions: [D-08, D-16, D-60, D-72, D-91, D-115]
+  decisions: [D-08, D-16, D-60, D-72, D-91, D-115, D-167]
 
 - id: ESC-002
   origin: brief
@@ -245,7 +247,7 @@ triggers:
   guardrails: [GR-SYS-01]
   kb_entries: [KB-ESC-010, KB-ESC-020]
   templates: [TPL-ESC-HANDOFF-WARM]
-  tests: [ESC-T-003-01, ESC-T-003-02]
+  tests: [ESC-T-003-01, ESC-T-003-02, ESC-T-003-03]
   decisions: [D-06]
 
 - id: ESC-004
@@ -264,7 +266,7 @@ triggers:
   fire_when: "neg_sentiment_streak >= const.esc004_consecutive_turns || sentiment_ema_route"
   sub_rules:
     - {id: ESC-004.a, when: "neg_sentiment_streak >= const.esc004_consecutive_turns", source: system, note: "threshold is param.escalation_sentiment_threshold (default -0.70, the A6 value); strict less-than, as the brief writes it"}
-    - {id: ESC-004.b, when: "sentiment_ema_route", source: system, note: "secondary languages only (D-18); awaiting CEB view"}
+    - {id: ESC-004.b, when: "sentiment_ema_route", source: system, note: "secondary languages only (D-18, D-165): waives the sentiment-confidence gate of sub-rule a and nothing else; still needs 2 consecutive raw scores strictly below the threshold; awaiting CEB view"}
   protective_actions: "none; Empathy-First reply (A9.1 Pattern 1); the agent keeps working on the problem while the customer waits (Case Study 5)"
   detectors: [nlu_service, state_tracker]
   owner_component: escalation_router
@@ -274,7 +276,7 @@ triggers:
   kb_entries: [KB-ESC-005, KB-ESC-010]
   templates: [TPL-ESC-HANDOFF-WARM, TPL-ESC-DEESCALATION-CHECK]
   tests: [ESC-T-004-01, ESC-T-004-02, ESC-T-004-03, ESC-T-004-04]
-  decisions: [D-18, D-125]
+  decisions: [D-18, D-125, D-165]
 
 - id: ESC-005
   origin: brief
@@ -355,7 +357,7 @@ triggers:
   kb_entries: [KB-ESC-007, KB-ESC-010, KB-POL-005]
   templates: [TPL-ESC-HANDOFF-WARM]
   tests: [ESC-T-007-01, ESC-T-007-02]
-  decisions: [D-126]
+  decisions: [D-126, D-164]
 
 - id: ESC-008
   origin: brief
@@ -439,7 +441,7 @@ triggers:
   guardrails: [GR-REG-03, GR-REG-19, GR-ATK-09]
   kb_entries: [KB-ESC-005, KB-ESC-010]
   templates: [TPL-ESC-HANDOFF-WARM]
-  tests: [ESC-T-010-01, ESC-T-010-02]
+  tests: [ESC-T-010-01, ESC-T-010-02, ESC-T-010-03]
   decisions: [D-119]
 
 - id: ESC-011
@@ -564,10 +566,11 @@ triggers:
   handoff_mode: discreet
   parallel_case: true
   intent_scope: any
-  fire_when: "customer_identified && pep_flag && account_specific"
+  fire_when: "customer_identified && pep_flag"
   sub_rules:
-    - {id: ESC-015.a, when: "customer_identified && pep_flag && account_specific", source: system, note: "scope is a proposal (D-126): the flag is known only for an identified customer; generic information (action info) is still served by the agent; the customer is never told the flag exists and a customer's own statement never sets or clears it (GR-REG-11)"}
-  protective_actions: "no account-specific action by the agent once the flag is read"
+    - {id: ESC-015.a, when: "customer_identified && pep_flag", source: system, handoff_mode: silent_case, note: "literal reading of A6 (D-164, amends D-126): on every contact by an identified, flagged customer the ESC-015 record is created and the parallel due-diligence case is opened; the customer is never told the flag exists and a customer's own statement never sets or clears it (GR-REG-11)"}
+    - {id: ESC-015.b, when: "customer_identified && pep_flag && account_specific", source: system, handoff_mode: discreet, note: "live discreet handoff to Enhanced Due Diligence only when the request is account-specific; a generic information request (action info) is answered by the agent while the case of sub-rule a is open"}
+  protective_actions: "no account-specific action by the agent once the flag is read; generic information is still served"
   detectors: [tool_orchestrator, policy_engine, state_tracker]
   owner_component: escalation_router
   state_fields: [auth_level, customer_ref, intent]
@@ -576,7 +579,7 @@ triggers:
   kb_entries: [KB-ESC-009, KB-ESC-010, KB-REG-004]
   templates: [TPL-ESC-HANDOFF-DISCREET]
   tests: [ESC-T-015-01, ESC-T-015-02, ESC-T-015-03]
-  decisions: [D-126]
+  decisions: [D-126, D-164]
 
 # ---------------------------------------------------------------------------------------------------------------- additions
 # NOT in the brief. Each rule is marked origin: addition and carries an XTR id so it cannot be mistaken for one of the 15.
@@ -645,7 +648,7 @@ extra_rules:
   intents: []
   guardrails: [GR-SYS-01]
   kb_entries: [KB-ESC-020]
-  tests: [XTR-T-04-01]
+  tests: [XTR-T-04-01, XTR-T-04-02]
   decisions: [D-129]
 
 - id: XTR-05
@@ -661,14 +664,14 @@ extra_rules:
   intents: [TXN-003]
   guardrails: []
   kb_entries: [KB-TRB-001]
-  tests: [XTR-T-05-01]
+  tests: [XTR-T-05-01, XTR-T-05-02]
   decisions: [D-129]
 
 - id: XTR-06
   origin: addition
   name: Conversation turn ceiling reached
   basis: "A12.3 p.34 max_conversation_turns (default 25, range 10-50); the brief does not say what happens at the ceiling"
-  fire_when: "turn_count >= param.max_conversation_turns"
+  fire_when: "turn_count >= param.max_conversation_turns && turn_count > const.esc010_turns"
   raises: ESC-010
   route: null
   behaviour: "if a topic is still open the conversation goes to Supervisor Review with the summary; if every topic is resolved the agent closes politely and offers a new conversation, and no record is created"
@@ -677,7 +680,7 @@ extra_rules:
   intents: []
   guardrails: [GR-ATK-09]
   kb_entries: [KB-ESC-010]
-  tests: [XTR-T-06-01]
+  tests: [XTR-T-06-01, XTR-T-06-02]
   decisions: [D-119, D-129]
 
 - id: XTR-07
@@ -693,7 +696,7 @@ extra_rules:
   intents: [ACC-005, ACC-006]
   guardrails: [GR-SEC-R2]
   kb_entries: [KB-POL-005]
-  tests: [XTR-T-07-01]
+  tests: [XTR-T-07-01, XTR-T-07-02]
   decisions: [D-129]
 
 # ---------------------------------------------------------------------------------------------------------------- handoff package

@@ -475,8 +475,8 @@ for parts in DOCS:
         if ref not in DM_IDS:
             err("%s: unknown dashboard metric %s" % (label, ref))
     for ref in set(re.findall(r"\bD-(\d{1,3})\b", text)):
-        if not 1 <= int(ref) <= 134:
-            err("%s: decision D-%s is outside D-01..D-134" % (label, ref))
+        if not 1 <= int(ref) <= 170:
+            err("%s: decision D-%s is outside D-01..D-170" % (label, ref))
     for ref in set(re.findall(r"\b(?:ESC-T-\d{3}-\d{2}|XTR-T-\d{2}-\d{2}|ESC-BOSS-L6-\d{2})\b", text)):
         if ref not in seen:
             err("%s: unknown test id %s" % (label, ref))
@@ -491,6 +491,177 @@ for parts in DOCS:
         for k in ESC_IDS:
             if k not in text:
                 err("%s: does not mention %s" % (label, k))
+
+# ------------------------------------------------------------------ 8. A6 constants, comparison operators, overflow floor
+A6_CONSTANTS = {"esc003_confidence_floor": 0.40, "esc003_consecutive_turns": 3, "esc004_consecutive_turns": 2,
+                "esc005_dispute_amount_inr": 50000, "esc006_human_requests": 3, "esc007_high_value_inr": 500000,
+                "esc010_turns": 15}
+for name, val in A6_CONSTANTS.items():
+    if RULES["constants"].get(name) != val:
+        err("constants: %s is %r, A6 says %r" % (name, RULES["constants"].get(name), val))
+if set(RULES["constants"]) != set(A6_CONSTANTS):
+    err("constants: keys differ from the A6 set")
+# The comparison each brief trigger must use (strict or not, as A6 writes it). A fragment must appear verbatim.
+OPERATORS = {
+    "ESC-003": "low_conf_streak >= const.esc003_consecutive_turns",
+    "ESC-004": "neg_sentiment_streak >= const.esc004_consecutive_turns",
+    "ESC-005": "dispute_amount_inr > const.esc005_dispute_amount_inr",
+    "ESC-006": "human_requests >= const.esc006_human_requests",
+    "ESC-007": "closure_requested && high_value",
+    "ESC-010": "turns_since_resolution > const.esc010_turns",
+    "ESC-015": "customer_identified && pep_flag",
+}
+for k, frag in OPERATORS.items():
+    fw = " ".join(triggers[k]["fire_when"].split())
+    if frag not in fw:
+        err("%s: fire_when must contain %r (A6 comparison)" % (k, frag))
+    if frag not in " ".join(str(triggers[k]["sub_rules"][0]["when"]).split()):
+        err("%s: first sub-rule must contain %r" % (k, frag))
+if triggers["ESC-015"]["fire_when"].strip() != "customer_identified && pep_flag":
+    err("ESC-015: fire_when must be the literal status condition (D-164)")
+xtr06 = extras.get("XTR-06", {}).get("fire_when", "")
+if "turn_count > const.esc010_turns" not in xtr06:
+    err("XTR-06: must not raise ESC-010 at or below 15 turns")
+for q in RULES["queues"]:
+    own = triggers.get(q["trigger"])
+    if own and own["priority"] == "P0":
+        humans = [o for o in q["overflow"] if o != "callback"]
+        if not humans or q["overflow"][0] == "callback":
+            err("queue %s: a P0 queue needs a human queue before callback in its overflow chain" % q["name"])
+        if q["mode"] == "live" and len(humans) < 2:
+            err("queue %s: a live P0 queue needs at least two human overflow queues" % q["name"])
+        if q["mode"] == "live" and humans and next(t for t in triggers.values() if t["queue"] == humans[0])["priority"] != "P0":
+            err("queue %s: the first overflow of a live P0 queue must be a P0 queue" % q["name"])
+
+# ------------------------------------------------------------------ 9. tables in the documents against the rules file and the brief
+trig_doc = os.path.join(ROOT, "docs", "escalation", "triggers.md")
+if os.path.exists(trig_doc):
+    rows = re.findall(r'^\| (ESC-\d{3}) \| "([^"]*)" \| (P\d) \| ([^|]+?) \| ([^|]+?) \| (\d+) \|$', read("docs", "escalation", "triggers.md"), re.M)
+    if [r[0] for r in rows] != ESC_IDS:
+        err("triggers.md: the A6 table must have one quoted row per trigger, in order")
+    for tid, cond, pri, queue, sla, page in rows:
+        if (pri, queue, sla) != BRIEF_A6.get(tid):
+            err("triggers.md: A6 table row %s (%s, %s, %s) differs from the brief" % (tid, pri, queue, sla))
+        if tid in triggers and cond != triggers[tid]["brief"]["condition"]:
+            err("triggers.md: A6 table condition for %s differs from the rules file brief block" % tid)
+qm_doc = os.path.join(ROOT, "docs", "escalation", "queue-management.md")
+if os.path.exists(qm_doc):
+    qrows = re.findall(r"^\| ([A-Za-z ]+?) \| (ESC-\d{3}) \| (P\d) \| ([^|]+?) \| [^|]+ \| (24x7|extended) \|", read("docs", "escalation", "queue-management.md"), re.M)
+    seen_q = {}
+    for name, tid, pri, sla, hrs in qrows:
+        seen_q[name] = (tid, pri, sla, hrs)
+    for q in RULES["queues"]:
+        got = seen_q.get(q["name"])
+        want = (q["trigger"],) + BRIEF_A6[q["trigger"]][0:1] + (BRIEF_A6[q["trigger"]][2], q["hours"])
+        if got != want:
+            err("queue-management.md: queue table row for %s is %r, expected %r" % (q["name"], got, want))
+# A8 and A1.4 as transcribed from the brief PDF (pp.5, 19-21): target and frequency per metric.
+BRIEF_A8 = {
+    "First Response Time": ("<5 seconds", "Real-time"), "Intent Recognition Accuracy": (">92%", "Daily"),
+    "Entity Extraction Accuracy": (">95%", "Daily"), "Sentiment Trajectory Slope": ("Positive or stable", "Daily"),
+    "Knowledge Retrieval Relevance": (">0.85", "Daily"), "Guardrail False Positive Rate": ("<3%", "Daily"),
+    "Agent Confidence Distribution": (">80% above 0.7", "Weekly"), "CSAT Score": ("at least 4.5 (1-5 scale)", "Weekly"),
+    "Net Promoter Score": ("at least 50", "Monthly"), "First Contact Resolution": ("at least 70%", "Weekly"),
+    "Containment Rate": ("at least 70%", "Weekly"), "Customer Effort Score": ("at least 5.5 (1-7 scale)", "Monthly"),
+    "Incorrect Advice Rate": ("0%", "Daily"), "Customer Retention Impact": ("Positive", "Quarterly"),
+    "Average Handle Time": ("<8 minutes", "Daily"), "Escalation Rate": ("<30%", "Daily"),
+    "System Uptime": ("at least 99.9%", "Real-time"), "Concurrent Capacity": ("at least 10,000", "Weekly load test"),
+    "Knowledge Base Coverage": ("at least 90%", "Monthly"), "Model Drift Score": ("<0.05", "Weekly"),
+    "First reply (business ceiling)": ("<30 seconds", "not stated"),
+    "KB retrieval latency, 95th percentile": ("maximum 200 ms", "not stated"),
+}
+if os.path.exists(kpi_path):
+    ktext = read("docs", "metrics", "kpi-framework.md")
+    sec2 = ktext[ktext.index("## 2. Brief targets at a glance"):ktext.index("## 3. Leading indicators")]
+    krows = {m[0]: (m[1], m[2]) for m in re.findall(r"^\| ([^|]+?) \| ([^|]+?) \| ([^|]+?) \| [^|]+ \| [^|]+ \|$", sec2, re.M)}
+    for metric, want in BRIEF_A8.items():
+        if krows.get(metric) != want:
+            err("kpi-framework.md section 2: %s is %r, the brief says %r" % (metric, krows.get(metric), want))
+    if 'fully resolved by AI without human intervention' not in ktext:
+        err("kpi-framework.md: the glossary definition of containment (p.68) must be quoted")
+
+# ------------------------------------------------------------------ 10. oracles computed from injected values
+THR = -0.70          # A6 value of escalation_sentiment_threshold; strict less-than
+SECONDARY_LANGS = {"ta", "te", "bn", "mr", "gu"}
+
+
+def computed_expectation(c):
+    """Return True/False when the case's fixture fully determines the rule, else None."""
+    fx = c.get("fixture") or {}
+    trace = fx.get("nlu_trace") or []
+    st = fx.get("state") or {}
+    trig = c.get("trigger")
+    if trig == "ESC-003" and trace and all("confidence" in t for t in trace):
+        streak = best = 0
+        for t in trace:
+            streak = streak + 1 if t["confidence"] < 0.40 else 0
+            best = max(best, streak)
+        return best >= 3
+    if trig == "ESC-004" and trace and all("sentiment" in t for t in trace):
+        streak = best = 0
+        for t in trace:
+            if t.get("sentiment_confidence", 1.0) < 0.70:
+                continue                      # uncertain: neither adds nor resets
+            streak = streak + 1 if t["sentiment"] < THR else 0
+            best = max(best, streak)
+        fire = best >= 2
+        if c.get("language") in SECONDARY_LANGS:
+            raw = [t["sentiment"] for t in trace]
+            run = rb = 0
+            for s in raw:
+                run = run + 1 if s < THR else 0
+                rb = max(rb, run)
+            m = raw[0]
+            for s in raw[1:]:
+                m = 0.5 * s + 0.5 * m
+            fire = fire or (rb >= 2 and m < THR)
+        return fire
+    if trig == "ESC-005":
+        amt = ((st.get("slots") or {}).get("amount") or {}).get("value")
+        return None if amt is None else amt > 50000
+    if trig == "ESC-006" and trace:
+        n = st.get("human_request_count", sum(1 for t in trace if t.get("intent") == "GEN-003"))
+        return n >= 3
+    if trig == "ESC-010" and "turns_since_resolution" in st:
+        open_topic = any(t.get("status") in ("active", "parked") for t in st.get("topic_stack") or [])
+        return st["turns_since_resolution"] + len(c["input_turns"]) > 15 and open_topic
+    if trig == "ESC-007":
+        flag = (fx.get("record_flags") or {}).get("high_value")
+        return None if flag is None else bool(flag)
+    if trig == "ESC-015":
+        flag = (fx.get("record_flags") or {}).get("pep")
+        auth = (c.get("preconditions") or {}).get("auth_level")
+        return None if flag is None else bool(flag) and auth != "anonymous"
+    if trig == "XTR-02":
+        ev = fx.get("secure_widget_events")
+        return None if ev is None else ev.count("otp_fail") >= 3 and "otp_ok" not in ev
+    return None
+
+
+computed = 0
+for c in cases:
+    exp = c.get("expect")
+    got = computed_expectation(c) if exp else None
+    if got is None:
+        continue
+    computed += 1
+    if got != (exp == "fire"):
+        err("%s: fixture values give %s but the case says expect: %s" % (c["id"], "fire" if got else "no_fire", exp))
+for c in cases:
+    blob = yaml.safe_dump(c)
+    if re.search(r"\b[A-Z]{5}\d{4}[A-Z]\b", blob):
+        err("%s: PAN-shaped value" % c.get("id"))
+    if re.search(r"\b\d{5}[ -]\d{5}\b", blob) or re.search(r"\+91", blob):
+        err("%s: phone-shaped value" % c.get("id"))
+    for m in c.get("must_not_contain") or []:
+        if not str(m).startswith("re:") and len(str(m).strip()) <= 4:
+            err("%s: must_not_contain %r is too short for a substring match; use a re: word-boundary pattern" % (c.get("id"), m))
+        if str(m).startswith("re:"):
+            try:
+                re.compile(str(m)[3:])
+            except re.error:
+                err("%s: invalid regular expression %r" % (c.get("id"), m))
+print("oracles recomputed from fixtures:", computed)
 
 # ------------------------------------------------------------------ report
 print("triggers:", len(triggers), "| extra rules:", len(extras), "| queues:", len(queue_names),
