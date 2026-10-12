@@ -637,7 +637,7 @@ intents:
   confirmation: none
   mi_rank: 2
   escalation: [ESC-006]
-  notes: "Increments human_request_count. ESC-006 fires at 3 or more requests (A6); the boss trace also treats an explicit request as a handoff-prep signal. implicit_request (\"koi insaan se baat karao\", \"who can I talk to\") is still counted. Never stall."
+  notes: "Increments human_request_count. ESC-006 fires at 3 or more requests (A6); an explicit request starts the handoff under XTR-01 (one offer allowed on the first, none on the second); ESC-006 fires at 3 or more requests (A6). implicit_request (\"koi insaan se baat karao\", \"who can I talk to\") is still counted. Never stall."
 
 - id: GEN-004
   name: Out of Scope

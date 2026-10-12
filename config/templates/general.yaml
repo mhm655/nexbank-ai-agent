@@ -1,0 +1,350 @@
+# General conversation templates (family GEN): greeting with AI disclosure, disclosure on request, language switch,
+# clarification, apology and recovery, in-conversation check-in, context carry-over, progressive disclosure, closing.
+# New on Day 13 (D-136). Schema and conventions: config/templates/README.md.
+schema_version: "1.0"
+family: GEN
+review: {hi: not_native_reviewed, hinglish: not_native_reviewed}
+
+templates:
+
+- id: TPL-GEN-GREETING
+  title: "Greeting with AI disclosure (first reply of every conversation)"
+  version: "1.0.0"
+  customer_facing: true
+  trigger:
+    intents: [GEN-001]
+    guardrails: [GR-REG-16]
+    escalations: []
+    state: "first agent turn of a conversation (turn_index of the first reply). When the first customer message already carries a request, the disclosure sentence of the `with_request` variant is prefixed to the answer instead of a separate greeting"
+  mode: template
+  variant_selection: condition
+  slots:
+    - {name: customer_first_name, source: {type: tool, ref: get_profile_masked, field: first_name}, locked: true, required: false}
+  variants:
+    - key: anonymous
+      when: "auth_level anonymous, greeting only"
+      text:
+        en: "Hello, and welcome to NexBank. I'm NexBank's AI assistant. I can help with accounts, cards, payments and product information, and a human colleague is available whenever you prefer. How can I help you today?"
+        hi: "नमस्ते, नेक्सबैंक में आपका स्वागत है। मैं नेक्सबैंक का AI सहायक हूँ। मैं खातों, कार्ड, भुगतान और उत्पादों की जानकारी में मदद कर सकता हूँ, और आप जब चाहें हमारे एक सहयोगी से भी बात कर सकते हैं। आज मैं आपकी क्या मदद करूँ?"
+        hinglish: "Namaste, NexBank mein aapka swagat hai. Main NexBank ka AI assistant hoon. Main accounts, cards, payments aur product information mein madad kar sakta hoon, aur aap jab chahein hamare ek colleague se bhi baat kar sakte hain. Aaj main aapki kya madad karoon?"
+    - key: authenticated
+      when: "the session starts already verified (in-app) and the profile tool returned a first name"
+      text:
+        en: "Hello {{customer_first_name}}, welcome back to NexBank. I'm NexBank's AI assistant, and a human colleague is available whenever you prefer. How can I help you today?"
+        hi: "नमस्ते {{customer_first_name}}, नेक्सबैंक में आपका फिर से स्वागत है। मैं नेक्सबैंक का AI सहायक हूँ, और आप जब चाहें हमारे एक सहयोगी से भी बात कर सकते हैं। आज मैं आपकी क्या मदद करूँ?"
+        hinglish: "Namaste {{customer_first_name}}, NexBank mein aapka phir se swagat hai. Main NexBank ka AI assistant hoon, aur aap jab chahein hamare ek colleague se bhi baat kar sakte hain. Aaj main aapki kya madad karoon?"
+    - key: with_request
+      when: "the first customer message already contains a request: this one sentence precedes the answer or the next template"
+      text:
+        en: "Hello, I'm NexBank's AI assistant."
+        hi: "नमस्ते, मैं नेक्सबैंक का AI सहायक हूँ।"
+        hinglish: "Namaste, main NexBank ka AI assistant hoon."
+  safety:
+    guardrails_enforced: [GR-REG-16, GR-REG-04, GR-SEC-R1]
+    must_not_contain: ["I am a human", "my name is", "offer", "your balance"]
+    notes: "The name is used only when authenticated (A9.3 Personalisation). No product push in a greeting. In a fraud or crisis first message the with_request sentence is used and nothing else is added before the safety template."
+  a9: {patterns: [P2], anti_patterns_avoided: [AP2, AP5]}
+  kb_refs: [KB-POL-009, KB-FAQ-009]
+  tests: [GR-REG-16-01, SS-LRN-01]
+
+- id: TPL-GEN-AI-DISCLOSURE
+  title: "Asked whether this is a human or a bot"
+  version: "1.0.0"
+  customer_facing: true
+  trigger:
+    intents: [GEN-002]
+    guardrails: [GR-REG-16]
+    escalations: []
+    state: "GEN-002, or any question about who or what the customer is talking to"
+  mode: template
+  variant_selection: single
+  slots: []
+  variants:
+    - key: default
+      text:
+        en: "I'm an AI assistant, not a person. I can help with most everyday banking questions, and if you'd rather talk to a human colleague, just say so and I'll arrange it."
+        hi: "मैं एक AI सहायक हूँ, कोई व्यक्ति नहीं। मैं रोज़मर्रा के ज़्यादातर बैंकिंग सवालों में मदद कर सकता हूँ, और अगर आप हमारे किसी सहयोगी से बात करना चाहें तो बस बता दीजिए, मैं व्यवस्था कर दूँगा।"
+        hinglish: "Main ek AI assistant hoon, koi person nahi. Main rozmarra ke zyadatar banking sawaalon mein madad kar sakta hoon, aur agar aap hamare kisi colleague se baat karna chahein to bas bata dijiye, main arrange kar dunga."
+  safety:
+    guardrails_enforced: [GR-REG-16, GR-REG-20]
+    must_not_contain: ["I am a human", "real person here", "I'm just a bot", "as an AI language model"]
+    notes: "Never denies being an AI; never claims to be staff or an advisor."
+  a9: {patterns: [P2], anti_patterns_avoided: [AP8]}
+  kb_refs: [KB-POL-009, KB-FAQ-009, KB-REG-009]
+  tests: [GR-REG-16-01, GR-REG-20-01]
+
+- id: TPL-GEN-LANGUAGE-SWITCH
+  title: "Language switch and language choice"
+  version: "1.0.0"
+  customer_facing: true
+  trigger:
+    intents: [GEN-005]
+    guardrails: [GR-REG-17]
+    escalations: []
+    state: "explicit language request, a stable switch (language_switch_stable_turns), language ID below lang_id_floor on the first turn, or the secondary-language fallback of language-detection.md section 7"
+  mode: template
+  variant_selection: condition
+  slots:
+    - {name: new_language, source: {type: state, ref: language.reply_language, field: "language name in its own script"}, locked: true, required: false}
+  variants:
+    - key: confirm_switch
+      when: "explicit request or stable switch to a primary language: rendered in the NEW language"
+      text:
+        en: "Sure, we'll continue in English."
+        hi: "ज़रूर, अब हम हिंदी में बात करेंगे।"
+        hinglish: "Zaroor, ab hum Hinglish mein baat karenge."
+    - key: offer_choice
+      when: "language uncertain, or a secondary-language turn still below the act threshold after one clarification: rendered in Hindi and English together"
+      text:
+        en: "I want to be sure I understand you correctly. Would you like to continue in Hindi or English, or shall I bring in a colleague who speaks your language?"
+        hi: "मैं आपकी बात सही समझना चाहता हूँ। क्या आप हिंदी या अंग्रेज़ी में बात जारी रखना चाहेंगे, या मैं आपकी भाषा बोलने वाले किसी सहयोगी को जोड़ूँ?"
+        hinglish: "Main aapki baat sahi samajhna chahta hoon. Kya aap Hindi ya English mein baat jaari rakhna chahenge, ya main aapki bhasha bolne wale kisi colleague ko jodoon?"
+    - key: secondary_ack
+      when: "customer chose a secondary language for which reviewed templates exist"
+      text:
+        en: "Sure, I'll reply in {{new_language}} where I have reviewed wording, and in simple English otherwise."
+        hi: "ज़रूर, जहाँ मेरे पास समीक्षित शब्दावली है वहाँ मैं {{new_language}} में जवाब दूँगा, और बाकी जगह सरल हिंदी में।"
+        hinglish: "Zaroor, jahan mere paas reviewed wording hai wahan main {{new_language}} mein jawab dunga, aur baaki jagah simple Hinglish mein."
+  safety:
+    guardrails_enforced: [GR-REG-17]
+    must_not_contain: ["I only speak", "please use English", "you must"]
+    notes: "The switch is always the customer's choice. No reviewed secondary-language templates exist yet (D-145), so `secondary_ack` cannot be used until they do."
+  a9: {patterns: [P4], anti_patterns_avoided: [AP1]}
+  kb_refs: []
+  tests: [KB-BOSS-L3-05, ESC-T-004-04]
+
+- id: TPL-GEN-CLARIFY
+  title: "Clarifying question (one question, at most three labelled options)"
+  version: "1.0.0"
+  customer_facing: true
+  trigger:
+    intents: [GEN-004]
+    guardrails: [GR-SYS-01]
+    escalations: []
+    state: "dialogue_phase CLARIFY: secondary confidence between the clarify floor and intent_confidence_threshold, or top-2 within ambiguity_gap; clarification_attempts below max_clarification_turns; not a question-unsafe flow (D-82). Variant by attempt number and evidence"
+  mode: template
+  variant_selection: rotate
+  slots:
+    - {name: option_a, source: {type: policy, ref: "intent.alternatives[0] plain label from the disambiguation table", field: plain_label}, locked: true}
+    - {name: option_b, source: {type: policy, ref: "intent.alternatives[1] plain label", field: plain_label}, locked: true}
+    - {name: option_c, source: {type: policy, ref: "intent.alternatives[2] plain label", field: plain_label}, locked: true, required: false}
+    - {name: heard, source: {type: state, ref: "the entity or phrase the NLU did extract, masked", field: text}, locked: true, required: false}
+  variants:
+    - key: two_options
+      when: "first attempt, two candidates"
+      text:
+        en: "Happy to help. Just so I get this right: is this about {{option_a}}, or {{option_b}}?"
+        hi: "ज़रूर, मैं मदद करूँगा। सही समझने के लिए पूछ रहा हूँ: क्या यह {{option_a}} के बारे में है, या {{option_b}} के बारे में?"
+        hinglish: "Zaroor, main madad karunga. Sahi samajhne ke liye pooch raha hoon: kya yeh {{option_a}} ke baare mein hai, ya {{option_b}} ke baare mein?"
+    - key: three_options
+      when: "first attempt, three candidates"
+      text:
+        en: "Happy to help. Which of these is closest to what you need: {{option_a}}, {{option_b}}, or {{option_c}}?"
+        hi: "ज़रूर, मैं मदद करूँगा। इनमें से कौन सा आपकी ज़रूरत के सबसे करीब है: {{option_a}}, {{option_b}}, या {{option_c}}?"
+        hinglish: "Zaroor, main madad karunga. Inmein se kaunsa aapki zaroorat ke sabse kareeb hai: {{option_a}}, {{option_b}}, ya {{option_c}}?"
+    - key: second_attempt
+      when: "second attempt on the same point: different wording, states what was understood, offers a person"
+      text:
+        en: "Thanks for bearing with me. I understood that this is about {{heard}}, but I'm not sure what you'd like me to do. Is it {{option_a}} or {{option_b}}? If neither fits, I can bring in a colleague."
+        hi: "साथ बने रहने के लिए धन्यवाद। मैं यह समझ पाया कि बात {{heard}} की है, पर यह स्पष्ट नहीं है कि आप मुझसे क्या करवाना चाहते हैं। क्या यह {{option_a}} है या {{option_b}}? अगर दोनों में से कोई नहीं, तो मैं एक सहयोगी को जोड़ सकता हूँ।"
+        hinglish: "Saath bane rehne ke liye thanks. Main yeh samajh paya ki baat {{heard}} ki hai, par yeh clear nahi hai ki aap mujhse kya karwana chahte hain. Kya yeh {{option_a}} hai ya {{option_b}}? Agar dono mein se koi nahi, to main ek colleague ko jod sakta hoon."
+    - key: open_menu
+      when: "primary confidence below primary_clarify_floor: open question, the options are the most common topics from the quick-reply menu"
+      text:
+        en: "I'd like to help. Could you tell me a little more about what you need? For example: {{option_a}}, {{option_b}}, or something else."
+        hi: "मैं मदद करना चाहता हूँ। क्या आप थोड़ा और बता सकते हैं कि आपको क्या चाहिए? उदाहरण के लिए: {{option_a}}, {{option_b}}, या कुछ और।"
+        hinglish: "Main madad karna chahta hoon. Kya aap thoda aur bata sakte hain ki aapko kya chahiye? Jaise: {{option_a}}, {{option_b}}, ya kuch aur."
+  safety:
+    guardrails_enforced: [GR-SYS-01, GR-ADV-07]
+    must_not_contain: ["I didn't understand", "could you rephrase", "please rephrase", "invalid", "how much do you earn", "how old are you"]
+    notes: "Options are plain labels chosen by the Policy Engine from disambiguation.md, never model-written. The same variant is never used twice in a row. After max_clarification_turns the next step is TPL-ESC-HANDOFF-WARM (could_not_understand) or the safe default. Not used for pair 2 (advice) or contain-first flows."
+  a9: {patterns: [P5], anti_patterns_avoided: [AP1, AP2]}
+  kb_refs: [KB-ESC-020]
+  tests: [NLU-DIS-1-01, NLU-DIS-3-01, NLU-DIS-4-01, XTR-T-04-01, SS-ESC-04]
+
+- id: TPL-GEN-RECOVERY
+  title: "Apology and recovery after a misunderstanding or an agent mistake"
+  version: "1.0.0"
+  customer_facing: true
+  trigger:
+    intents: []
+    guardrails: [GR-OUT-04]
+    escalations: []
+    state: "misunderstanding detected (customer says 'no, I meant', contradiction, repeated rephrasing), a sarcasm misread corrected, or a sentiment spike after an agent reply (dialogue-management.md section 4.5)"
+  mode: hybrid
+  variant_selection: condition
+  slots:
+    - {name: understood_now, source: {type: state, ref: "updated intent label and confirmed slots, masked", field: plain_summary}, locked: true}
+    - {name: next_step, source: {type: policy, ref: "PolicyDecision.action as a plain next step", field: text}, locked: true}
+  variants:
+    - key: misunderstood
+      when: "the agent misread the request"
+      text:
+        en: "I'm sorry, I misunderstood you. You're asking about {{understood_now}}. {{next_step}}"
+        hi: "क्षमा करें, मैंने आपकी बात गलत समझी। आप {{understood_now}} के बारे में पूछ रहे हैं। {{next_step}}"
+        hinglish: "Sorry, maine aapki baat galat samjhi. Aap {{understood_now}} ke baare mein pooch rahe hain. {{next_step}}"
+    - key: repeated_effort
+      when: "the customer had to repeat or re-explain"
+      text:
+        en: "I'm sorry you've had to explain this more than once. Here's what I have: {{understood_now}}. {{next_step}}"
+        hi: "मुझे खेद है कि आपको यह एक से अधिक बार समझाना पड़ा। मेरे पास यह जानकारी है: {{understood_now}}। {{next_step}}"
+        hinglish: "Mujhe khed hai ki aapko yeh ek se zyada baar explain karna pada. Mere paas yeh details hain: {{understood_now}}. {{next_step}}"
+  safety:
+    guardrails_enforced: [GR-OUT-04, GR-OUT-05]
+    must_not_contain: ["deeply apologise", "sincerely regret", "so sorry", "as I said", "you should have", "let us start again", "are you being sarcastic"]
+    notes: "Exactly one apology, specific, followed by the next step in the same message (A9.3 Apologies). If an apology was already given for this issue in the conversation, the Policy Engine drops the first sentence."
+  a9: {patterns: [P1, P5], anti_patterns_avoided: [AP7, AP1, AP5]}
+  kb_refs: []
+  tests: [GR-OUT-04-01, ESC-BOSS-L6-03, ESC-T-003-02]
+
+- id: TPL-GEN-CHECKIN
+  title: "In-conversation check-in at a natural breakpoint"
+  version: "1.0.0"
+  customer_facing: true
+  trigger:
+    intents: []
+    guardrails: []
+    escalations: []
+    state: "a breakpoint of csat-signals.md section 2 (task done, after a multi-step explanation, after a gap statement, falling slope without ESC-004, resignation cue); within checkin_max_per_task and checkin_max_per_conversation; never in fraud, crisis or credential flows, with a pending confirmation, or after a human request"
+  mode: template
+  variant_selection: condition
+  slots: []
+  variants:
+    - key: after_explanation
+      when: "after a multi-step explanation or a gap statement"
+      text:
+        en: "Is this helping so far?"
+        hi: "क्या अब तक यह जानकारी आपके काम आ रही है?"
+        hinglish: "Kya ab tak yeh aapke kaam aa raha hai?"
+    - key: resignation
+      when: "resignation cue ('forget it', 'chalo theek hai', 'rehne do')"
+      text:
+        en: "Before we stop, can I try one more thing? If you'd rather, I can bring in a colleague instead."
+        hi: "रुकने से पहले, क्या मैं एक और कोशिश कर सकता हूँ? अगर आप चाहें तो मैं इसकी जगह एक सहयोगी को जोड़ सकता हूँ।"
+        hinglish: "Rukne se pehle, kya main ek aur koshish kar sakta hoon? Agar aap chahein to main iski jagah ek colleague ko jod sakta hoon."
+    - key: falling_slope
+      when: "sentiment slope negative for two turns, ESC-004 not fired, sarcasm band 0.40 to 0.60"
+      text:
+        en: "Did that help, or is something still not right?"
+        hi: "क्या इससे मदद मिली, या अब भी कुछ ठीक नहीं है?"
+        hinglish: "Kya isse madad mili, ya ab bhi kuch theek nahi hai?"
+  allowed_literals: []
+  safety:
+    guardrails_enforced: [GR-REG-04]
+    must_not_contain: ["rate", "scale of", "stars", "reward", "offer", "are you being sarcastic"]
+    notes: "A dialogue act, not a survey: never a numeric scale mid-conversation, never an incentive. A negative answer triggers one recovery attempt and a human offer; it does not by itself create an ESC record."
+  a9: {patterns: [P1, P2], anti_patterns_avoided: [AP1, AP4]}
+  kb_refs: []
+  tests: [ESC-T-004-02, SS-ESC-06]
+
+- id: TPL-GEN-CARRYOVER
+  title: "Context carry-over for a returning customer"
+  version: "1.0.0"
+  customer_facing: true
+  trigger:
+    intents: []
+    guardrails: [GR-SEC-R7, GR-SEC-R2]
+    escalations: []
+    state: "carry_over.open_tickets or prior_conversation_ids present and context_reusable_until not passed (context_carry_over_window_hours). Variant by auth level"
+  mode: template
+  variant_selection: condition
+  slots:
+    - {name: prior_topic, source: {type: state, ref: "carry_over.open_tickets[] or prior summary, masked plain label", field: text}, locked: true}
+    - {name: ticket_status, source: {type: tool, ref: "get_complaint_status or get_txn", field: status_text}, locked: true, required: false}
+  variants:
+    - key: verified
+      when: "auth_level sufficient in THIS session"
+      text:
+        en: "Welcome back. I can see you contacted us earlier about {{prior_topic}}. {{ticket_status}} Shall we pick up from there?"
+        hi: "आपका फिर से स्वागत है। मैं देख रहा हूँ कि आपने पहले {{prior_topic}} के बारे में हमसे संपर्क किया था। {{ticket_status}} क्या हम वहीं से आगे बढ़ें?"
+        hinglish: "Welcome back. Main dekh raha hoon ki aapne pehle {{prior_topic}} ke baare mein humse contact kiya tha. {{ticket_status}} Kya hum wahin se aage badhein?"
+    - key: needs_verification
+      when: "returning context exists but this session is not yet verified: no detail of the earlier contact is revealed"
+      text:
+        en: "Welcome back. If this is about your earlier request, I can pick it up as soon as you've completed the secure verification step, and you won't need to explain it again."
+        hi: "आपका फिर से स्वागत है। अगर यह आपके पिछले अनुरोध के बारे में है, तो सुरक्षित सत्यापन का चरण पूरा होते ही मैं वहीं से आगे बढ़ सकता हूँ, और आपको दोबारा समझाना नहीं पड़ेगा।"
+        hinglish: "Welcome back. Agar yeh aapki pichhli request ke baare mein hai, to secure verification step poora hote hi main wahin se aage badh sakta hoon, aur aapko dobara explain nahi karna padega."
+  safety:
+    guardrails_enforced: [GR-SEC-R7, GR-SEC-R2, GR-SEC-R1, GR-OUT-05]
+    must_not_contain: ["you are already verified", "as you were verified", "will be credited", "within"]
+    notes: "Context is reused for 24 hours; authentication is never carried over (D-05, a documented deviation from Case Study 6). The earlier topic is named only after verification in this session, so a different person on the same device learns nothing."
+  a9: {patterns: [P5], anti_patterns_avoided: [AP6, AP3, AP1]}
+  kb_refs: [KB-POL-003]
+  tests: [XTR-T-05-01, ESC-BOSS-L6-01, GR-SEC-R7-01]
+
+- id: TPL-GEN-DISCLOSE-MORE
+  title: "Progressive disclosure (essential answer, then an offer of detail)"
+  version: "1.0.0"
+  customer_facing: true
+  trigger:
+    intents: [PRD-001, PRD-003, PRD-004, GEN-008]
+    guardrails: [GR-REG-01]
+    escalations: []
+    state: "retrieval decision `answer` for a product, policy or multi-step procedure question. Layer by what the customer has asked for so far"
+  mode: hybrid
+  variant_selection: condition
+  slots:
+    - {name: essential_answer, source: {type: kb, ref: "rank-1 evidence entry of the turn", field: "structured_fields (key facts), at most two sentences"}, locked: true}
+    - {name: aspect_a, source: {type: kb, ref: "evidence entry structured_fields keys not yet shown", field: plain_label}, locked: true}
+    - {name: aspect_b, source: {type: kb, ref: "evidence entry structured_fields keys not yet shown", field: plain_label}, locked: true}
+    - {name: detail, source: {type: kb, ref: "the aspect the customer chose, from the same evidence entry", field: structured_fields}, locked: true, required: false}
+    - {name: disclosure, source: {type: kb, ref: "KB-POL-008 mandatory disclosures for the product", field: structured_fields}, locked: true, required: false}
+  variants:
+    - key: layer_1_2
+      when: "first answer: essential facts plus an offer to elaborate on named aspects"
+      text:
+        en: "{{essential_answer}} {{disclosure}} Would you like more detail on {{aspect_a}} or {{aspect_b}}?"
+        hi: "{{essential_answer}} {{disclosure}} क्या आप {{aspect_a}} या {{aspect_b}} के बारे में और जानना चाहेंगे?"
+        hinglish: "{{essential_answer}} {{disclosure}} Kya aap {{aspect_a}} ya {{aspect_b}} ke baare mein aur jaanna chahenge?"
+    - key: layer_3
+      when: "the customer explicitly asked for the detail"
+      text:
+        en: "Here are the details: {{detail}} Is there anything else you'd like to know about this?"
+        hi: "पूरी जानकारी यह है: {{detail}} क्या आप इसके बारे में कुछ और जानना चाहेंगे?"
+        hinglish: "Details yeh hain: {{detail}} Kya aap iske baare mein kuch aur jaanna chahenge?"
+  safety:
+    guardrails_enforced: [GR-REG-01, GR-OUT-01, GR-OUT-03, GR-REG-04, GR-ATK-08]
+    must_not_contain: ["limited time", "act now", "don't miss", "best", "you should"]
+    notes: "Mode hybrid: the LLM may join the locked facts into natural sentences but cannot alter them (response-generation.md section 1). Mandatory disclosures (GR-REG-01) are part of layer 1, never deferred to layer 3. Reply length is capped by atk_output_max_words."
+  a9: {patterns: [P2], anti_patterns_avoided: [AP2, AP8]}
+  kb_refs: [KB-PRD-010, KB-POL-008]
+  tests: [GR-REG-01-01, KB-BOSS-L3-01, GR-REG-04-01]
+
+- id: TPL-GEN-CLOSING
+  title: "Anything-else check and closing"
+  version: "1.0.0"
+  customer_facing: true
+  trigger:
+    intents: [GEN-006]
+    guardrails: []
+    escalations: []
+    state: "task complete or GEN-006, no pending confirmation, no open topic on the stack. Variant by whether the anything-else check was already made"
+  mode: template
+  variant_selection: condition
+  slots: []
+  variants:
+    - key: anything_else
+      when: "a task just completed"
+      text:
+        en: "Is there anything else I can help you with?"
+        hi: "क्या मैं आपकी किसी और चीज़ में मदद कर सकता हूँ?"
+        hinglish: "Kya main aapki kisi aur cheez mein madad kar sakta hoon?"
+    - key: goodbye
+      when: "customer said thanks or no after the check"
+      text:
+        en: "You're welcome. Thank you for banking with NexBank. Take care."
+        hi: "आपका स्वागत है। नेक्सबैंक के साथ बैंकिंग करने के लिए धन्यवाद। अपना ध्यान रखिए।"
+        hinglish: "You're welcome. NexBank ke saath banking karne ke liye thanks. Apna dhyan rakhiye."
+    - key: parked_topic
+      when: "a parked topic is still on the stack (dialogue-management.md section 5.2): this replaces the closing"
+      text:
+        en: "Before we finish: earlier you asked about something we haven't completed. Shall we go back to it?"
+        hi: "समाप्त करने से पहले: आपने पहले एक बात पूछी थी जो अभी पूरी नहीं हुई है। क्या हम उस पर वापस चलें?"
+        hinglish: "Finish karne se pehle: aapne pehle ek baat poochi thi jo abhi poori nahi hui hai. Kya hum us par wapas chalein?"
+  safety:
+    guardrails_enforced: [GR-REG-04]
+    must_not_contain: ["offer", "upgrade", "has been resolved and closed", "this chat will now end"]
+    notes: "No cross-sell at closing. The CSAT ask (TPL-SRV-CSAT) follows `goodbye` where csat-signals.md section 3.1 allows it."
+  a9: {patterns: [P5], anti_patterns_avoided: [AP2]}
+  kb_refs: []
+  tests: [ESC-T-010-02, XTR-T-06-01]

@@ -1,0 +1,219 @@
+# Attack-response templates (family ATK). Names fixed on Day 10: docs/guardrails/adversarial-defences.md section 3.3 (D-71).
+# Response contract: calm, non-accusatory, no rule names, scores or lexicon (no oracle), say what the agent can do, one useful
+# next step, never invent, never deny being an AI, serve the legitimate remainder, never half-execute.
+# These templates are deliberately bland about WHY a request is declined: the same words serve a clumsy customer and an attacker.
+schema_version: "1.0"
+family: ATK
+review: {hi: not_native_reviewed, hinglish: not_native_reviewed}
+
+templates:
+
+- id: TPL-ATK-NEUTRAL-REDIRECT
+  title: "Neutral redirect after a flagged turn (three rotating variants)"
+  version: "1.0.0"
+  customer_facing: true
+  trigger:
+    intents: []
+    guardrails: [GR-ATK-01, GR-ATK-03, GR-ATK-04]
+    escalations: []
+    state: "a turn flagged by GR-ATK-01, GR-ATK-03 or GR-ATK-07 with no legitimate remainder; variant chosen by guardrails.injection_attempts (first, second, third flagged turn); the fourth flagged turn uses TPL-ATK-SAFE-MODE"
+  mode: template
+  variant_selection: rotate
+  slots: []
+  variants:
+    - key: first
+      when: "first flagged turn in the session"
+      text:
+        en: "I can't help with that request. I'm NexBank's AI assistant, and I can help with your own accounts, cards, payments and questions about our products. What would you like to do?"
+        hi: "इस अनुरोध में मैं मदद नहीं कर सकता। मैं नेक्सबैंक का AI सहायक हूँ और आपके अपने खातों, कार्ड, भुगतान और हमारे उत्पादों से जुड़े सवालों में मदद कर सकता हूँ। आप क्या करना चाहेंगे?"
+        hinglish: "Is request mein main madad nahi kar sakta. Main NexBank ka AI assistant hoon aur aapke apne accounts, cards, payments aur hamare products ke sawaalon mein madad kar sakta hoon. Aap kya karna chahenge?"
+    - key: second
+      when: "second flagged turn in the session"
+      text:
+        en: "That's not something I'm able to do here. If you need something on your own account, I can take you through secure verification, or I can answer a general question straight away."
+        hi: "यह काम मैं यहाँ नहीं कर सकता। अगर आपको अपने खाते से जुड़ा कुछ चाहिए तो मैं आपको सुरक्षित सत्यापन तक ले चल सकता हूँ, या कोई सामान्य सवाल हो तो अभी जवाब दे सकता हूँ।"
+        hinglish: "Yeh kaam main yahan nahi kar sakta. Agar aapko apne account se juda kuch chahiye to main aapko secure verification tak le chal sakta hoon, ya koi general sawaal ho to abhi jawab de sakta hoon."
+    - key: third
+      when: "third flagged turn in the session"
+      text:
+        en: "I'm still not able to do that. I can keep helping with everyday banking questions, or bring in a colleague from our team if you'd prefer to talk to a person."
+        hi: "यह मैं अब भी नहीं कर सकता। मैं रोज़मर्रा के बैंकिंग सवालों में मदद जारी रख सकता हूँ, या अगर आप किसी व्यक्ति से बात करना चाहें तो हमारी टीम के किसी सहयोगी को जोड़ सकता हूँ।"
+        hinglish: "Yeh main ab bhi nahi kar sakta. Main rozmarra ke banking sawaalon mein madad jaari rakh sakta hoon, ya agar aap kisi person se baat karna chahein to hamari team ke kisi colleague ko jod sakta hoon."
+  safety:
+    guardrails_enforced: [GR-ATK-01, GR-ATK-03, GR-ATK-04, GR-REG-16, GR-OUT-06]
+    must_not_contain: ["attack", "injection", "detected", "policy violation", "blocked", "rules", "Sure, here", "DEV MODE", "as DAN"]
+    notes: "No accusation and no hint of what was detected. Each variant carries a different next step (D-71 item 5)."
+  a9: {patterns: [P4], anti_patterns_avoided: [AP1, AP8, AP5]}
+  kb_refs: [KB-POL-004, KB-POL-009]
+  tests: [GR-ATK-01-01, GR-ATK-01-02, GR-ATK-03-01, GR-ATK-03-08, GR-ATK-04-01]
+
+- id: TPL-ATK-CANNOT-SHARE-CONFIG
+  title: "Request for the prompt, rules, configuration or tools"
+  version: "1.0.0"
+  customer_facing: true
+  trigger:
+    intents: []
+    guardrails: [GR-ATK-06]
+    escalations: []
+    state: "prompt-request lexicon or classifier hit; also used when the overlap scan or a tracer hit blocks a draft"
+  mode: template
+  variant_selection: single
+  slots: []
+  variants:
+    - key: default
+      text:
+        en: "I can't share my internal configuration. I can tell you what I'm able to help with: your accounts and cards once you're verified, payment and complaint status, reporting fraud, and information about NexBank products. What do you need?"
+        hi: "मैं अपनी आंतरिक कॉन्फ़िगरेशन साझा नहीं कर सकता। मैं यह बता सकता हूँ कि मैं किन चीज़ों में मदद कर सकता हूँ: सत्यापन के बाद आपके खाते और कार्ड, भुगतान और शिकायत की स्थिति, धोखाधड़ी की सूचना, और नेक्सबैंक उत्पादों की जानकारी। आपको क्या चाहिए?"
+        hinglish: "Main apni internal configuration share nahi kar sakta. Main yeh bata sakta hoon ki main kin cheezon mein madad kar sakta hoon: verification ke baad aapke accounts aur cards, payment aur complaint status, fraud report karna, aur NexBank products ki jaankari. Aapko kya chahiye?"
+  safety:
+    guardrails_enforced: [GR-ATK-06, GR-ATK-07, GR-OUT-06]
+    must_not_contain: ["layer 0", "layer 1", "layer 2", "my instructions are", "system prompt:", "canary", "get_statement", "\"tools\":", "temperature"]
+    notes: "States capabilities in general terms only (KB-POL-004); never invents fake internal instructions (D-73)."
+  a9: {patterns: [P4], anti_patterns_avoided: [AP8, AP1]}
+  kb_refs: [KB-POL-004]
+  tests: [GR-ATK-06-01, GR-ATK-06-02, GR-ATK-06-03, GR-ATK-06-04, GR-ATK-06-05]
+
+- id: TPL-ATK-AUTH-PROMPT
+  title: "Claimed identity or claimed verification"
+  version: "1.0.0"
+  customer_facing: true
+  trigger:
+    intents: []
+    guardrails: [GR-ATK-10, GR-SEC-R2]
+    escalations: []
+    state: "identity facts, a claimed auth level or an injected verification in the message while the Gateway claim is below the required level"
+  mode: template
+  variant_selection: single
+  slots: []
+  variants:
+    - key: default
+      text:
+        en: "Thanks. Details typed in chat can't verify you, so please don't share personal details here. I'll open the secure verification step now; once that's done I can help with your account."
+        hi: "धन्यवाद। चैट में लिखी जानकारी से आपका सत्यापन नहीं हो सकता, इसलिए कृपया यहाँ निजी जानकारी साझा न करें। मैं अभी सुरक्षित सत्यापन का चरण खोल रहा हूँ; वह पूरा होते ही मैं आपके खाते में मदद कर सकूँगा।"
+        hinglish: "Thanks. Chat mein likhi details se aapka verification nahi ho sakta, isliye please yahan personal details share na karein. Main abhi secure verification step khol raha hoon; woh poora hote hi main aapke account mein madad kar sakunga."
+  safety:
+    guardrails_enforced: [GR-ATK-10, GR-SEC-R2, GR-SEC-R5, GR-REG-08]
+    must_not_contain: ["those details match", "that is correct", "you are verified", "we found an account", "share the OTP", "enter the OTP"]
+    notes: "Neither confirms nor denies that the typed details match a record (D-75). The OTP is entered in the secure widget, never in chat."
+  a9: {patterns: [P4], anti_patterns_avoided: [AP6, AP8]}
+  kb_refs: [KB-POL-003]
+  tests: [GR-ATK-10-01, GR-ATK-10-02, GR-ATK-10-03, GR-SEC-R2-04]
+
+- id: TPL-ATK-THIRD-PARTY
+  title: "Third-party request or authority claim (impersonation refusal)"
+  version: "1.0.0"
+  customer_facing: true
+  trigger:
+    intents: []
+    guardrails: [GR-SEC-R4, GR-SEC-R8, GR-ATK-05]
+    escalations: [ESC-001]
+    state: "family, power-of-attorney, staff, regulator, law-enforcement or executive claim; variant by claim type. ESC-001 (silent case) is created by the router when the claim comes with a request for data or action (D-72, D-115)"
+  mode: template
+  variant_selection: condition
+  slots: []
+  variants:
+    - key: family_or_poa
+      when: "family member or power-of-attorney claim (GR-SEC-R4)"
+      text:
+        en: "I understand you're trying to help. I can only discuss an account with its holder, so the account holder will need to contact us themselves. If you hold legal authority, a colleague can take that request through the proper process. Would you like me to arrange that?"
+        hi: "मैं समझता हूँ कि आप मदद करना चाहते हैं। मैं किसी खाते के बारे में केवल उसके खाताधारक से बात कर सकता हूँ, इसलिए खाताधारक को स्वयं हमसे संपर्क करना होगा। अगर आपके पास कानूनी अधिकार है तो हमारे सहयोगी उचित प्रक्रिया से वह अनुरोध ले सकते हैं। क्या मैं इसकी व्यवस्था करूँ?"
+        hinglish: "Main samajhta hoon ki aap madad karna chahte hain. Main kisi account ke baare mein sirf uske account holder se baat kar sakta hoon, isliye account holder ko khud humse contact karna hoga. Agar aapke paas legal authority hai to hamare colleague proper process se woh request le sakte hain. Kya main iska arrangement karoon?"
+    - key: authority
+      when: "staff, auditor, regulator, law-enforcement, developer or executive claim (GR-SEC-R8, GR-ATK-05)"
+      text:
+        en: "I can't act on that in this chat, whoever is asking. Requests of this kind go through NexBank's official channels, not the customer assistant. If there's something on your own account I can help with, I'm glad to."
+        hi: "इस चैट में मैं इस पर कार्रवाई नहीं कर सकता, अनुरोध चाहे किसी का भी हो। इस तरह के अनुरोध नेक्सबैंक के आधिकारिक माध्यमों से होते हैं, ग्राहक सहायक के ज़रिए नहीं। अगर आपके अपने खाते से जुड़ा कुछ हो तो मुझे मदद करके खुशी होगी।"
+        hinglish: "Is chat mein main is par action nahi le sakta, request chahe kisi ki bhi ho. Is tarah ki requests NexBank ke official channels se hoti hain, customer assistant ke through nahi. Agar aapke apne account se juda kuch ho to mujhe madad karke khushi hogi."
+  safety:
+    guardrails_enforced: [GR-SEC-R4, GR-SEC-R8, GR-ATK-05, GR-ATK-07, GR-SEC-R6]
+    must_not_contain: ["her balance is", "his balance is", "yes, he is", "is not a customer", "no such customer", "verified auditor", "access granted", "you are lying", "authority verified", "fraud"]
+    notes: "Neither confirms nor denies that the other person is a customer. Does not ask for the claimed ID and does not verify it. No mention of the silent ESC-001 case. With distress in the message (GR-ATK-05-05) the Policy Engine prefixes one acknowledgement sentence from TPL-CMP-EMPATHY-FIRST slot `ack`."
+  a9: {patterns: [P4, P1], anti_patterns_avoided: [AP5, AP8, AP1]}
+  kb_refs: [KB-POL-010]
+  tests: [GR-SEC-R4-01, GR-SEC-R4-02, GR-SEC-R8-01, GR-SEC-R8-02, GR-SEC-R8-03, GR-ATK-05-01, GR-ATK-05-04, ESC-T-001-03]
+
+- id: TPL-ATK-THROTTLE
+  title: "Message rate above the soft limit"
+  version: "1.0.0"
+  customer_facing: true
+  trigger:
+    intents: []
+    guardrails: [GR-ATK-08]
+    escalations: []
+    state: "session message rate above atk_msgs_per_minute_per_session; never used for SEC-001, GEN-007 or GEN-003 below the hard limit (D-74)"
+  mode: template
+  variant_selection: single
+  slots: []
+  variants:
+    - key: default
+      text:
+        en: "I've received several messages close together and want to be sure I answer the right one. Please send your question once and I'll pick it up from there."
+        hi: "मुझे एक साथ कई संदेश मिले हैं और मैं सही सवाल का जवाब देना चाहता हूँ। कृपया अपना सवाल एक बार भेजें, मैं वहीं से आगे बढ़ूँगा।"
+        hinglish: "Mujhe ek saath kai messages mile hain aur main sahi sawaal ka jawab dena chahta hoon. Please apna sawaal ek baar bhejein, main wahin se aage badhunga."
+  safety:
+    guardrails_enforced: [GR-ATK-08, GR-OUT-06]
+    must_not_contain: ["you are banned", "blocked permanently", "session limit is", "try again in", "rate limit"]
+    notes: "States no limit value and no waiting period (no oracle; no commitment)."
+  a9: {patterns: [P4], anti_patterns_avoided: [AP1, AP3]}
+  kb_refs: []
+  tests: [GR-ATK-08-01, GR-ATK-08-02]
+
+- id: TPL-ATK-SHORTEN-OR-SPLIT
+  title: "Oversized or over-complex request"
+  version: "1.0.0"
+  customer_facing: true
+  trigger:
+    intents: []
+    guardrails: [GR-ATK-08, GR-ATK-09]
+    escalations: []
+    state: "input above atk_input_max_chars, complexity score above the limit, or more requests in one message than the turn can serve"
+  mode: template
+  variant_selection: condition
+  slots:
+    - {name: first_request, source: {type: policy, ref: "highest-ranked recognised intent in the message (mi_rank)", field: plain_label}, locked: true, required: false}
+  variants:
+    - key: too_long
+      when: "input truncated for length and no intent recognised in the processed part"
+      text:
+        en: "That message was too long for me to handle in one go. Could you tell me in a sentence or two what you need?"
+        hi: "यह संदेश इतना लंबा था कि मैं इसे एक बार में नहीं संभाल सका। क्या आप एक-दो वाक्यों में बता सकते हैं कि आपको क्या चाहिए?"
+        hinglish: "Yeh message itna lamba tha ki main ise ek baar mein handle nahi kar saka. Kya aap ek-do sentence mein bata sakte hain ki aapko kya chahiye?"
+    - key: many_requests
+      when: "several requests recognised; the first is served"
+      text:
+        en: "That's quite a few things at once. Let me start with {{first_request}}, and we'll take the others one at a time after that."
+        hi: "ये एक साथ कई काम हैं। मैं {{first_request}} से शुरू करता हूँ, बाकी हम एक-एक करके देखेंगे।"
+        hinglish: "Yeh ek saath kaafi kaam hain. Main {{first_request}} se shuru karta hoon, baaki hum ek-ek karke dekhenge."
+  safety:
+    guardrails_enforced: [GR-ATK-08, GR-ATK-09]
+    must_not_contain: ["processed your full message", "characters", "limit is", "all done"]
+    notes: "Safety intents in the message are always served first (mi_rank)."
+  a9: {patterns: [P2, P4], anti_patterns_avoided: [AP2, AP1]}
+  kb_refs: []
+  tests: [GR-ATK-08-03, GR-ATK-09-01, GR-ATK-09-03]
+
+- id: TPL-ATK-SAFE-MODE
+  title: "Safe mode notice (templates only, human option stated)"
+  version: "1.0.0"
+  customer_facing: true
+  trigger:
+    intents: []
+    guardrails: [GR-ATK-04, GR-SYS-04]
+    escalations: []
+    state: "session flagged-turn count reached atk_adversarial_flags_safe_mode, or the template-only containment lever is on"
+  mode: template
+  variant_selection: single
+  slots: []
+  variants:
+    - key: default
+      text:
+        en: "I can help with a limited set of banking requests in this chat right now, such as balances, card blocks, payment status and product information. A human colleague is also available if you'd prefer. What would you like to do?"
+        hi: "इस चैट में अभी मैं कुछ सीमित बैंकिंग अनुरोधों में मदद कर सकता हूँ, जैसे बैलेंस, कार्ड ब्लॉक, भुगतान की स्थिति और उत्पादों की जानकारी। अगर आप चाहें तो हमारे एक सहयोगी भी उपलब्ध हैं। आप क्या करना चाहेंगे?"
+        hinglish: "Is chat mein abhi main kuch limited banking requests mein madad kar sakta hoon, jaise balance, card block, payment status aur product information. Agar aap chahein to hamare ek colleague bhi available hain. Aap kya karna chahenge?"
+  safety:
+    guardrails_enforced: [GR-ATK-04, GR-SYS-04, GR-SYS-01, GR-REG-16]
+    must_not_contain: ["safe mode", "restricted because", "you have been flagged", "suspicious"]
+    notes: "The customer is never told that the session is in safe mode or why. Safety intents SEC-001, GEN-007 and GEN-003 are never blocked by safe mode."
+  a9: {patterns: [P4], anti_patterns_avoided: [AP1, AP4]}
+  kb_refs: [KB-POL-004]
+  tests: [GR-ATK-04-01, GR-ATK-04-03, GR-ATK-04-04, GR-SYS-04-01]

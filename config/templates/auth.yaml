@@ -1,0 +1,207 @@
+# Authentication and credential-safety templates (families AUTH and SEC). New on Day 13 (D-136).
+# The OTP is entered only in the secure in-app widget (diagrams/auth-flow.mmd); no template asks the customer to type a code,
+# PIN, CVV, password, card number or Aadhaar in chat (A4.2 rules 1 and 5; a deviation from Case Study 1 turn 4, see README section 9).
+# Legacy reply keys from config/entities.yaml (RED-01 to RED-07) and account-security.md map to TPL-SEC-DO-NOT-SHARE variants.
+schema_version: "1.0"
+family: AUTH
+review: {hi: not_native_reviewed, hinglish: not_native_reviewed}
+
+templates:
+
+- id: TPL-AUTH-OTP-REQUEST
+  title: "Verification needed (OTP through the secure widget)"
+  version: "1.0.0"
+  customer_facing: true
+  trigger:
+    intents: [ACC-001, ACC-002, ACC-007, TXN-001, TXN-002, TXN-003, TXN-004, CRD-001, CRD-004, CRD-005, CMP-002, CMP-005, SEC-003, SEC-004]
+    guardrails: [GR-SEC-R2, GR-REG-08]
+    escalations: []
+    state: "dialogue_phase AUTH_REQUIRED, auth_level anonymous, intent needs otp_verified"
+  mode: template
+  variant_selection: single
+  slots:
+    - {name: request_plain, source: {type: policy, ref: "intent plain label (for example: check your balance)", field: plain_label}, locked: true}
+  variants:
+    - key: default
+      text:
+        en: "I can help you {{request_plain}}. To keep your account safe I need to verify it's you first. I've opened a secure verification box: please enter the one-time code sent to your registered contact there, not in this chat."
+        hi: "मैं {{request_plain}} में आपकी मदद कर सकता हूँ। आपके खाते की सुरक्षा के लिए पहले मुझे यह पुष्टि करनी होगी कि यह आप ही हैं। मैंने एक सुरक्षित सत्यापन बॉक्स खोला है: कृपया अपने पंजीकृत संपर्क पर भेजा गया वन-टाइम कोड वहीं दर्ज करें, इस चैट में नहीं।"
+        hinglish: "Main {{request_plain}} mein aapki madad kar sakta hoon. Aapke account ki safety ke liye pehle mujhe verify karna hoga ki yeh aap hi hain. Maine ek secure verification box khola hai: please apne registered contact par bheja gaya one-time code wahin enter karein, is chat mein nahi."
+  safety:
+    guardrails_enforced: [GR-SEC-R2, GR-SEC-R5, GR-REG-08, GR-SEC-R1]
+    must_not_contain: ["share the OTP", "tell me the OTP", "type the code here", "send me your PIN", "your balance is"]
+    notes: "Sent once per needed step. Not sent when the session is already at the needed level (Authentication Theatre). The code length and validity are not stated: the KB holds neither."
+  a9: {patterns: [P2], anti_patterns_avoided: [AP6, AP2]}
+  kb_refs: [KB-POL-003]
+  tests: [SS-AUTH-01, SS-AUTH-02, SS-AUTH-09, GR-REG-08-01]
+
+- id: TPL-AUTH-STEP-UP
+  title: "Step-up to a higher verification level"
+  version: "1.0.0"
+  customer_facing: true
+  trigger:
+    intents: [ACC-003, ACC-004, ACC-005, ACC-006, ACC-008, TXN-005, TXN-006, CRD-002, CRD-003]
+    guardrails: [GR-SEC-R2]
+    escalations: []
+    state: "auth_level below the intent's level and above anonymous; or retrieval decision `step_up` (retrieval-pipeline.md section 5.4). Variant by target level"
+  mode: template
+  variant_selection: condition
+  slots:
+    - {name: request_plain, source: {type: policy, ref: "intent plain label", field: plain_label}, locked: true}
+  variants:
+    - key: biometric
+      when: "target level biometric_verified"
+      text:
+        en: "You're verified for everyday requests. To {{request_plain}} I need one more check: please confirm with your fingerprint or face in the app prompt I've opened. I won't ask you to verify again for this once it's done."
+        hi: "रोज़मर्रा के अनुरोधों के लिए आपका सत्यापन हो चुका है। {{request_plain}} के लिए एक और जाँच ज़रूरी है: कृपया मेरे खोले हुए ऐप प्रॉम्प्ट में अपने फ़िंगरप्रिंट या चेहरे से पुष्टि करें। यह हो जाने के बाद मैं इसके लिए आपसे दोबारा सत्यापन नहीं माँगूँगा।"
+        hinglish: "Rozmarra ki requests ke liye aap verified hain. {{request_plain}} ke liye ek aur check zaroori hai: please mere khole hue app prompt mein apne fingerprint ya face se confirm karein. Yeh ho jaane ke baad main iske liye aapse dobara verification nahi maangunga."
+    - key: full_kyc
+      when: "target level full_kyc"
+      text:
+        en: "To {{request_plain}} the bank needs a full identity check, which is completed in the secure flow I've opened. Please don't send documents or ID numbers in this chat."
+        hi: "{{request_plain}} के लिए बैंक को पूरी पहचान जाँच चाहिए, जो मेरे खोले हुए सुरक्षित फ़्लो में पूरी होती है। कृपया इस चैट में दस्तावेज़ या पहचान संख्या न भेजें।"
+        hinglish: "{{request_plain}} ke liye bank ko poori identity check chahiye, jo mere khole hue secure flow mein complete hoti hai. Please is chat mein documents ya ID numbers na bhejein."
+    - key: for_information
+      when: "retrieval decision step_up: an answer exists but needs a higher level"
+      text:
+        en: "I can answer that once you've completed one more verification step. I've opened it for you; shall we continue after that?"
+        hi: "सत्यापन का एक और चरण पूरा होने के बाद मैं इसका जवाब दे सकता हूँ। मैंने वह आपके लिए खोल दिया है; क्या हम उसके बाद आगे बढ़ें?"
+        hinglish: "Verification ka ek aur step poora hone ke baad main iska jawab de sakta hoon. Maine woh aapke liye khol diya hai; kya hum uske baad aage badhein?"
+  safety:
+    guardrails_enforced: [GR-SEC-R2, GR-SEC-R5, GR-ATK-10]
+    must_not_contain: ["verified as full_kyc", "I am already", "share the OTP", "has been changed", "number updated"]
+    notes: "A level claimed in text has no effect (GR-SEC-R2-04). The `for_information` variant does not reveal what the answer is or that a restricted entry exists beyond the need to verify."
+  a9: {patterns: [P3, P2], anti_patterns_avoided: [AP6]}
+  kb_refs: [KB-POL-003]
+  tests: [SS-AUTH-03, SS-AUTH-05, SS-AUTH-16, GR-SEC-R2-01, GR-SEC-R2-04]
+
+- id: TPL-AUTH-OTP-FAILED
+  title: "Wrong code, and lock after repeated failures"
+  version: "1.0.0"
+  customer_facing: true
+  trigger:
+    intents: []
+    guardrails: [GR-SEC-R2, GR-ATK-10]
+    escalations: [ESC-009]
+    state: "secure widget reported a failed attempt. Variant `locked` at otp_failures_lock (XTR-02 raises ESC-009, D-115)"
+  mode: template
+  variant_selection: condition
+  slots: []
+  variants:
+    - key: retry
+      when: "failed attempt below the lock count"
+      text:
+        en: "That code didn't match. Please check the latest message on your registered contact and enter the code in the secure box again."
+        hi: "वह कोड मेल नहीं खाया। कृपया अपने पंजीकृत संपर्क पर आया सबसे नया संदेश देखें और कोड फिर से सुरक्षित बॉक्स में दर्ज करें।"
+        hinglish: "Woh code match nahi hua. Please apne registered contact par aaya latest message dekhein aur code phir se secure box mein enter karein."
+    - key: locked
+      when: "lock reached: ESC-009, P0, Security Operations"
+      text:
+        en: "For your protection I've paused verification on this chat after several unsuccessful attempts. I'm bringing in a colleague from our security team who can help you get back in safely. They'll have the details, so you won't need to repeat them."
+        hi: "आपकी सुरक्षा के लिए, कई असफल प्रयासों के बाद मैंने इस चैट में सत्यापन रोक दिया है। मैं हमारी सुरक्षा टीम के एक सहयोगी को जोड़ रहा हूँ जो आपको सुरक्षित तरीके से वापस पहुँच दिलाने में मदद करेंगे। जानकारी उनके पास होगी, इसलिए आपको दोहराना नहीं पड़ेगा।"
+        hinglish: "Aapki safety ke liye, kai unsuccessful attempts ke baad maine is chat mein verification rok diya hai. Main hamari security team ke ek colleague ko jod raha hoon jo aapko safely wapas access dilane mein madad karenge. Details unke paas hongi, isliye aapko repeat nahi karna padega."
+  safety:
+    guardrails_enforced: [GR-SEC-R2, GR-ATK-10, GR-SEC-R6]
+    must_not_contain: ["one more attempt is allowed", "attempts left", "the code was close", "try again in", "suspicious", "you are blocked"]
+    notes: "The number of attempts remaining is never stated (no oracle for guessing). No accusation: a locked-out customer is usually the real customer."
+  a9: {patterns: [P4], anti_patterns_avoided: [AP1, AP5]}
+  kb_refs: [KB-POL-003, KB-TRB-007]
+  tests: [GR-ATK-10-05, XTR-T-02-01, XTR-T-02-02]
+
+- id: TPL-AUTH-SESSION-TIMEOUT
+  title: "Session expired after inactivity"
+  version: "1.0.0"
+  customer_facing: true
+  trigger:
+    intents: []
+    guardrails: [GR-SEC-R7]
+    escalations: []
+    state: "auth_expiry passed (session_timeout_minutes of customer inactivity): auth_level set to anonymous, pending_confirmation void. Variant by what was pending"
+  mode: template
+  variant_selection: condition
+  slots:
+    - {name: pending_action_plain, source: {type: state, ref: "the voided pending_confirmation, plain label, masked", field: text}, locked: true, required: false}
+  variants:
+    - key: plain
+      when: "no pending confirmation"
+      text:
+        en: "For your security, your verified session ended while the chat was idle. Everything we discussed is still here. Please verify again in the secure box and we'll carry on from where we stopped."
+        hi: "आपकी सुरक्षा के लिए, चैट के निष्क्रिय रहने के दौरान आपका सत्यापित सत्र समाप्त हो गया। हमारी अब तक की बातचीत यहीं है। कृपया सुरक्षित बॉक्स में दोबारा सत्यापन करें, फिर हम वहीं से आगे बढ़ेंगे जहाँ रुके थे।"
+        hinglish: "Aapki security ke liye, chat idle rehne ke dauran aapka verified session khatm ho gaya. Hamari ab tak ki baatcheet yahin hai. Please secure box mein dobara verify karein, phir hum wahin se aage badhenge jahan ruke the."
+    - key: confirmation_void
+      when: "a confirmation arrived after expiry, or a confirmation was pending at expiry"
+      text:
+        en: "For your security, your verified session ended while the chat was idle, so I have not gone ahead with {{pending_action_plain}}. Please verify again in the secure box, and I'll ask you to confirm it once more."
+        hi: "आपकी सुरक्षा के लिए, चैट के निष्क्रिय रहने के दौरान आपका सत्यापित सत्र समाप्त हो गया, इसलिए मैंने {{pending_action_plain}} पर कार्रवाई नहीं की है। कृपया सुरक्षित बॉक्स में दोबारा सत्यापन करें, फिर मैं आपसे एक बार और पुष्टि माँगूँगा।"
+        hinglish: "Aapki security ke liye, chat idle rehne ke dauran aapka verified session khatm ho gaya, isliye maine {{pending_action_plain}} par action nahi liya hai. Please secure box mein dobara verify karein, phir main aapse ek baar aur confirmation maangunga."
+  safety:
+    guardrails_enforced: [GR-SEC-R7, GR-SEC-R2, GR-OUT-05]
+    must_not_contain: ["timeout", "timed out", "is confirmed", "has been confirmed", "all done", "your fault"]
+    notes: "The duration is not stated in the text; it is the governed parameter session_timeout_minutes (ceiling 5, D-56). This is the one legitimate re-verification request: it is not Authentication Theatre because the session really has expired."
+  a9: {patterns: [P5, P3], anti_patterns_avoided: [AP6, AP3]}
+  kb_refs: [KB-POL-003]
+  tests: [GR-SEC-R7-01, GR-SEC-R7-02, GR-ATK-10-06, GR-SEC-R2-05]
+
+- id: TPL-SEC-DO-NOT-SHARE
+  title: "Customer typed a credential or a full identifier in chat"
+  version: "1.0.0"
+  customer_facing: true
+  legacy_names: [ask_not_to_share_card, ask_not_to_share_cvv, ask_not_to_share_aadhaar, ask_not_to_share_secret, use_secure_widget, use_secure_form, use_masked_reference]
+  trigger:
+    intents: []
+    guardrails: [GR-SEC-R1, GR-SEC-R5, GR-REG-06, GR-REG-05]
+    escalations: []
+    state: "Input Guard redaction RED-01 to RED-07 fired on the customer's message. Variant by redaction rule (the `reply` key of config/entities.yaml)"
+  mode: template
+  variant_selection: condition
+  slots: []
+  variants:
+    - key: ask_not_to_share_card
+      when: "RED-01 full card number"
+      text:
+        en: "For your safety, please don't share your full card number in chat. I haven't kept it. I only ever need the last four digits, and I can find your card once you're verified."
+        hi: "आपकी सुरक्षा के लिए, कृपया चैट में अपना पूरा कार्ड नंबर साझा न करें। मैंने उसे सुरक्षित नहीं रखा है। मुझे केवल आख़िरी चार अंकों की ज़रूरत होती है, और सत्यापन के बाद मैं आपका कार्ड ढूँढ सकता हूँ।"
+        hinglish: "Aapki safety ke liye, please chat mein apna poora card number share na karein. Maine use save nahi kiya hai. Mujhe sirf last chaar digits ki zaroorat hoti hai, aur verification ke baad main aapka card dhoondh sakta hoon."
+    - key: ask_not_to_share_cvv
+      when: "RED-02 CVV or CVC"
+      text:
+        en: "Please never share your card's security code with anyone, including me. I haven't kept it. Because it has been typed here, I'd suggest blocking the card to be safe. Shall I help you with that?"
+        hi: "कृपया अपने कार्ड का सुरक्षा कोड कभी किसी के साथ साझा न करें, मेरे साथ भी नहीं। मैंने उसे सुरक्षित नहीं रखा है। चूँकि वह यहाँ लिखा जा चुका है, सुरक्षा के लिए कार्ड ब्लॉक करना बेहतर होगा। क्या मैं इसमें आपकी मदद करूँ?"
+        hinglish: "Please apne card ka security code kabhi kisi ke saath share na karein, mere saath bhi nahi. Maine use save nahi kiya hai. Kyunki woh yahan type ho chuka hai, safety ke liye card block karna behtar hoga. Kya main ismein aapki madad karoon?"
+    - key: ask_not_to_share_aadhaar
+      when: "RED-03 full Aadhaar number"
+      text:
+        en: "For your safety, please don't share your Aadhaar number in chat. I haven't kept it. Identity documents are handled only through the secure form, which I can open for you."
+        hi: "आपकी सुरक्षा के लिए, कृपया चैट में अपना आधार नंबर साझा न करें। मैंने उसे सुरक्षित नहीं रखा है। पहचान दस्तावेज़ केवल सुरक्षित फ़ॉर्म के ज़रिए लिए जाते हैं, जिसे मैं आपके लिए खोल सकता हूँ।"
+        hinglish: "Aapki safety ke liye, please chat mein apna Aadhaar number share na karein. Maine use save nahi kiya hai. Identity documents sirf secure form ke through liye jaate hain, jo main aapke liye khol sakta hoon."
+    - key: ask_not_to_share_secret
+      when: "RED-04 PIN or password"
+      text:
+        en: "Please don't share your PIN or password with anyone, including me. I haven't kept it. Because it has been typed here, please change it straight away. I can send a reset link to your registered contact if that helps."
+        hi: "कृपया अपना पिन या पासवर्ड किसी के साथ साझा न करें, मेरे साथ भी नहीं। मैंने उसे सुरक्षित नहीं रखा है। चूँकि वह यहाँ लिखा जा चुका है, कृपया उसे तुरंत बदल लें। अगर इससे मदद मिले तो मैं आपके पंजीकृत संपर्क पर रीसेट लिंक भेज सकता हूँ।"
+        hinglish: "Please apna PIN ya password kisi ke saath share na karein, mere saath bhi nahi. Maine use save nahi kiya hai. Kyunki woh yahan type ho chuka hai, please use turant badal lein. Agar isse madad mile to main aapke registered contact par reset link bhej sakta hoon."
+    - key: use_secure_widget
+      when: "RED-05 one-time code typed in chat"
+      text:
+        en: "Please don't type one-time codes in chat; I can't use a code sent here and I haven't kept it. Enter it in the secure verification box instead."
+        hi: "कृपया वन-टाइम कोड चैट में न लिखें; यहाँ भेजे गए कोड का मैं उपयोग नहीं कर सकता और मैंने उसे सुरक्षित नहीं रखा है। उसे सुरक्षित सत्यापन बॉक्स में दर्ज करें।"
+        hinglish: "Please one-time code chat mein type na karein; yahan bheje gaye code ko main use nahi kar sakta aur maine use save nahi kiya hai. Use secure verification box mein enter karein."
+    - key: use_secure_form
+      when: "RED-06 full PAN"
+      text:
+        en: "For your safety, please don't share your PAN in chat. I haven't kept it. I can open the secure form where it can be entered and checked."
+        hi: "आपकी सुरक्षा के लिए, कृपया चैट में अपना पैन साझा न करें। मैंने उसे सुरक्षित नहीं रखा है। मैं वह सुरक्षित फ़ॉर्म खोल सकता हूँ जहाँ उसे दर्ज और जाँचा जा सकता है।"
+        hinglish: "Aapki safety ke liye, please chat mein apna PAN share na karein. Maine use save nahi kiya hai. Main woh secure form khol sakta hoon jahan use enter aur check kiya ja sakta hai."
+    - key: use_masked_reference
+      when: "RED-07 full account number"
+      text:
+        en: "You don't need to share your full account number here, and I haven't kept it. Once you're verified I can find your account and will refer to it by its last four digits."
+        hi: "आपको यहाँ अपना पूरा खाता नंबर साझा करने की ज़रूरत नहीं है, और मैंने उसे सुरक्षित नहीं रखा है। सत्यापन के बाद मैं आपका खाता ढूँढ सकता हूँ और उसका उल्लेख उसके आख़िरी चार अंकों से करूँगा।"
+        hinglish: "Aapko yahan apna poora account number share karne ki zaroorat nahi hai, aur maine use save nahi kiya hai. Verification ke baad main aapka account dhoondh sakta hoon aur use uske last chaar digits se refer karunga."
+  safety:
+    guardrails_enforced: [GR-SEC-R1, GR-SEC-R5, GR-REG-05, GR-REG-06, GR-OUT-02]
+    must_not_contain: ["you sent", "I have saved", "PIN saved", "has been saved", "you are verified", "verification successful", "[SECRET_REDACTED]", "CVV is"]
+    notes: "The value is never echoed, not even masked, in this reply. Said once; the conversation then continues with the customer's actual request (legitimate remainder). A typed OTP never authenticates. A postal PIN code is not a secret (D-35) and does not trigger this template."
+  a9: {patterns: [P4], anti_patterns_avoided: [AP1, AP5]}
+  kb_refs: [KB-POL-011, KB-POL-002, KB-REG-003]
+  tests: [GR-SEC-R1-01, GR-SEC-R1-02, GR-SEC-R5-01, GR-SEC-R5-02, GR-SEC-R5-03, GR-SEC-R5-05, GR-REG-06-02, SS-PII-01, SS-PII-03]

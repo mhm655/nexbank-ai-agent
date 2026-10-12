@@ -49,7 +49,7 @@ Evaluated in strict order; the first rule that fires decides the action.
 
 1. **Safety rules (deterministic, immutable):** Input Guard blocks, crisis, fraud signals, prohibited requests (fund transfer, nominee change) lead to refuse/escalate.
 2. **Auth rules:** insufficient auth leads to `AUTH_REQUIRED` (transfer to the auth flow).
-3. **Escalation triggers:** human request (second request always honoured), repeated low confidence, high frustration, regulatory uncertainty, and so on.
+3. **Escalation triggers:** human request (honoured from the first explicit request, XTR-01; ESC-006 at the third, `docs/escalation/triggers.md` section 5), repeated low confidence, high frustration, regulatory uncertainty, and so on.
 4. **Deterministic flows:** confirm-before-act for side-effect tools; slot-filling for known intents.
 5. **Learned ranker (lowest precedence):** chooses among *safe* candidate actions (clarify wording, proactive suggestion, recommend timing). It can never override rules 1-4 and cannot add tools.
 

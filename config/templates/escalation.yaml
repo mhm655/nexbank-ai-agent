@@ -1,0 +1,476 @@
+# Escalation and handoff templates (family ESC). Names fixed on Day 12: docs/escalation/routing-and-handoff.md section 11.
+# Shape of a warm handoff (section 6.1): acknowledge, what happens now, no repetition, honest wait, what the agent does meanwhile.
+# No template states a wait time unless the router supplied one, and then as an estimate. No template gives a reason for a
+# discreet or silent handoff. Team names are the brief's queue names (A6) in plain words, supplied by the router.
+schema_version: "1.0"
+family: ESC
+review: {hi: not_native_reviewed, hinglish: not_native_reviewed}
+
+templates:
+
+- id: TPL-ESC-HANDOFF-WARM
+  title: "Warm handoff to a human team"
+  version: "1.0.0"
+  customer_facing: true
+  trigger:
+    intents: [GEN-003, CMP-003, CMP-005, TXN-002]
+    guardrails: [GR-SEC-R6, GR-REG-16, GR-REG-18, GR-SYS-01]
+    escalations: [ESC-002, ESC-003, ESC-004, ESC-005, ESC-006, ESC-007, ESC-008, ESC-010, ESC-014]
+    state: "dialogue_phase ESCALATING with handoff_mode warm; also XTR-01, XTR-03, XTR-04 and XTR-06 handoffs. Variant by trigger class"
+  mode: hybrid
+  variant_selection: condition
+  slots:
+    - name: ack
+      source: {type: llm, ref: "one specific acknowledgement of the customer's situation", field: text}
+      locked: false
+      constraints: {max_words: 25, sentences: 1, must_not: [digits, apology_repetition, promise, product_mention, reason_for_handoff_not_supplied]}
+      fallback: {en: "I can see why this matters to you.", hi: "मैं समझ सकता हूँ कि यह आपके लिए क्यों ज़रूरी है।", hinglish: "Main samajh sakta hoon ki yeh aapke liye kyun zaroori hai."}
+    - {name: team_plain, source: {type: router, ref: "config/templates/labels.yaml queue_plain_names for the target queue", field: plain_name}, locked: true}
+    - {name: meanwhile, source: {type: policy, ref: "what the agent has already noted for the package (actions_taken, filled slots), masked", field: text}, locked: true, required: false}
+    - {name: queue_wait, source: {type: router, ref: "queue platform forecast", field: estimated_wait_text}, locked: true, required: false}
+  variants:
+    - key: standard
+      when: "ESC-002, ESC-004, ESC-005, ESC-007, ESC-010, XTR-03, XTR-04, XTR-06; no wait estimate"
+      text:
+        en: "{{ack}} A colleague from our {{team_plain}} is the right person for this, and I'm bringing them into this chat. They'll have the full details, so you won't need to repeat yourself. I'll stay here until they join. {{meanwhile}}"
+        hi: "{{ack}} इसके लिए हमारी {{team_plain}} के एक सहयोगी सही व्यक्ति हैं, और मैं उन्हें इस चैट में जोड़ रहा हूँ। उनके पास पूरी जानकारी होगी, इसलिए आपको दोहराना नहीं पड़ेगा। उनके जुड़ने तक मैं यहीं हूँ। {{meanwhile}}"
+        hinglish: "{{ack}} Iske liye hamari {{team_plain}} ke ek colleague sahi person hain, aur main unhe is chat mein jod raha hoon. Unke paas poori details hongi, isliye aapko repeat nahi karna padega. Unke join karne tak main yahin hoon. {{meanwhile}}"
+    - key: standard_with_wait
+      when: "as standard, and the router supplied a wait estimate"
+      text:
+        en: "{{ack}} A colleague from our {{team_plain}} is the right person for this, and I'm bringing them into this chat. They'll have the full details, so you won't need to repeat yourself. The current estimate is {{queue_wait}}; it is an estimate, and I'll stay here until they join. {{meanwhile}}"
+        hi: "{{ack}} इसके लिए हमारी {{team_plain}} के एक सहयोगी सही व्यक्ति हैं, और मैं उन्हें इस चैट में जोड़ रहा हूँ। उनके पास पूरी जानकारी होगी, इसलिए आपको दोहराना नहीं पड़ेगा। अभी का अनुमान {{queue_wait}} है; यह केवल अनुमान है, और उनके जुड़ने तक मैं यहीं हूँ। {{meanwhile}}"
+        hinglish: "{{ack}} Iske liye hamari {{team_plain}} ke ek colleague sahi person hain, aur main unhe is chat mein jod raha hoon. Unke paas poori details hongi, isliye aapko repeat nahi karna padega. Abhi ka estimate {{queue_wait}} hai; yeh sirf estimate hai, aur unke join karne tak main yahin hoon. {{meanwhile}}"
+    - key: customer_asked
+      when: "ESC-006 or XTR-01 (the customer asked for a person); no justification asked, no persuasion, no ack slot"
+      text:
+        en: "Of course. I'm connecting you to a colleague now. They'll have our conversation so far, so you won't need to start again."
+        hi: "ज़रूर। मैं आपको अभी हमारे एक सहयोगी से जोड़ रहा हूँ। उनके पास अब तक की हमारी बातचीत होगी, इसलिए आपको दोबारा शुरू नहीं करना पड़ेगा।"
+        hinglish: "Zaroor. Main aapko abhi hamare ek colleague se connect kar raha hoon. Unke paas ab tak ki hamari baatcheet hogi, isliye aapko dobara shuru nahi karna padega."
+    - key: regulatory_uncertain
+      when: "ESC-008 (retrieval decision escalate_esc_008)"
+      text:
+        en: "I want to give you an accurate answer here, and I don't have the specifics confirmed. A colleague from our {{team_plain}} can confirm them, and I'm bringing them into this chat with your question."
+        hi: "मैं आपको सही जवाब देना चाहता हूँ, और इसकी सटीक जानकारी मेरे पास पुष्ट नहीं है। हमारी {{team_plain}} के एक सहयोगी इसकी पुष्टि कर सकते हैं, और मैं उन्हें आपके सवाल के साथ इस चैट में जोड़ रहा हूँ।"
+        hinglish: "Main aapko sahi jawab dena chahta hoon, aur iski exact details mere paas confirmed nahi hain. Hamari {{team_plain}} ke ek colleague ise confirm kar sakte hain, aur main unhe aapke sawaal ke saath is chat mein jod raha hoon."
+    - key: system_error
+      when: "ESC-014 (a read failed after the allowed retry)"
+      text:
+        en: "I can't reach those records right now, and I don't want to guess. I'm connecting you to a colleague from our {{team_plain}} who can check another way. They'll have what you've told me."
+        hi: "मैं अभी उन रिकॉर्ड तक नहीं पहुँच पा रहा हूँ, और मैं अंदाज़ा नहीं लगाना चाहता। मैं आपको हमारी {{team_plain}} के एक सहयोगी से जोड़ रहा हूँ जो दूसरे तरीके से जाँच कर सकते हैं। आपने जो बताया है, वह उनके पास होगा।"
+        hinglish: "Main abhi un records tak nahi pahunch pa raha hoon, aur main guess nahi karna chahta. Main aapko hamari {{team_plain}} ke ek colleague se connect kar raha hoon jo doosre tareeke se check kar sakte hain. Aapne jo bataya hai, woh unke paas hoga."
+    - key: could_not_understand
+      when: "ESC-003 (repeated low confidence)"
+      text:
+        en: "I'm sorry, I haven't been able to understand what you need, and I don't want to keep you going in circles. I'm bringing in a colleague from our {{team_plain}} who can help directly."
+        hi: "क्षमा करें, मैं ठीक से समझ नहीं पाया कि आपको क्या चाहिए, और मैं आपको बार-बार वही नहीं पूछना चाहता। मैं हमारी {{team_plain}} के एक सहयोगी को जोड़ रहा हूँ जो सीधे मदद कर सकेंगे।"
+        hinglish: "Sorry, main theek se samajh nahi paya ki aapko kya chahiye, aur main aapko baar-baar wahi nahi poochna chahta. Main hamari {{team_plain}} ke ek colleague ko jod raha hoon jo seedhe madad kar sakenge."
+  safety:
+    guardrails_enforced: [GR-SEC-R6, GR-OUT-05, GR-OUT-04, GR-REG-16, GR-REG-04]
+    must_not_contain: ["within", "minutes", "will be refunded", "why do you want", "before I transfer you", "timeout", "exception", "technical issue", "special offer", "CSAT"]
+    notes: "The `ack` slot is the only free text. Team name comes from the router, never from the model. The agent does not re-ask for an OTP because of the handoff (the package carries the auth level)."
+  a9: {patterns: [P1, P4, P5], anti_patterns_avoided: [AP1, AP2, AP3, AP5, AP6, AP7]}
+  kb_refs: [KB-ESC-001, KB-ESC-003, KB-ESC-005, KB-ESC-006, KB-ESC-008, KB-TRB-009]
+  tests: [ESC-T-005-01, ESC-T-002-01, ESC-T-004-01, ESC-T-006-01, ESC-T-008-01, ESC-T-014-01, ESC-T-003-01, XTR-T-01-01, SS-ESC-13]
+
+- id: TPL-ESC-HANDOFF-DISCREET
+  title: "Discreet handoff (no reason given)"
+  version: "1.0.0"
+  customer_facing: true
+  trigger:
+    intents: []
+    guardrails: [GR-REG-11]
+    escalations: [ESC-015, ESC-009]
+    state: "handoff_mode discreet, only when a live handoff is made: ESC-015 on an account-specific request by an identified flagged customer (a record created without a handoff produces no customer message), and the system-detected ESC-009 pattern"
+  mode: template
+  variant_selection: single
+  slots: []
+  variants:
+    - key: default
+      text:
+        en: "A colleague will help you with this request. I'm bringing them into this chat, and they'll have the details so far, so you won't need to repeat anything."
+        hi: "इस अनुरोध में हमारे एक सहयोगी आपकी मदद करेंगे। मैं उन्हें इस चैट में जोड़ रहा हूँ, और अब तक की जानकारी उनके पास होगी, इसलिए आपको कुछ दोहराना नहीं पड़ेगा।"
+        hinglish: "Is request mein hamare ek colleague aapki madad karenge. Main unhe is chat mein jod raha hoon, aur ab tak ki details unke paas hongi, isliye aapko kuch repeat nahi karna padega."
+  safety:
+    guardrails_enforced: [GR-REG-11, GR-REG-09, GR-SEC-R6]
+    must_not_contain: ["PEP", "politically exposed", "enhanced due diligence", "flag", "because", "compliance", "review of your account", "suspicious", "specialist team", "security team"]
+    notes: "No reason slot exists, so no reason can be rendered. A plain 'colleague', not a team name, so the wording does not hint at the queue."
+  a9: {patterns: [P5], anti_patterns_avoided: [AP3, AP6, AP8]}
+  kb_refs: [KB-ESC-009]
+  tests: [ESC-T-015-01, GR-REG-11-01, SS-ESC-19, ESC-T-009-03, ESC-BOSS-L6-08]
+
+- id: TPL-ESC-FRAUD-P0
+  title: "Fraud or unauthorised access (P0): protective step first, then the team"
+  version: "1.0.0"
+  customer_facing: true
+  trigger:
+    intents: [SEC-001, SEC-004, SEC-002, CRD-001]
+    guardrails: [GR-SEC-R6, GR-SEC-R5]
+    escalations: [ESC-001, ESC-009]
+    state: "fraud_signal or access_report with source customer_report. Variant by auth level and by whether a protective action is available"
+  mode: template
+  variant_selection: condition
+  slots:
+    - {name: card_last4, source: {type: tool, ref: get_card_status, field: masked_last4}, locked: true, required: false}
+    - {name: protected_now, source: {type: tool, ref: "block_card result or flag_fraud result", field: "status text with reference_id"}, locked: true, required: false}
+  variants:
+    - key: offer_block_verified
+      when: "auth_level at or above otp_verified and a card is involved"
+      text:
+        en: "I'm sorry this has happened, and I'm treating it as urgent. First, to stop any further use: shall I block your card ending {{card_last4}} now? Please reply yes or no. Either way, I'm bringing in our fraud team, who will have everything you've told me."
+        hi: "मुझे खेद है कि ऐसा हुआ, और मैं इसे तुरंत ध्यान देने वाला मामला मान रहा हूँ। सबसे पहले, आगे के इस्तेमाल को रोकने के लिए: क्या मैं {{card_last4}} पर समाप्त होने वाला आपका कार्ड अभी ब्लॉक कर दूँ? कृपया हाँ या नहीं में जवाब दें। दोनों ही स्थितियों में मैं हमारी फ्रॉड टीम को जोड़ रहा हूँ, जिनके पास आपकी बताई हर बात होगी।"
+        hinglish: "Mujhe khed hai ki aisa hua, aur main ise urgent maan raha hoon. Sabse pehle, aage ka use rokne ke liye: kya main {{card_last4}} par khatm hone wala aapka card abhi block kar doon? Please haan ya nahi mein jawab dein. Dono hi cases mein main hamari fraud team ko jod raha hoon, jinke paas aapki batayi har baat hogi."
+    - key: anonymous_fast_verify
+      when: "auth_level anonymous: report accepted, fast verification before any protective action (D-16)"
+      text:
+        en: "I'm sorry this has happened, and I'm treating it as urgent. I've noted your report and I'm bringing in our fraud team now. So that I can protect your card straight away, please complete the quick secure verification I'm opening. Please don't type any card number, PIN or code in this chat."
+        hi: "मुझे खेद है कि ऐसा हुआ, और मैं इसे तुरंत ध्यान देने वाला मामला मान रहा हूँ। मैंने आपकी सूचना दर्ज कर ली है और अभी हमारी फ्रॉड टीम को जोड़ रहा हूँ। ताकि मैं आपका कार्ड तुरंत सुरक्षित कर सकूँ, कृपया वह छोटा सुरक्षित सत्यापन पूरा करें जो मैं खोल रहा हूँ। कृपया इस चैट में कोई कार्ड नंबर, पिन या कोड न लिखें।"
+        hinglish: "Mujhe khed hai ki aisa hua, aur main ise urgent maan raha hoon. Maine aapki report note kar li hai aur abhi hamari fraud team ko jod raha hoon. Taaki main aapka card turant protect kar sakoon, please woh quick secure verification poora karein jo main khol raha hoon. Please is chat mein koi card number, PIN ya code na likhein."
+    - key: after_protective_step
+      when: "the protective tool returned a result"
+      text:
+        en: "{{protected_now}} Our fraud team is joining this chat and will take it from here. If you've shared a PIN, password or code with anyone, please change it straight away."
+        hi: "{{protected_now}} हमारी फ्रॉड टीम इस चैट में जुड़ रही है और आगे का काम वही संभालेगी। अगर आपने किसी के साथ पिन, पासवर्ड या कोड साझा किया है, तो कृपया उसे तुरंत बदल लें।"
+        hinglish: "{{protected_now}} Hamari fraud team is chat mein jud rahi hai aur aage ka kaam wahi sambhalegi. Agar aapne kisi ke saath PIN, password ya code share kiya hai, to please use turant badal lein."
+    - key: access_report
+      when: "ESC-009 reported by the customer (unauthorised access, no card step)"
+      text:
+        en: "Thank you for telling me straight away; I'm treating this as urgent. I'm bringing in our security team now, and they'll have what you've told me. Please change your password and PIN as soon as you can, and don't share any code in this chat."
+        hi: "तुरंत बताने के लिए धन्यवाद; मैं इसे तुरंत ध्यान देने वाला मामला मान रहा हूँ। मैं अभी हमारी सुरक्षा टीम को जोड़ रहा हूँ, और आपकी बताई बात उनके पास होगी। कृपया जितनी जल्दी हो सके अपना पासवर्ड और पिन बदल लें, और इस चैट में कोई कोड साझा न करें।"
+        hinglish: "Turant batane ke liye thanks; main ise urgent maan raha hoon. Main abhi hamari security team ko jod raha hoon, aur aapki batayi baat unke paas hogi. Please jitni jaldi ho sake apna password aur PIN badal lein, aur is chat mein koi code share na karein."
+  safety:
+    guardrails_enforced: [GR-SEC-R6, GR-SEC-R5, GR-SEC-R2, GR-OUT-05, GR-REG-04, GR-REG-06]
+    must_not_contain: ["refund", "you will get your money back", "are you sure you did not", "no one is available", "try later", "nothing to worry about", "card has been blocked", "offer"]
+    notes: "No refund or outcome promise (SS-COM-03). The block is never claimed before the tool result; the after_protective_step text comes from the tool. No cross-sell, no survey. Offering the block after fast verification for an anonymous customer is the D-94 deviation from Case Study 2, still open with the Risk Committee and CEB."
+  a9: {patterns: [P1, P3], anti_patterns_avoided: [AP3, AP5, AP6, AP7]}
+  kb_refs: [KB-ESC-002, KB-POL-006, KB-POL-011]
+  tests: [ESC-T-001-01, GR-SEC-R6-01, GR-SEC-R6-02, SS-ESC-01, SS-COM-03, ESC-T-009-01, SS-ESC-12, GR-ATK-05-07]
+
+- id: TPL-ESC-CRISIS
+  title: "Crisis response (self-harm, threat or emergency): fixed reviewed text"
+  version: "1.0.0"
+  customer_facing: true
+  trigger:
+    intents: [GEN-007]
+    guardrails: []
+    escalations: [ESC-011]
+    state: "Input Guard crisis screen or GEN-007 at flow_entry_confidence. Variant by sub-type. Follow-up lines rotate while waiting"
+  mode: template
+  variant_selection: condition
+  slots: []
+  variants:
+    - key: self_harm
+      when: "self-harm or hopelessness disclosure"
+      text:
+        en: "I'm really sorry you're going through this, and I'm glad you told me. You matter, and you don't have to face this alone. I'm an AI assistant, so I'm bringing in a person from our team right now who can talk with you. If you are in immediate danger, please contact your local emergency services or reach out to someone you trust who can be with you."
+        hi: "मुझे बहुत दुख है कि आप इस दौर से गुज़र रहे हैं, और अच्छा हुआ कि आपने मुझे बताया। आप मायने रखते हैं, और आपको इसका सामना अकेले नहीं करना है। मैं एक AI सहायक हूँ, इसलिए मैं अभी हमारी टीम के एक व्यक्ति को जोड़ रहा हूँ जो आपसे बात कर सकें। अगर आप अभी किसी खतरे में हैं, तो कृपया अपनी स्थानीय आपातकालीन सेवाओं से संपर्क करें या किसी भरोसेमंद व्यक्ति को अपने पास बुलाएँ।"
+        hinglish: "Mujhe bahut dukh hai ki aap is daur se guzar rahe hain, aur accha hua ki aapne mujhe bataya. Aap maayne rakhte hain, aur aapko iska saamna akele nahi karna hai. Main ek AI assistant hoon, isliye main abhi hamari team ke ek person ko jod raha hoon jo aapse baat kar sakein. Agar aap abhi kisi khatre mein hain, to please apni local emergency services se contact karein ya kisi bharosemand insaan ko apne paas bulayein."
+    - key: threat_or_emergency
+      when: "threat to the customer's or another person's safety, or an emergency in progress"
+      text:
+        en: "Your safety comes first. If you or anyone else is in danger right now, please contact your local emergency services straight away. I'm an AI assistant, and I'm bringing in a person from our team now. Everything else can wait."
+        hi: "आपकी सुरक्षा सबसे पहले है। अगर आप या कोई और अभी खतरे में है, तो कृपया तुरंत अपनी स्थानीय आपातकालीन सेवाओं से संपर्क करें। मैं एक AI सहायक हूँ, और मैं अभी हमारी टीम के एक व्यक्ति को जोड़ रहा हूँ। बाकी सब कुछ बाद में हो सकता है।"
+        hinglish: "Aapki safety sabse pehle hai. Agar aap ya koi aur abhi khatre mein hai, to please turant apni local emergency services se contact karein. Main ek AI assistant hoon, aur main abhi hamari team ke ek person ko jod raha hoon. Baaki sab kuch baad mein ho sakta hai."
+    - key: follow_up_a
+      when: "customer writes again before a human joins (rotates with follow_up_b)"
+      text:
+        en: "I'm here with you. A person from our team is joining this chat."
+        hi: "मैं यहीं आपके साथ हूँ। हमारी टीम के एक व्यक्ति इस चैट में जुड़ रहे हैं।"
+        hinglish: "Main yahin aapke saath hoon. Hamari team ke ek person is chat mein jud rahe hain."
+    - key: follow_up_b
+      when: "customer writes again before a human joins (rotates with follow_up_a)"
+      text:
+        en: "Thank you for staying with me. You're not alone in this, and someone from our team will be with you here."
+        hi: "मेरे साथ बने रहने के लिए धन्यवाद। आप इसमें अकेले नहीं हैं, और हमारी टीम का कोई व्यक्ति यहीं आपके साथ होगा।"
+        hinglish: "Mere saath bane rehne ke liye thanks. Aap ismein akele nahi hain, aur hamari team ka koi person yahin aapke saath hoga."
+  safety:
+    guardrails_enforced: [GR-REG-16, GR-OUT-05, GR-REG-04, GR-OUT-06]
+    must_not_contain: ["balance", "account", "card", "loan", "EMI", "offer", "CSAT", "rate your", "calm down", "minutes", "I understand how you feel", "restructuring"]
+    notes: "REVIEW REQUIRED BEFORE USE: this wording is a specification draft and has not been reviewed by the Crisis Response team or a clinical adviser; routing-and-handoff.md section 6.2 requires reviewed text. No free slot, no banking content, no wait estimate, no survey. No helpline number is given because the brief and the KB hold none (D-146): numbers must be added as a KB entry by the Crisis Response team and would then arrive through a locked slot. ESC-011 is router-owned and has no guardrail in the registry (D-135)."
+  a9: {patterns: [P1], anti_patterns_avoided: [AP1, AP2, AP3, AP5, AP7]}
+  kb_refs: [KB-ESC-004]
+  tests: [ESC-T-011-01, SS-ESC-14, SS-ESC-15, ESC-BOSS-L6-02, ESC-BOSS-L6-05]
+
+- id: TPL-ESC-WAIT-UPDATE
+  title: "Status while waiting for a human (rotating; each adds information)"
+  version: "1.0.0"
+  customer_facing: true
+  trigger:
+    intents: []
+    guardrails: [GR-OUT-05]
+    escalations: [ESC-002, ESC-003, ESC-004, ESC-005, ESC-006, ESC-007, ESC-008, ESC-010, ESC-013, ESC-014]
+    state: "pending P1 or P2 escalation, warm mode, at most one update per wait_update_interval_seconds; never for ESC-011 (TPL-ESC-CRISIS follow-ups) and never for silent cases"
+  mode: template
+  variant_selection: rotate
+  slots:
+    - {name: team_plain, source: {type: router, ref: "config/templates/labels.yaml queue_plain_names for the target queue", field: plain_name}, locked: true}
+    - {name: noted_item, source: {type: policy, ref: "latest item appended to the handoff package, masked", field: text}, locked: true, required: false}
+    - {name: queue_wait, source: {type: router, ref: "queue platform forecast", field: estimated_wait_text}, locked: true, required: false}
+  variants:
+    - key: still_here
+      when: "first update"
+      text:
+        en: "I'm still here with you. Your request is with our {{team_plain}} and a colleague will join this chat."
+        hi: "मैं अब भी यहीं आपके साथ हूँ। आपका अनुरोध हमारी {{team_plain}} के पास है और एक सहयोगी इस चैट में जुड़ेंगे।"
+        hinglish: "Main ab bhi yahin aapke saath hoon. Aapki request hamari {{team_plain}} ke paas hai aur ek colleague is chat mein judenge."
+    - key: noted
+      when: "the customer added something since the last update"
+      text:
+        en: "Thanks, I've added that for my colleague: {{noted_item}} You won't need to explain it again."
+        hi: "धन्यवाद, मैंने यह अपने सहयोगी के लिए जोड़ दिया है: {{noted_item}} आपको इसे दोबारा समझाना नहीं पड़ेगा।"
+        hinglish: "Thanks, maine yeh apne colleague ke liye add kar diya hai: {{noted_item}} Aapko ise dobara explain nahi karna padega."
+    - key: estimate
+      when: "the router supplied or changed a wait estimate"
+      text:
+        en: "A quick update: the current estimate for our {{team_plain}} is {{queue_wait}}. It is an estimate, and I'll stay with you."
+        hi: "एक छोटी जानकारी: हमारी {{team_plain}} के लिए अभी का अनुमान {{queue_wait}} है। यह केवल अनुमान है, और मैं आपके साथ बना रहूँगा।"
+        hinglish: "Ek chhota update: hamari {{team_plain}} ke liye abhi ka estimate {{queue_wait}} hai. Yeh sirf estimate hai, aur main aapke saath bana rahunga."
+    - key: choice_at_warn
+      when: "sla_warn_fraction of the SLA reached with no acceptance (P1, P2 only): hand over to TPL-ESC-CALLBACK-OFFER"
+      text:
+        en: "This is taking longer than I'd like, and I'm sorry for the wait. You can keep waiting here with me, or I can request a callback instead. Which would you prefer?"
+        hi: "इसमें मेरी अपेक्षा से अधिक समय लग रहा है, और इंतज़ार के लिए मुझे खेद है। आप यहीं मेरे साथ इंतज़ार जारी रख सकते हैं, या मैं इसकी जगह कॉलबैक का अनुरोध कर सकता हूँ। आप क्या पसंद करेंगे?"
+        hinglish: "Ismein meri umeed se zyada time lag raha hai, aur wait ke liye mujhe khed hai. Aap yahin mere saath wait jaari rakh sakte hain, ya main iski jagah callback request kar sakta hoon. Aap kya prefer karenge?"
+  safety:
+    guardrails_enforced: [GR-OUT-05, GR-OUT-04]
+    must_not_contain: ["shortly", "any moment", "within", "you are number", "thank you for your patience", "your call is important"]
+    notes: "The same variant is never sent twice in a row; an update is sent only if it adds information (routing-and-handoff.md section 7). A P0 customer is never offered a way out of the queue."
+  a9: {patterns: [P5, P4], anti_patterns_avoided: [AP1, AP3, AP7]}
+  kb_refs: [KB-ESC-001, KB-POL-007]
+  tests: [SS-COM-09, ESC-T-010-01, SS-ESC-13]
+
+- id: TPL-ESC-HUMAN-JOINED
+  title: "Introduction when the human joins (one line to both sides)"
+  version: "1.0.0"
+  customer_facing: true
+  trigger:
+    intents: []
+    guardrails: []
+    escalations: [ESC-001, ESC-002, ESC-003, ESC-004, ESC-005, ESC-006, ESC-007, ESC-008, ESC-009, ESC-010, ESC-013, ESC-014, ESC-015]
+    state: "human accepted the conversation (dialogue_phase HANDOFF); the agent posts this once and stops replying"
+  mode: template
+  variant_selection: condition
+  slots:
+    - {name: agent_first_name, source: {type: router, ref: "queue platform: accepting agent", field: display_first_name}, locked: true}
+    - {name: team_plain, source: {type: router, ref: "config/templates/labels.yaml queue_plain_names for the target queue", field: plain_name}, locked: true}
+    - {name: topic_line, source: {type: state, ref: "summary.text first clause, masked", field: text}, locked: true, required: false}
+  variants:
+    - key: standard
+      when: "warm mode"
+      text:
+        en: "This is {{agent_first_name}} from our {{team_plain}}. They have the details of {{topic_line}} and will take it from here."
+        hi: "ये हमारी {{team_plain}} से {{agent_first_name}} हैं। {{topic_line}} की जानकारी इनके पास है और आगे यही आपकी मदद करेंगे।"
+        hinglish: "Yeh hamari {{team_plain}} se {{agent_first_name}} hain. {{topic_line}} ki details inke paas hain aur aage yahi aapki madad karenge."
+    - key: discreet_or_crisis
+      when: "discreet mode or ESC-011: no team name, no topic"
+      text:
+        en: "{{agent_first_name}} from our team has joined and will help you from here."
+        hi: "हमारी टीम से {{agent_first_name}} जुड़ गए हैं और आगे आपकी मदद करेंगे।"
+        hinglish: "Hamari team se {{agent_first_name}} jud gaye hain aur aage aapki madad karenge."
+  safety:
+    guardrails_enforced: [GR-SEC-R1, GR-REG-11, GR-OUT-02]
+    must_not_contain: ["please repeat", "can you repeat", "start again", "PEP", "flag"]
+    notes: "topic_line is masked and carries no amount unless the amount is in a locked state slot. After this message the agent is silent (routing-and-handoff.md section 10)."
+  a9: {patterns: [P5], anti_patterns_avoided: [AP6, AP2]}
+  kb_refs: [KB-ESC-001]
+  tests: [ESC-T-005-01, ESC-T-015-01, ESC-BOSS-L6-01]
+
+- id: TPL-ESC-AFTER-HOURS
+  title: "Specialist team closed (after-hours routing)"
+  version: "1.0.0"
+  customer_facing: true
+  trigger:
+    intents: []
+    guardrails: [GR-OUT-05]
+    escalations: [ESC-002, ESC-004, ESC-005, ESC-007, ESC-008, ESC-013]
+    state: "P1 trigger while the specialist queue is outside its hours (D-122). Variant by after-hours rule"
+  mode: template
+  variant_selection: condition
+  slots:
+    - {name: team_plain, source: {type: router, ref: "config/templates/labels.yaml queue_plain_names for the target queue", field: plain_name}, locked: true}
+  variants:
+    - key: generalist_now
+      when: "P1 routed to Next Available Agent with the case opened for the specialist"
+      text:
+        en: "Our {{team_plain}} isn't available at this hour. A colleague can take the details now, and the {{team_plain}} will pick the case up when they open. Would you also like me to request a callback? A callback time is a request and may change."
+        hi: "हमारी {{team_plain}} इस समय उपलब्ध नहीं है। एक सहयोगी अभी आपकी जानकारी ले सकते हैं, और {{team_plain}} खुलने पर इस मामले को आगे बढ़ाएगी। क्या मैं कॉलबैक का अनुरोध भी दर्ज करूँ? कॉलबैक का समय एक अनुरोध है और बदल सकता है।"
+        hinglish: "Hamari {{team_plain}} is time available nahi hai. Ek colleague abhi aapki details le sakte hain, aur {{team_plain}} khulne par is case ko aage badhayegi. Kya main callback request bhi daal doon? Callback ka time ek request hai aur badal sakta hai."
+    - key: callback_only
+      when: "ESC-008 or ESC-013 after hours: callback only, no generalist answers a regulatory or advice question"
+      text:
+        en: "Our {{team_plain}} isn't available at this hour, and this is a question only they should answer. I can request a callback from them. A callback time is a request and may change. Shall I do that?"
+        hi: "हमारी {{team_plain}} इस समय उपलब्ध नहीं है, और इस सवाल का जवाब केवल उन्हें ही देना चाहिए। मैं उनसे कॉलबैक का अनुरोध कर सकता हूँ। कॉलबैक का समय एक अनुरोध है और बदल सकता है। क्या मैं ऐसा करूँ?"
+        hinglish: "Hamari {{team_plain}} is time available nahi hai, aur is sawaal ka jawab sirf unhe hi dena chahiye. Main unse callback request kar sakta hoon. Callback ka time ek request hai aur badal sakta hai. Kya main aisa karoon?"
+  safety:
+    guardrails_enforced: [GR-OUT-05, GR-REG-18, GR-ADV-08]
+    must_not_contain: ["opens at", "tomorrow", "will call you at", "no one is available", "try later"]
+    notes: "Opening hours are proposals (D-122) and are not stated to the customer; a KB entry would be needed to state them. Never used for P0."
+  a9: {patterns: [P4], anti_patterns_avoided: [AP3, AP8]}
+  kb_refs: [KB-POL-007, KB-ESC-015]
+  tests: [GR-ADV-08-03, SS-COM-04]
+
+- id: TPL-ESC-CALLBACK-OFFER
+  title: "Callback request (a request, never a promise)"
+  version: "1.0.0"
+  customer_facing: true
+  trigger:
+    intents: [CMP-005]
+    guardrails: [GR-OUT-05]
+    escalations: [ESC-002, ESC-003, ESC-004, ESC-005, ESC-006, ESC-007, ESC-008, ESC-010, ESC-013, ESC-014]
+    state: "customer chose a callback, or callback is the last step of an overflow chain (P1, P2 only). Variant by whether schedule_callback has returned"
+  mode: template
+  variant_selection: condition
+  slots:
+    - {name: channel_masked, source: {type: tool, ref: get_profile_masked, field: "registered contact, masked"}, locked: true}
+    - {name: callback_reference, source: {type: tool, ref: schedule_callback, field: reference_id}, locked: true, required: false}
+    - {name: requested_window, source: {type: tool, ref: schedule_callback, field: requested_window_text}, locked: true, required: false}
+  variants:
+    - key: ask
+      when: "before the request is created (confirmation needed)"
+      text:
+        en: "I can request a callback on your registered contact {{channel_masked}}. A callback time is a request and may change. Shall I place the request? Please reply yes or no."
+        hi: "मैं आपके पंजीकृत संपर्क {{channel_masked}} पर कॉलबैक का अनुरोध कर सकता हूँ। कॉलबैक का समय एक अनुरोध है और बदल सकता है। क्या मैं अनुरोध दर्ज करूँ? कृपया हाँ या नहीं में जवाब दें।"
+        hinglish: "Main aapke registered contact {{channel_masked}} par callback request kar sakta hoon. Callback ka time ek request hai aur badal sakta hai. Kya main request daal doon? Please haan ya nahi mein jawab dein."
+    - key: placed
+      when: "schedule_callback returned ok"
+      text:
+        en: "Your callback request is placed. Reference: {{callback_reference}}. Requested time: {{requested_window}}. This is a request and the actual time may differ; the full details of our chat go with it."
+        hi: "आपका कॉलबैक अनुरोध दर्ज हो गया है। संदर्भ: {{callback_reference}}। अनुरोधित समय: {{requested_window}}। यह एक अनुरोध है और वास्तविक समय अलग हो सकता है; हमारी बातचीत की पूरी जानकारी इसके साथ जाएगी।"
+        hinglish: "Aapki callback request place ho gayi hai. Reference: {{callback_reference}}. Requested time: {{requested_window}}. Yeh ek request hai aur actual time alag ho sakta hai; hamari chat ki poori details iske saath jayengi."
+  safety:
+    guardrails_enforced: [GR-OUT-05, GR-SEC-R1, GR-OUT-02]
+    must_not_contain: ["will call you at", "exactly", "senior manager will call you", "supervisor will call"]
+    notes: "The callback goes to the registered contact only; a new number given in chat is never used (account-takeover pattern, KB-TRB-011). 'A request, not a guarantee' in KB-POL-007 is rendered as 'a request and may change' so that the word guarantee never appears in a reply (D-148)."
+  a9: {patterns: [P3, P4], anti_patterns_avoided: [AP3]}
+  kb_refs: [KB-POL-007, KB-ESC-003]
+  tests: [SS-COM-04, SS-AUTH-23]
+
+- id: TPL-ESC-LANGUAGE-CHOICE
+  title: "No colleague available in the customer's language"
+  version: "1.0.0"
+  customer_facing: true
+  trigger:
+    intents: [GEN-005]
+    guardrails: [GR-REG-17]
+    escalations: [ESC-002, ESC-003, ESC-004, ESC-005, ESC-006, ESC-007, ESC-008, ESC-010, ESC-013, ESC-014]
+    state: "router reports no agent with the customer's language free now (P1, P2); P0 never waits for a language match (D-121)"
+  mode: template
+  variant_selection: single
+  slots:
+    - {name: wanted_language, source: {type: state, ref: language.reply_language, field: "language name in its own script"}, locked: true}
+    - {name: languages_now, source: {type: router, ref: "queue platform skills available now", field: "list of language names"}, locked: true}
+  variants:
+    - key: default
+      text:
+        en: "I don't have a colleague who speaks {{wanted_language}} free right now. I can connect you now in {{languages_now}}, or request a callback in {{wanted_language}}. Which would you prefer?"
+        hi: "अभी {{wanted_language}} बोलने वाले कोई सहयोगी उपलब्ध नहीं हैं। मैं आपको अभी {{languages_now}} में जोड़ सकता हूँ, या {{wanted_language}} में कॉलबैक का अनुरोध कर सकता हूँ। आप क्या पसंद करेंगे?"
+        hinglish: "Abhi {{wanted_language}} bolne wale koi colleague available nahi hain. Main aapko abhi {{languages_now}} mein connect kar sakta hoon, ya {{wanted_language}} mein callback request kar sakta hoon. Aap kya prefer karenge?"
+  safety:
+    guardrails_enforced: [GR-REG-17, GR-OUT-05]
+    must_not_contain: ["you must", "only English", "will be available at"]
+    notes: "The switch is the customer's choice, never automatic (D-20). For a secondary-language customer this template is shown in Hindi and English together until reviewed translations exist (D-145)."
+  a9: {patterns: [P4], anti_patterns_avoided: [AP3, AP1]}
+  kb_refs: []
+  tests: [ESC-T-004-04]
+
+- id: TPL-ESC-HANDOFF-FAILED
+  title: "Handoff did not reach a human by the chosen route"
+  version: "1.0.0"
+  customer_facing: true
+  trigger:
+    intents: []
+    guardrails: [GR-SEC-R6, GR-SYS-01]
+    escalations: [ESC-001, ESC-002, ESC-003, ESC-004, ESC-005, ESC-006, ESC-007, ESC-008, ESC-009, ESC-010, ESC-012, ESC-013, ESC-014, ESC-015]
+    state: "transfer error, queue unavailable or SLA passed with no acceptance (routing-and-handoff.md section 8). Variant by priority"
+  mode: template
+  variant_selection: condition
+  slots:
+    - {name: protected_now, source: {type: state, ref: "actions_taken (protective steps already confirmed), masked", field: text}, locked: true, required: false}
+  variants:
+    - key: p0
+      when: "P0: overflow chain, any available human, incident raised; protective steps stay in place"
+      text:
+        en: "I'm sorry, the first connection didn't go through, so I'm bringing in another colleague right now. I'm staying with you. {{protected_now}}"
+        hi: "क्षमा करें, पहला कनेक्शन नहीं हो पाया, इसलिए मैं अभी दूसरे सहयोगी को जोड़ रहा हूँ। मैं आपके साथ बना हुआ हूँ। {{protected_now}}"
+        hinglish: "Sorry, pehla connection nahi ho paya, isliye main abhi doosre colleague ko jod raha hoon. Main aapke saath bana hua hoon. {{protected_now}}"
+    - key: p1_p2
+      when: "P1 or P2: next overflow step, then the wait-or-callback choice"
+      text:
+        en: "I'm sorry, I couldn't connect you on the first attempt. I'm trying another colleague now. If you'd rather not wait, I can request a callback instead; your details are saved either way."
+        hi: "क्षमा करें, पहली कोशिश में मैं आपको जोड़ नहीं सका। मैं अभी दूसरे सहयोगी से कोशिश कर रहा हूँ। अगर आप इंतज़ार नहीं करना चाहते, तो मैं इसकी जगह कॉलबैक का अनुरोध कर सकता हूँ; दोनों स्थितियों में आपकी जानकारी सुरक्षित है।"
+        hinglish: "Sorry, pehli attempt mein main aapko connect nahi kar saka. Main abhi doosre colleague se try kar raha hoon. Agar aap wait nahi karna chahte, to main iski jagah callback request kar sakta hoon; dono cases mein aapki details saved hain."
+    - key: left_while_waiting
+      when: "customer disconnected while waiting (P1): one notification on the same channel"
+      text:
+        en: "We were disconnected before my colleague could join. Your case is still open with everything you told me, and a colleague will follow up. You can also reply here to continue."
+        hi: "मेरे सहयोगी के जुड़ने से पहले हमारा संपर्क टूट गया। आपका मामला आपकी बताई पूरी जानकारी के साथ अब भी खुला है, और एक सहयोगी आगे संपर्क करेंगे। आप बातचीत जारी रखने के लिए यहाँ जवाब भी दे सकते हैं।"
+        hinglish: "Mere colleague ke join karne se pehle hamara connection toot gaya. Aapka case aapki batayi poori details ke saath ab bhi open hai, aur ek colleague aage follow up karenge. Aap baat jaari rakhne ke liye yahan reply bhi kar sakte hain."
+  safety:
+    guardrails_enforced: [GR-SEC-R6, GR-OUT-05, GR-SYS-01]
+    must_not_contain: ["no one is available", "try later", "try again later", "you disconnected", "system error", "technical team will contact you", "within"]
+    notes: "A failed handoff is never presented as the customer's problem. No promised follow-up time. At most handoff_attempts_max attempts per route."
+  a9: {patterns: [P4, P1], anti_patterns_avoided: [AP1, AP3, AP7]}
+  kb_refs: [KB-ESC-001, KB-POL-007]
+  tests: [GR-SEC-R6-03, GR-ADV-08-03, GR-SYS-01-02]
+
+- id: TPL-ESC-DEESCALATION-CHECK
+  title: "One check before cancelling a pending escalation (recovery condition holds)"
+  version: "1.0.0"
+  customer_facing: true
+  trigger:
+    intents: []
+    guardrails: []
+    escalations: [ESC-003, ESC-004, ESC-010, ESC-014]
+    state: "pending escalation of class customer_or_recovery, recovery condition holds, not yet asked (deescalation_check_max); never for P0, ESC-002, ESC-005, ESC-015"
+  mode: template
+  variant_selection: single
+  slots: []
+  variants:
+    - key: default
+      text:
+        en: "It looks like this is now sorted. Would you still like to speak to my colleague, or are you happy to finish here? Either is completely fine."
+        hi: "लगता है यह अब सुलझ गया है। क्या आप अब भी मेरे सहयोगी से बात करना चाहेंगे, या यहीं समाप्त करना ठीक रहेगा? दोनों ही विकल्प बिल्कुल ठीक हैं।"
+        hinglish: "Lagta hai yeh ab sort ho gaya hai. Kya aap ab bhi mere colleague se baat karna chahenge, ya yahin finish karna theek rahega? Dono hi options bilkul theek hain."
+  safety:
+    guardrails_enforced: [GR-REG-16]
+    must_not_contain: ["are you sure", "you don't need", "no need to", "I have cancelled the escalation", "so you will not take legal action"]
+    notes: "Asked once. Any answer other than a clear wish to finish keeps the handoff. The agent never argues (routing-and-handoff.md section 9.2)."
+  a9: {patterns: [P5], anti_patterns_avoided: [AP4, AP1]}
+  kb_refs: []
+  tests: [ESC-T-004-02, ESC-T-014-02, ESC-BOSS-L6-07]
+
+- id: TPL-ESC-REFERRAL
+  title: "Referral to a human process (no live handoff)"
+  version: "1.0.0"
+  customer_facing: true
+  trigger:
+    intents: [ACC-005, ACC-006, ACC-008]
+    guardrails: [GR-SEC-R2, GR-SEC-R3]
+    escalations: []
+    state: "XTR-07 (intent needs a human process the agent has no tool for) or XTR-05 (a follow-up the agent said it would watch for did not arrive)"
+  mode: template
+  variant_selection: condition
+  slots:
+    - {name: process_name, source: {type: kb, ref: "KB-POL-005 or the entry for the process", field: structured_fields}, locked: true}
+    - {name: what_to_bring, source: {type: kb, ref: "KB-POL-005 or the entry for the process", field: structured_fields}, locked: true}
+    - {name: open_item, source: {type: state, ref: "carry_over.open_tickets[] entry, masked", field: text}, locked: true, required: false}
+  variants:
+    - key: human_process
+      when: "XTR-07"
+      text:
+        en: "I can't make this change from chat. It is done through {{process_name}}. {{what_to_bring}} Would you like me to request a callback so a colleague can guide you through it?"
+        hi: "यह बदलाव मैं चैट से नहीं कर सकता। यह {{process_name}} के ज़रिए होता है। {{what_to_bring}} क्या मैं कॉलबैक का अनुरोध करूँ ताकि एक सहयोगी आपको इसमें मार्गदर्शन दे सकें?"
+        hinglish: "Yeh change main chat se nahi kar sakta. Yeh {{process_name}} ke through hota hai. {{what_to_bring}} Kya main callback request karoon taaki ek colleague aapko ismein guide kar sakein?"
+    - key: missed_follow_up
+      when: "XTR-05"
+      text:
+        en: "I said I'd keep an eye on {{open_item}}, and it hasn't come through. I've passed it to a colleague to look into, with the full history, so you won't need to explain it again."
+        hi: "मैंने कहा था कि मैं {{open_item}} पर नज़र रखूँगा, और वह अब तक नहीं हुआ है। मैंने इसे पूरे इतिहास के साथ जाँच के लिए एक सहयोगी को सौंप दिया है, इसलिए आपको दोबारा समझाना नहीं पड़ेगा।"
+        hinglish: "Maine kaha tha ki main {{open_item}} par nazar rakhunga, aur woh ab tak nahi hua hai. Maine ise poori history ke saath check karne ke liye ek colleague ko de diya hai, isliye aapko dobara explain nahi karna padega."
+  safety:
+    guardrails_enforced: [GR-SEC-R2, GR-SEC-R3, GR-OUT-05]
+    must_not_contain: ["nominee has been updated", "I have changed", "has been closed", "will be done by", "within"]
+    notes: ""
+  a9: {patterns: [P4, P5], anti_patterns_avoided: [AP3, AP8]}
+  kb_refs: [KB-POL-005, KB-POL-004]
+  tests: [XTR-T-07-01, XTR-T-05-01, SS-AUTH-06]

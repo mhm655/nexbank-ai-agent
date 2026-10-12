@@ -1,0 +1,265 @@
+# Account, transaction and action templates (families ACC, TXN, ACT). New on Day 13 (D-136).
+# Every figure, date, masked identifier and reference is a locked slot filled from a ToolResult of the same turn
+# (response-generation.md section 1; GR-OUT-01). These are `template` mode: the LLM writes nothing.
+schema_version: "1.0"
+family: ACC
+review: {hi: not_native_reviewed, hinglish: not_native_reviewed}
+
+templates:
+
+- id: TPL-ACC-BALANCE
+  title: "Account balance (safety-critical template, A2.4)"
+  version: "1.0.0"
+  customer_facing: true
+  trigger:
+    intents: [ACC-001]
+    guardrails: [GR-SEC-R1, GR-SEC-R2, GR-OUT-01]
+    escalations: []
+    state: "ACC-001 at or above intent_confidence_threshold, auth_level at or above otp_verified, get_balance returned ok in this turn"
+  mode: template
+  variant_selection: condition
+  slots:
+    - {name: account_type, source: {type: tool, ref: get_balance, field: account_type_label}, locked: true}
+    - {name: account_last4, source: {type: tool, ref: get_balance, field: masked_last4}, locked: true}
+    - {name: balance, source: {type: tool, ref: get_balance, field: available_balance, format: inr_amount}, locked: true}
+    - {name: as_of, source: {type: tool, ref: get_balance, field: source_ts, format: date_dd_mm_yyyy_time}, locked: true}
+  variants:
+    - key: default
+      when: "no name used"
+      text:
+        en: "Your {{account_type}} account ending {{account_last4}} has an available balance of {{balance}} as of {{as_of}}. Would you like to see recent transactions?"
+        hi: "{{account_last4}} पर समाप्त होने वाले आपके {{account_type}} खाते में {{as_of}} तक उपलब्ध बैलेंस {{balance}} है। क्या आप हाल के लेन-देन देखना चाहेंगे?"
+        hinglish: "{{account_last4}} par khatm hone wale aapke {{account_type}} account mein {{as_of}} tak available balance {{balance}} hai. Kya aap recent transactions dekhna chahenge?"
+    - key: just_verified
+      when: "the previous turn was the verification step"
+      text:
+        en: "Thank you, that's done. Your {{account_type}} account ending {{account_last4}} has an available balance of {{balance}} as of {{as_of}}."
+        hi: "धन्यवाद, सत्यापन हो गया। {{account_last4}} पर समाप्त होने वाले आपके {{account_type}} खाते में {{as_of}} तक उपलब्ध बैलेंस {{balance}} है।"
+        hinglish: "Thanks, verification ho gaya. {{account_last4}} par khatm hone wale aapke {{account_type}} account mein {{as_of}} tak available balance {{balance}} hai."
+  safety:
+    guardrails_enforced: [GR-SEC-R1, GR-SEC-R2, GR-REG-08, GR-OUT-01, GR-OUT-02, GR-REG-04]
+    must_not_contain: ["offer", "upgrade", "you could invest", "full account number", "minimum balance"]
+    notes: "The balance and one optional next step, nothing else (A9.2 Information Dump example). No product suggestion on a balance reply. The masked reference is supplied by the tool; the template has no slot that could hold a full number."
+  a9: {patterns: [P2], anti_patterns_avoided: [AP2, AP6, AP8, AP4]}
+  kb_refs: [KB-POL-003]
+  tests: [SS-AUTH-27, SS-AUTH-01, ESC-BOSS-L6-04, GR-SEC-R1-03, SS-PII-05]
+
+- id: TPL-TXN-STATUS
+  title: "Transaction or payment status from the system of record"
+  version: "1.0.0"
+  customer_facing: true
+  trigger:
+    intents: [TXN-001, TXN-003, TXN-004]
+    guardrails: [GR-OUT-01, GR-OUT-05, GR-SEC-R3]
+    escalations: []
+    state: "auth_level at or above otp_verified and get_txn or search_txn returned ok. Variant by whether the tool returned an expected date"
+  mode: hybrid
+  variant_selection: condition
+  slots:
+    - name: ack
+      source: {type: llm, ref: "one acknowledgement, only when the empathy trigger is set (failed or debited-not-credited payment)", field: text}
+      locked: false
+      required: false
+      constraints: {max_words: 25, sentences: 1, must_not: [digits, promise, blame]}
+      fallback: {en: "I understand that's worrying when money has left your account.", hi: "मैं समझता हूँ कि खाते से पैसे कटने पर चिंता होती है।", hinglish: "Main samajhta hoon ki account se paise katne par chinta hoti hai."}
+    - {name: txn_desc, source: {type: tool, ref: get_txn, field: "amount, counterparty and date, masked"}, locked: true}
+    - {name: status_text, source: {type: tool, ref: get_txn, field: status_label}, locked: true}
+    - {name: expected_date, source: {type: tool, ref: get_txn, field: expected_resolution_date, format: date_dd_mm_yyyy}, locked: true, required: false}
+  variants:
+    - key: status_only
+      when: "no expected date returned"
+      text:
+        en: "{{ack}} I've checked: your payment of {{txn_desc}} is showing as {{status_text}}. The record doesn't give a date for the next update, so I won't guess one. I can open a ticket so the team reviews it. Shall I do that?"
+        hi: "{{ack}} मैंने जाँच की है: {{txn_desc}} का आपका भुगतान {{status_text}} दिख रहा है। रिकॉर्ड में अगली जानकारी की कोई तारीख नहीं है, इसलिए मैं अंदाज़ा नहीं लगाऊँगा। मैं एक टिकट खोल सकता हूँ ताकि टीम इसकी समीक्षा करे। क्या मैं ऐसा करूँ?"
+        hinglish: "{{ack}} Maine check kiya hai: {{txn_desc}} ka aapka payment {{status_text}} dikh raha hai. Record mein next update ki koi date nahi hai, isliye main guess nahi karunga. Main ek ticket khol sakta hoon taaki team ise review kare. Kya main aisa karoon?"
+    - key: with_expected_date
+      when: "the tool returned an expected date in this turn"
+      text:
+        en: "{{ack}} I've checked: your payment of {{txn_desc}} is showing as {{status_text}}. The record shows an expected date of {{expected_date}}. That date comes from the payment system and can change."
+        hi: "{{ack}} मैंने जाँच की है: {{txn_desc}} का आपका भुगतान {{status_text}} दिख रहा है। रिकॉर्ड में अपेक्षित तारीख {{expected_date}} दिख रही है। यह तारीख भुगतान प्रणाली से आती है और बदल सकती है।"
+        hinglish: "{{ack}} Maine check kiya hai: {{txn_desc}} ka aapka payment {{status_text}} dikh raha hai. Record mein expected date {{expected_date}} dikh rahi hai. Yeh date payment system se aati hai aur badal sakti hai."
+  safety:
+    guardrails_enforced: [GR-OUT-01, GR-OUT-05, GR-SEC-R3, GR-SEC-R1]
+    must_not_contain: ["will be credited within", "within 24 hours", "refund will be", "retrying now", "I have retried", "wait a few days", "exactly"]
+    notes: "A timeline appears only when the system of record returned it in the same turn (D-09, KB-POL-007, control case SS-COM-06). The agent never retries a payment (GR-SEC-R3-02)."
+  a9: {patterns: [P1, P2, P4], anti_patterns_avoided: [AP3, AP5, AP8, AP2]}
+  kb_refs: [KB-TRB-001, KB-TRB-002, KB-TRB-004, KB-POL-007]
+  tests: [SS-COM-06, SS-COM-01, SS-COM-07, GR-OUT-05-01, GR-SEC-R3-02, ESC-T-014-02]
+
+- id: TPL-TXN-DISPUTE-INTAKE
+  title: "Dispute intake (empathy first, then one question at a time)"
+  version: "1.0.0"
+  customer_facing: true
+  trigger:
+    intents: [TXN-002]
+    guardrails: [GR-SEC-R2, GR-OUT-05]
+    escalations: [ESC-005, ESC-001]
+    state: "TXN-002 active, auth_level at or above otp_verified, dialogue_phase SLOT_FILL. Variant by the next missing slot. ESC-005 fires on the validated amount; ESC-001 on a fraud cue (pair 5)"
+  mode: hybrid
+  variant_selection: condition
+  slots:
+    - name: ack
+      source: {type: llm, ref: "one specific acknowledgement of the disputed charge", field: text}
+      locked: false
+      constraints: {max_words: 25, sentences: 1, must_not: [digits, promise, blame, apology_repetition]}
+      fallback: {en: "I understand an unexpected charge is unsettling, and I'll help you sort it out.", hi: "मैं समझता हूँ कि अनपेक्षित शुल्क परेशान करता है, और मैं इसे सुलझाने में आपकी मदद करूँगा।", hinglish: "Main samajhta hoon ki unexpected charge pareshan karta hai, aur main ise sort karne mein aapki madad karunga."}
+    - {name: txn_desc, source: {type: tool, ref: search_txn, field: "amount, merchant and date of the matched transaction, masked"}, locked: true, required: false}
+  variants:
+    - key: ask_which_transaction
+      when: "transaction not yet identified"
+      text:
+        en: "{{ack}} Which transaction is this about? The amount and the date, or the merchant name, is enough for me to find it."
+        hi: "{{ack}} यह किस लेन-देन के बारे में है? राशि और तारीख, या व्यापारी का नाम, बताना काफ़ी है; मैं उसे ढूँढ लूँगा।"
+        hinglish: "{{ack}} Yeh kis transaction ke baare mein hai? Amount aur date, ya merchant ka naam, batana kaafi hai; main use dhoondh lunga."
+    - key: confirm_match_and_ask_recognition
+      when: "transaction found; pair 5 question (dispute or fraud) not yet answered"
+      text:
+        en: "I've found it: {{txn_desc}}. Did you make this payment yourself and something went wrong with it, or do you not recognise it at all?"
+        hi: "मुझे यह मिल गया: {{txn_desc}}। क्या यह भुगतान आपने स्वयं किया था और इसमें कुछ गड़बड़ हुई, या आप इसे बिल्कुल नहीं पहचानते?"
+        hinglish: "Mujhe yeh mil gaya: {{txn_desc}}. Kya yeh payment aapne khud kiya tha aur ismein kuch gadbad hui, ya aap ise bilkul nahi pehchante?"
+    - key: ask_reason
+      when: "customer made the payment; dispute reason missing"
+      text:
+        en: "Thanks. What went wrong with it: charged twice, wrong amount, item or service not received, or a refund that hasn't arrived?"
+        hi: "धन्यवाद। इसमें क्या गड़बड़ हुई: दो बार शुल्क कटा, गलत राशि, वस्तु या सेवा नहीं मिली, या रिफ़ंड नहीं आया?"
+        hinglish: "Thanks. Ismein kya gadbad hui: do baar charge hua, galat amount, item ya service nahi mili, ya refund nahi aaya?"
+  safety:
+    guardrails_enforced: [GR-SEC-R2, GR-OUT-05, GR-SEC-R5, GR-OUT-01]
+    must_not_contain: ["will be refunded", "refund will be", "you will get your money back", "are you sure you did not", "card number", "CVV"]
+    notes: "No outcome or refund promise at intake. The recognition question routes to the fraud flow (TPL-ESC-FRAUD-P0) when the customer does not recognise the charge. The ticket itself is created only after TPL-ACT-CONFIRM. The four reasons are the tertiary variants of TXN-002 in config/intents.yaml, offered as one closed question rather than four."
+  a9: {patterns: [P1, P5], anti_patterns_avoided: [AP5, AP3, AP1, AP6]}
+  kb_refs: [KB-TRB-005, KB-TRB-006, KB-ESC-006]
+  tests: [SS-AUTH-10, ESC-T-001-02, ESC-T-005-01, ESC-T-005-02, NLU-DIS-5-01]
+
+- id: TPL-ACT-CONFIRM
+  title: "Confirmation before action (summary, details, yes or no)"
+  version: "1.0.0"
+  customer_facing: true
+  trigger:
+    intents: [CRD-001, CRD-002, TXN-002, TXN-005, CMP-001, CMP-005, SEC-003]
+    guardrails: [GR-SEC-R2, GR-SEC-R7]
+    escalations: []
+    state: "dialogue_phase CONFIRM: a tool with side effects is ready (intent `confirmation: explicit` in config/intents.yaml), auth sufficient, all slots filled. Sets pending_confirmation, valid for confirmation_window_turns or confirmation_window_minutes"
+  mode: template
+  variant_selection: condition
+  slots:
+    - {name: action_plain, source: {type: policy, ref: "PolicyDecision.tool_calls[0] plain description", field: text}, locked: true}
+    - {name: details, source: {type: state, ref: "confirmed slots for the action: masked identifiers, amounts, dates", field: text}, locked: true}
+    - {name: effect, source: {type: kb, ref: "entry for the action, for example KB-POL-006 for a card block", field: "structured_fields (what the action does and whether it is reversible)"}, locked: true, required: false}
+  variants:
+    - key: default
+      when: "single action"
+      text:
+        en: "Before I go ahead, let me confirm. I will {{action_plain}}. Details: {{details}}. {{effect}} Shall I go ahead? Please reply yes or no."
+        hi: "आगे बढ़ने से पहले मैं पुष्टि कर लूँ। मैं {{action_plain}}। विवरण: {{details}}। {{effect}} क्या मैं आगे बढ़ूँ? कृपया हाँ या नहीं में जवाब दें।"
+        hinglish: "Aage badhne se pehle main confirm kar loon. Main {{action_plain}}. Details: {{details}}. {{effect}} Kya main aage badhoon? Please haan ya nahi mein jawab dein."
+    - key: unclear_answer
+      when: "the reply to the question was not a clear yes or no ('hmm', 'maybe', 'ok I guess')"
+      text:
+        en: "I want to be sure before I do anything. Should I {{action_plain}}? A simple yes or no is all I need, and nothing changes until you say yes."
+        hi: "कुछ भी करने से पहले मैं सुनिश्चित कर लेना चाहता हूँ। क्या मैं {{action_plain}}? बस हाँ या नहीं बता दीजिए, और आपके हाँ कहने तक कुछ नहीं बदलेगा।"
+        hinglish: "Kuch bhi karne se pehle main sure hona chahta hoon. Kya main {{action_plain}}? Bas haan ya nahi bata dijiye, aur aapke haan kehne tak kuch nahi badlega."
+  safety:
+    guardrails_enforced: [GR-SEC-R2, GR-SEC-R7, GR-SEC-R1, GR-SEC-R3]
+    must_not_contain: ["has been blocked", "is confirmed", "I have blocked", "done", "transfer", "payment of"]
+    notes: "One action per question. The action list is restricted to the agent's capability set (protective writes and tickets); a fund movement can never be an `action_plain` value because no such tool exists (GR-SEC-R3). A confirmation is single-use and void after session expiry. The Hindi and Hinglish `action_plain` label must be a verb phrase that completes the sentence; labels are part of the reviewed label table (README section 4)."
+  a9: {patterns: [P3], anti_patterns_avoided: [AP3, AP6, AP2]}
+  kb_refs: [KB-POL-006, KB-POL-004]
+  tests: [SS-AUTH-15, SS-AUTH-13, SS-AUTH-16, GR-SEC-R7-02, KB-BOSS-L3-03]
+
+- id: TPL-ACT-DONE
+  title: "Post-action confirmation with reference"
+  version: "1.0.0"
+  customer_facing: true
+  trigger:
+    intents: [CRD-001, CRD-002, TXN-002, TXN-005, CMP-001, CMP-005, SEC-003]
+    guardrails: [GR-OUT-05, GR-SEC-R3]
+    escalations: []
+    state: "dialogue_phase EXECUTE finished and ToolResult.ok is true in this turn"
+  mode: template
+  variant_selection: single
+  slots:
+    - {name: result_plain, source: {type: tool, ref: "the executed tool (block_card, create_dispute_ticket, create_complaint, request_replacement, send_credential_reset_link, schedule_callback)", field: result_label}, locked: true}
+    - {name: reference_id, source: {type: tool, ref: "the executed tool", field: reference_id}, locked: true}
+    - {name: next_steps, source: {type: kb, ref: "entry for the action (for example KB-POL-006 after_block, KB-TRB-005)", field: structured_fields}, locked: true, required: false}
+  variants:
+    - key: default
+      text:
+        en: "That's done: {{result_plain}}. Your reference is {{reference_id}}. {{next_steps}}"
+        hi: "यह हो गया: {{result_plain}}। आपका संदर्भ नंबर {{reference_id}} है। {{next_steps}}"
+        hinglish: "Yeh ho gaya: {{result_plain}}. Aapka reference {{reference_id}} hai. {{next_steps}}"
+  safety:
+    guardrails_enforced: [GR-OUT-05, GR-OUT-01, GR-SEC-R3]
+    must_not_contain: ["will be refunded", "within", "resolved", "your money", "transfer has been", "payment done"]
+    notes: "Rendered only from a successful ToolResult; a draft that claims completion without one is blocked (GR-SEC-R3-05). `next_steps` carries no timeline unless the tool returned one."
+  a9: {patterns: [P3], anti_patterns_avoided: [AP3, AP8]}
+  kb_refs: [KB-POL-006, KB-POL-007]
+  tests: [GR-SEC-R3-05, KB-BOSS-L3-03, GR-REG-19-01]
+
+- id: TPL-ACT-FAILED
+  title: "Action or lookup did not complete (honest failure)"
+  version: "1.0.0"
+  customer_facing: true
+  trigger:
+    intents: []
+    guardrails: [GR-SYS-01, GR-OUT-05, GR-REG-07]
+    escalations: [ESC-014]
+    state: "ToolResult.ok is false, or the audit write for a high-risk action failed (FMEA 21). Writes are never retried automatically. Variant by action class"
+  mode: template
+  variant_selection: condition
+  slots:
+    - {name: action_plain, source: {type: policy, ref: "the attempted action, plain noun phrase", field: text}, locked: true}
+  variants:
+    - key: write_failed
+      when: "a protective write or ticket did not complete"
+      text:
+        en: "I'm sorry, {{action_plain}} did not go through, so nothing has changed yet. I can try once more now, or bring in a colleague who can do it another way. Which would you prefer?"
+        hi: "क्षमा करें, {{action_plain}} पूरा नहीं हो पाया, इसलिए अभी कुछ नहीं बदला है। मैं अभी एक बार और कोशिश कर सकता हूँ, या एक सहयोगी को जोड़ सकता हूँ जो इसे दूसरे तरीके से कर सकें। आप क्या पसंद करेंगे?"
+        hinglish: "Sorry, {{action_plain}} poora nahi ho paya, isliye abhi kuch nahi badla hai. Main abhi ek baar aur try kar sakta hoon, ya ek colleague ko jod sakta hoon jo ise doosre tareeke se kar sakein. Aap kya prefer karenge?"
+    - key: read_failed
+      when: "a lookup failed after the single allowed retry (then ESC-014 through TPL-ESC-HANDOFF-WARM system_error)"
+      text:
+        en: "I'm not able to see {{action_plain}} right now, and I don't want to guess."
+        hi: "मैं अभी {{action_plain}} नहीं देख पा रहा हूँ, और मैं अंदाज़ा नहीं लगाना चाहता।"
+        hinglish: "Main abhi {{action_plain}} nahi dekh pa raha hoon, aur main guess nahi karna chahta."
+  safety:
+    guardrails_enforced: [GR-SYS-01, GR-OUT-05, GR-REG-07, GR-SEC-R6]
+    must_not_contain: ["error", "exception", "timeout", "stack trace", "technical issue", "has been blocked", "try later", "will be fixed in"]
+    notes: "Never implies success. No jargon and no repair time. For a card block in a fraud flow the next step is the P0 handoff, not a retry question (contain-first)."
+  a9: {patterns: [P4, P3], anti_patterns_avoided: [AP3, AP7, AP8]}
+  kb_refs: [KB-TRB-009]
+  tests: [GR-REG-07-01, ESC-T-014-01, SS-ESC-18, GR-SYS-01-02]
+
+- id: TPL-ACT-CANNOT-DO
+  title: "Request outside what the agent may do (no fund movement, no record change)"
+  version: "1.0.0"
+  customer_facing: true
+  trigger:
+    intents: [TXN-005, TXN-006, ACC-005, ACC-006]
+    guardrails: [GR-SEC-R3, GR-REG-15]
+    escalations: []
+    state: "prohibited request (transfer, payment, retry, recurring set-up, fee waiver, credit decision). Refused once; no escalation unless a scam or structuring cue is present (D-115)"
+  mode: template
+  variant_selection: condition
+  slots:
+    - {name: can_do_instead, source: {type: kb, ref: KB-POL-004, field: structured_fields.can_do_instead}, locked: true}
+  variants:
+    - key: money_movement
+      when: "transfer, payment, retry or recurring set-up"
+      text:
+        en: "I'm not able to make or set up payments or transfers from this chat; that keeps your money under your control. {{can_do_instead}}"
+        hi: "मैं इस चैट से भुगतान या ट्रांसफ़र न कर सकता हूँ, न सेट कर सकता हूँ; इससे आपका पैसा आपके ही नियंत्रण में रहता है। {{can_do_instead}}"
+        hinglish: "Main is chat se payment ya transfer na kar sakta hoon, na set up kar sakta hoon; isse aapka paisa aapke hi control mein rehta hai. {{can_do_instead}}"
+    - key: decision_or_waiver
+      when: "credit decision, fee waiver or another outcome the agent cannot grant"
+      text:
+        en: "That isn't something I can decide or promise in chat. {{can_do_instead}}"
+        hi: "यह ऐसा निर्णय नहीं है जो मैं चैट में ले सकूँ या जिसका वादा कर सकूँ। {{can_do_instead}}"
+        hinglish: "Yeh aisa decision nahi hai jo main chat mein le sakoon ya jiska promise kar sakoon. {{can_do_instead}}"
+  safety:
+    guardrails_enforced: [GR-SEC-R3, GR-REG-15, GR-OUT-05, GR-REG-10]
+    must_not_contain: ["I have sent", "transfer has been", "to make the transfer", "prefilled", "we can waive", "will be approved", "you will be approved"]
+    notes: "Explains the limit once and gives the alternative from KB-POL-004. No payment link carrying payee or amount (D-59)."
+  a9: {patterns: [P4], anti_patterns_avoided: [AP3, AP8, AP1]}
+  kb_refs: [KB-POL-004, KB-POL-002]
+  tests: [GR-SEC-R3-01, GR-SEC-R3-03, GR-SEC-R3-04, SS-COM-05, GR-REG-15-01]

@@ -82,7 +82,7 @@ parameters:               # values restated from other docs; governed copy is co
   atk_input_max_chars: 4000                 # GR-ATK-08 (token budget): longer input is truncated for processing and the customer is asked to shorten it
   atk_tool_calls_per_turn: 3                # GR-ATK-09: tool-call budget per customer turn (loop breaker)
   atk_output_max_words: 250                 # GR-ATK-08: cap on one agent reply (token budget expressed in words); templates are far shorter
-  atk_conversation_max_turns: 15            # GR-ATK-09: A6 ESC-010 (conversation exceeds 15 turns without resolution); the brief fixes this value
+  atk_conversation_max_turns: 15            # GR-ATK-09: A6 ESC-010 (conversation exceeds 15 turns without resolution); the brief fixes this value. Not the A12.3 ceiling `max_conversation_turns` (25): this is the ESC-010 line, that is the hard cap (config/parameters.yaml registers both)
   atk_safety_intents_exempt_from_soft_limit: [SEC-001, GEN-007, GEN-003]   # D-74: never throttled below the hard limit
 
 guardrails:

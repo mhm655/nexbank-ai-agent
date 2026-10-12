@@ -1,0 +1,62 @@
+# Plain-language label tables used by locked template slots (Day 13, D-136).
+# A label is chosen by the Policy Engine or the Escalation Router from these tables, never written by the model.
+# Hindi and Hinglish labels are not native-reviewed. Validator: tests/templates/validate_templates.py checks that all 15
+# queues of config/escalation_rules.yaml have a label and that every intent id here exists in config/intents.yaml.
+schema_version: "1.0"
+review: {hi: not_native_reviewed, hinglish: not_native_reviewed}
+
+# Slot `team_plain`. Grammar contract: the English label follows "our"; the Hindi label is a feminine noun phrase ending in
+#   the Hindi word for team so that it follows the feminine form of "our"; the Hinglish label follows "hamari". `customer_visible: false` means the queue name is never
+# shown: the discreet or silent handoff wording is used instead (TPL-ESC-HANDOFF-DISCREET, or no handoff message at all).
+queue_plain_names:
+  Fraud Investigation:    {customer_visible: true,  en: "fraud team",               hi: "फ्रॉड टीम",              hinglish: "fraud team"}
+  Senior Resolution Mgr:  {customer_visible: true,  en: "senior resolution team",   hi: "वरिष्ठ समाधान टीम",       hinglish: "senior resolution team"}
+  General Support:        {customer_visible: true,  en: "support team",             hi: "सहायता टीम",             hinglish: "support team"}
+  Customer Retention:     {customer_visible: true,  en: "customer care team",       hi: "ग्राहक सेवा टीम",          hinglish: "customer care team"}
+  Dispute Resolution:     {customer_visible: true,  en: "disputes team",            hi: "विवाद समाधान टीम",        hinglish: "disputes team"}
+  Next Available Agent:   {customer_visible: true,  en: "support team",             hi: "सहायता टीम",             hinglish: "support team"}
+  Relationship Manager:   {customer_visible: true,  en: "relationship team",        hi: "रिलेशनशिप टीम",          hinglish: "relationship team"}
+  Compliance Helpdesk:    {customer_visible: true,  en: "compliance helpdesk team", hi: "अनुपालन हेल्पडेस्क टीम",    hinglish: "compliance helpdesk team"}
+  Security Operations:    {customer_visible: true,  en: "security team",            hi: "सुरक्षा टीम",              hinglish: "security team"}
+  Supervisor Review:      {customer_visible: true,  en: "senior support team",      hi: "वरिष्ठ सहायता टीम",       hinglish: "senior support team"}
+  Crisis Response:        {customer_visible: false, en: "team",                     hi: "टीम",                    hinglish: "team"}
+  AML Compliance:         {customer_visible: false, en: "team",                     hi: "टीम",                    hinglish: "team"}
+  Wealth Advisory:        {customer_visible: true,  en: "advisory team",            hi: "सलाहकार टीम",            hinglish: "advisory team"}
+  Technical Support:      {customer_visible: true,  en: "support team",             hi: "सहायता टीम",             hinglish: "support team"}
+  Enhanced Due Diligence: {customer_visible: false, en: "team",                     hi: "टीम",                    hinglish: "team"}
+
+# Notes on three choices (proposals):
+#   Customer Retention is shown as "customer care team": the word "retention" describes the bank's interest, not the customer's.
+#   Technical Support is shown as "support team": "technical" invites jargon (A9.1 Pattern 4: no technical jargon).
+#   Supervisor Review is shown as "senior support team": no individual supervisor is promised.
+
+# Slot `request_plain` (TPL-AUTH-OTP-REQUEST, TPL-AUTH-STEP-UP). Grammar contract: English is a verb phrase after "help you" or
+# "To"; Hindi and Hinglish are verbal-noun phrases that precede the postpositions "mein" or "ke liye" (and their Devanagari forms).
+intent_request_labels:
+  ACC-001: {en: "check your balance",                 hi: "बैलेंस देखने",                 hinglish: "balance check karne"}
+  ACC-002: {en: "get your statement",                 hi: "स्टेटमेंट पाने",                hinglish: "statement lene"}
+  ACC-003: {en: "update your contact details",        hi: "संपर्क विवरण बदलने",           hinglish: "contact details update karne"}
+  ACC-004: {en: "update your mailing address",        hi: "डाक पता बदलने",               hinglish: "mailing address update karne"}
+  ACC-005: {en: "request an account closure",         hi: "खाता बंद करने का अनुरोध करने",  hinglish: "account closure request karne"}
+  ACC-006: {en: "request a nominee update",           hi: "नॉमिनी बदलने का अनुरोध करने",   hinglish: "nominee update request karne"}
+  ACC-007: {en: "look at your account options",       hi: "खाते के विकल्प देखने",          hinglish: "account options dekhne"}
+  ACC-008: {en: "update your KYC documents",          hi: "KYC दस्तावेज़ अपडेट करने",      hinglish: "KYC documents update karne"}
+  TXN-001: {en: "check a transaction",                hi: "लेन-देन की स्थिति देखने",       hinglish: "transaction check karne"}
+  TXN-002: {en: "raise a dispute",                    hi: "विवाद दर्ज करने",              hinglish: "dispute raise karne"}
+  TXN-003: {en: "check your UPI payment",             hi: "UPI भुगतान की जाँच करने",      hinglish: "UPI payment check karne"}
+  TXN-004: {en: "check your transfer status",         hi: "ट्रांसफ़र की स्थिति देखने",      hinglish: "transfer status check karne"}
+  TXN-005: {en: "stop a recurring payment",           hi: "आवर्ती भुगतान रोकने",          hinglish: "recurring payment rokne"}
+  TXN-006: {en: "look at your international transfer", hi: "अंतरराष्ट्रीय ट्रांसफ़र देखने",  hinglish: "international transfer dekhne"}
+  CRD-001: {en: "block or unblock your card",         hi: "कार्ड ब्लॉक या अनब्लॉक करने",   hinglish: "card block ya unblock karne"}
+  CRD-002: {en: "request a replacement card",         hi: "नया कार्ड मँगवाने",            hinglish: "replacement card request karne"}
+  CRD-003: {en: "request a credit limit change",      hi: "क्रेडिट लिमिट बदलने का अनुरोध करने", hinglish: "credit limit change request karne"}
+  CRD-004: {en: "look at EMI conversion",             hi: "EMI में बदलने का विकल्प देखने",  hinglish: "EMI conversion dekhne"}
+  CRD-005: {en: "check your reward points",           hi: "रिवॉर्ड पॉइंट देखने",           hinglish: "reward points check karne"}
+  CMP-002: {en: "check your complaint status",        hi: "शिकायत की स्थिति देखने",        hinglish: "complaint status check karne"}
+  CMP-005: {en: "request a callback",                 hi: "कॉलबैक का अनुरोध करने",        hinglish: "callback request karne"}
+  SEC-003: {en: "reset your credentials",             hi: "पासवर्ड या पिन रीसेट करने",     hinglish: "credentials reset karne"}
+  SEC-004: {en: "review the activity on your account", hi: "खाते की गतिविधि देखने",        hinglish: "account activity dekhne"}
+
+# Not yet provided (open item): `action_plain`, `result_plain`, `service_plain`, `topic`, `option_a..c` label tables. Their grammar
+# contracts are stated on the slots in the template files; the tables are written with the Day 14 simulations, which fix
+# the concrete actions and topics shown.

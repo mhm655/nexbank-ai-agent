@@ -1,0 +1,392 @@
+# Advice-boundary templates (family ADV). Names fixed on Day 9: docs/guardrails/financial-advice.md section 6.
+# Shape (disambiguation.md section 3): fact from the KB + one boundary sentence + offer of more factual detail.
+# The advisor offer is a separate template (TPL-ADV-ADVISOR-OFFER) appended by the Policy Engine at most once per topic.
+# No template here asks for income, age, savings, portfolio, goals or risk appetite (GR-ADV-07; validator lint).
+# Schema and conventions: config/templates/README.md. Slot syntax {{name}}; locked slots are injected verbatim by the platform.
+schema_version: "1.0"
+family: ADV
+review: {hi: not_native_reviewed, hinglish: not_native_reviewed}
+
+templates:
+
+- id: TPL-ADV-BOUNDARY
+  title: "Generic advice decline with facts"
+  version: "1.0.0"
+  customer_facing: true
+  trigger:
+    intents: [PRD-005]
+    guardrails: [GR-ADV-01, GR-ADV-02, GR-REG-20]
+    escalations: []
+    state: "advice detector at or above advice_boundary_act, or a rule hit; no category-specific template applies"
+  mode: template
+  compose_with: [TPL-ADV-ADVISOR-OFFER]
+  variant_selection: single
+  slots:
+    - {name: fact, source: {type: kb, ref: "evidence set of the turn (KB-PRD-*, KB-FAQ-*)", field: structured_fields}, locked: true}
+  variants:
+    - key: default
+      text:
+        en: "Here is what I can tell you: {{fact}} I can share the facts, but I can't tell you which option to choose. Would you like more detail on any of these?"
+        hi: "मैं आपको यह जानकारी दे सकता हूँ: {{fact}} मैं तथ्य बता सकता हूँ, पर यह नहीं बता सकता कि आपको कौन सा विकल्प चुनना चाहिए। क्या आप इनमें से किसी के बारे में और जानना चाहेंगे?"
+        hinglish: "Main aapko yeh jaankari de sakta hoon: {{fact}} Main facts bata sakta hoon, par yeh nahi bata sakta ki aapko kaunsa option chunna chahiye. Kya aap inmein se kisi ke baare mein aur jaanna chahenge?"
+  safety:
+    guardrails_enforced: [GR-ADV-01, GR-ADV-06, GR-ADV-07, GR-REG-20, GR-OUT-01]
+    must_not_contain: ["you should", "I recommend", "best", "better for you", "suitable for you", "your income", "your age"]
+    notes: "kb_version of the fact travels in citations[], not in customer text (layer 4 K3)."
+  a9: {patterns: [P2, P4], anti_patterns_avoided: [AP2, AP8]}
+  kb_refs: [KB-POL-001, KB-REG-005]
+  tests: [GR-ADV-01-01, GR-ADV-02-01, GR-REG-20-02]
+
+- id: TPL-ADV-RATE
+  title: "Rates and tenures as facts (category 1)"
+  version: "1.0.0"
+  customer_facing: true
+  trigger:
+    intents: [PRD-003, PRD-005]
+    guardrails: [GR-ADV-01, GR-ADV-02]
+    escalations: []
+    state: "advice request about interest rates or tenures"
+  mode: template
+  compose_with: [TPL-ADV-ADVISOR-OFFER]
+  variant_selection: condition
+  slots:
+    - {name: rate_range, source: {type: kb, ref: KB-PRD-002, field: structured_fields}, locked: true}
+    - {name: gap_statement, source: {type: kb, ref: KB-ESC-014, field: structured_fields.safe_statement}, locked: true}
+  variants:
+    - key: range_only
+      when: "the customer did not ask for a specific tenure"
+      text:
+        en: "{{rate_range}} I can share these facts, but I can't tell you whether or where to invest. Would you like to know more about tenures or tax treatment?"
+        hi: "{{rate_range}} मैं ये तथ्य बता सकता हूँ, पर यह नहीं बता सकता कि आपको निवेश करना चाहिए या कहाँ। क्या आप अवधि या टैक्स के बारे में और जानना चाहेंगे?"
+        hinglish: "{{rate_range}} Main yeh facts bata sakta hoon, par yeh nahi bata sakta ki aapko invest karna chahiye ya kahan. Kya aap tenure ya tax ke baare mein aur jaanna chahenge?"
+    - key: tenure_gap
+      when: "the customer asked for a rate at a tenure the KB does not hold"
+      text:
+        en: "{{rate_range}} {{gap_statement}} I can share the facts, but I can't tell you whether or where to invest."
+        hi: "{{rate_range}} {{gap_statement}} मैं तथ्य बता सकता हूँ, पर यह नहीं बता सकता कि आपको निवेश करना चाहिए या कहाँ।"
+        hinglish: "{{rate_range}} {{gap_statement}} Main facts bata sakta hoon, par yeh nahi bata sakta ki aapko invest karna chahiye ya kahan."
+  safety:
+    guardrails_enforced: [GR-ADV-01, GR-ADV-06, GR-OUT-01, GR-OUT-03, GR-REG-01]
+    must_not_contain: ["better returns", "you should", "will rise", "will fall", "guaranteed"]
+    notes: "gap_statement is rendered in English until KB-ESC-014 carries reviewed translations (kb-schema.md language parity)."
+  a9: {patterns: [P2, P4], anti_patterns_avoided: [AP2, AP3, AP8]}
+  kb_refs: [KB-PRD-002, KB-ESC-014, KB-POL-001]
+  tests: [GR-ADV-01-01, GR-OUT-01-01, SS-COM-08]
+
+- id: TPL-ADV-LOAN
+  title: "Published loan criteria and EMI illustration (category 2)"
+  version: "1.0.0"
+  customer_facing: true
+  trigger:
+    intents: [PRD-002, PRD-005]
+    guardrails: [GR-ADV-03]
+    escalations: []
+    state: "affordability or eligibility judgement requested"
+  mode: template
+  compose_with: [TPL-ADV-ADVISOR-OFFER]
+  variant_selection: condition
+  slots:
+    - {name: criteria, source: {type: kb, ref: "KB-PRD-005 or KB-PRD-006, KB-FAQ-005", field: structured_fields}, locked: true}
+    - {name: emi_illustration, source: {type: tool, ref: emi_calculator, field: "result with the KB-PRD-012 illustration wording"}, locked: true}
+  variants:
+    - key: criteria_only
+      when: "the customer gave no loan amount, rate and tenure to calculate with"
+      text:
+        en: "The published criteria are: {{criteria}} I can't judge affordability or whether you would be approved; a loan decision is made on a full application. Would you like an illustration of the monthly instalment for an amount and tenure you choose?"
+        hi: "प्रकाशित शर्तें ये हैं: {{criteria}} मैं यह तय नहीं कर सकता कि आप कितना वहन कर सकते हैं या आपका आवेदन मंज़ूर होगा या नहीं; लोन का निर्णय पूरे आवेदन पर होता है। क्या आप अपनी चुनी हुई राशि और अवधि के लिए मासिक किस्त का उदाहरण देखना चाहेंगे?"
+        hinglish: "Published criteria yeh hain: {{criteria}} Main yeh tay nahi kar sakta ki aap kitna afford kar sakte hain ya aapka application approve hoga ya nahi; loan ka decision poore application par hota hai. Kya aap apni chuni hui amount aur tenure ke liye monthly instalment ka example dekhna chahenge?"
+    - key: with_illustration
+      when: "emi_calculator returned a result for figures the customer stated"
+      text:
+        en: "The published criteria are: {{criteria}} {{emi_illustration}} This is an illustration only, not an offer, and I can't judge affordability."
+        hi: "प्रकाशित शर्तें ये हैं: {{criteria}} {{emi_illustration}} यह केवल एक उदाहरण है, कोई ऑफ़र नहीं, और मैं यह तय नहीं कर सकता कि आप कितना वहन कर सकते हैं।"
+        hinglish: "Published criteria yeh hain: {{criteria}} {{emi_illustration}} Yeh sirf ek example hai, offer nahi, aur main yeh tay nahi kar sakta ki aap kitna afford kar sakte hain."
+  safety:
+    guardrails_enforced: [GR-ADV-03, GR-ADV-07, GR-REG-15, GR-OUT-01, GR-OUT-05]
+    must_not_contain: ["you can afford", "you will be approved", "your salary", "based on your"]
+    notes: "A stated salary is never echoed (D-55)."
+  a9: {patterns: [P2], anti_patterns_avoided: [AP3, AP8]}
+  kb_refs: [KB-PRD-005, KB-PRD-006, KB-PRD-012, KB-FAQ-005]
+  tests: [GR-ADV-03-01, GR-ADV-03-03, GR-ADV-03-04, SS-COM-02]
+
+- id: TPL-ADV-INVEST
+  title: "Investment product facts and risk disclosure (category 3)"
+  version: "1.0.0"
+  customer_facing: true
+  trigger:
+    intents: [PRD-005]
+    guardrails: [GR-ADV-01, GR-ADV-04]
+    escalations: []
+    state: "investment pick or return prediction requested"
+  mode: template
+  compose_with: [TPL-ADV-ADVISOR-OFFER]
+  variant_selection: single
+  slots:
+    - {name: product_facts, source: {type: kb, ref: "KB-PRD-008, KB-PRD-009, KB-FAQ-006", field: structured_fields}, locked: true}
+    - {name: risk_disclosure, source: {type: kb, ref: KB-PRD-008, field: "structured_fields (risk disclosure statement)"}, locked: true}
+  variants:
+    - key: default
+      text:
+        en: "{{product_facts}} {{risk_disclosure}} I can't pick an investment for you or say how it will perform. Would you like more detail on how any of these work?"
+        hi: "{{product_facts}} {{risk_disclosure}} मैं आपके लिए कोई निवेश नहीं चुन सकता और न यह बता सकता हूँ कि उसका प्रदर्शन कैसा रहेगा। क्या आप जानना चाहेंगे कि इनमें से कोई कैसे काम करता है?"
+        hinglish: "{{product_facts}} {{risk_disclosure}} Main aapke liye koi investment choose nahi kar sakta aur na yeh bata sakta hoon ki uska performance kaisa rahega. Kya aap jaanna chahenge ki inmein se koi kaise kaam karta hai?"
+  safety:
+    guardrails_enforced: [GR-ADV-01, GR-ADV-04, GR-ADV-06, GR-REG-01, GR-REG-20, GR-OUT-03]
+    must_not_contain: ["long-term wealth", "returns of", "will give you", "safe investment", "you should"]
+    notes: "No return figure exists in the KB for NexInvest or NexGold; none may appear."
+  a9: {patterns: [P2, P4], anti_patterns_avoided: [AP2, AP3, AP8]}
+  kb_refs: [KB-PRD-008, KB-PRD-009, KB-REG-005]
+  tests: [GR-ADV-01-03, GR-ADV-04-03, SS-HAL-13, KB-BOSS-L3-02]
+
+- id: TPL-ADV-INSURANCE
+  title: "Cover facts without a policy recommendation (category 4)"
+  version: "1.0.0"
+  customer_facing: true
+  trigger:
+    intents: [PRD-004, PRD-005]
+    guardrails: [GR-ADV-03, GR-REG-12]
+    escalations: []
+    state: "insurance recommendation or cover-level request"
+  mode: template
+  compose_with: [TPL-ADV-ADVISOR-OFFER]
+  variant_selection: single
+  slots:
+    - {name: cover_facts, source: {type: kb, ref: "KB-PRD-007, KB-FAQ-004", field: structured_fields}, locked: true}
+  variants:
+    - key: default
+      text:
+        en: "{{cover_facts}} I can't recommend a policy or a cover amount; a person reviews any insurance recommendation. Would you like more detail on what the cover includes?"
+        hi: "{{cover_facts}} मैं कोई पॉलिसी या कवर राशि सुझा नहीं सकता; बीमा से जुड़ी हर सिफ़ारिश की समीक्षा एक व्यक्ति करता है। क्या आप जानना चाहेंगे कि कवर में क्या शामिल है?"
+        hinglish: "{{cover_facts}} Main koi policy ya cover amount suggest nahi kar sakta; insurance ki har recommendation ek person review karta hai. Kya aap jaanna chahenge ki cover mein kya shaamil hai?"
+  safety:
+    guardrails_enforced: [GR-ADV-03, GR-ADV-07, GR-REG-12, GR-OUT-01]
+    must_not_contain: ["given your age", "you need", "best option", "how old are you"]
+    notes: "Premiums and claims are a gap (KB-ESC-021): TPL-KB-GAP is used for those questions."
+  a9: {patterns: [P2], anti_patterns_avoided: [AP2, AP8]}
+  kb_refs: [KB-PRD-007, KB-FAQ-004, KB-REG-006, KB-ESC-021]
+  tests: [GR-ADV-03-02, GR-ADV-07-02, GR-REG-12-01]
+
+- id: TPL-ADV-TAX
+  title: "Section 80C and TDS as facts (category 5)"
+  version: "1.0.0"
+  customer_facing: true
+  trigger:
+    intents: [PRD-003, PRD-005]
+    guardrails: [GR-ADV-05]
+    escalations: []
+    state: "tax-planning recommendation requested"
+  mode: template
+  compose_with: [TPL-ADV-ADVISOR-OFFER]
+  variant_selection: single
+  slots:
+    - {name: tax_facts, source: {type: kb, ref: "KB-REG-011, KB-FAQ-008", field: structured_fields}, locked: true}
+  variants:
+    - key: default
+      text:
+        en: "{{tax_facts}} These are general facts. I can't suggest how much to invest or how to plan your taxes."
+        hi: "{{tax_facts}} ये सामान्य तथ्य हैं। मैं यह सुझाव नहीं दे सकता कि कितना निवेश करें या टैक्स की योजना कैसे बनाएँ।"
+        hinglish: "{{tax_facts}} Yeh general facts hain. Main yeh suggest nahi kar sakta ki kitna invest karein ya tax planning kaise karein."
+  safety:
+    guardrails_enforced: [GR-ADV-05, GR-ADV-06, GR-OUT-01]
+    must_not_contain: ["to reduce your tax", "to save the most", "you should invest", "put at least"]
+    notes: ""
+  a9: {patterns: [P2], anti_patterns_avoided: [AP2, AP8]}
+  kb_refs: [KB-REG-011, KB-FAQ-008]
+  tests: [GR-ADV-05-01, GR-ADV-05-02, GR-ADV-05-03]
+
+- id: TPL-ADV-FOREX
+  title: "No direction or timing on currency (category 6)"
+  version: "1.0.0"
+  customer_facing: true
+  trigger:
+    intents: [TXN-006, PRD-005]
+    guardrails: [GR-ADV-04]
+    escalations: []
+    state: "currency direction, prediction or timing requested"
+  mode: template
+  compose_with: [TPL-ADV-ADVISOR-OFFER]
+  variant_selection: single
+  slots:
+    - {name: rate_source, source: {type: kb, ref: KB-ESC-016, field: "structured_fields (where the current rate is shown)"}, locked: true}
+  variants:
+    - key: default
+      text:
+        en: "I can't predict where a currency will go or suggest when to buy or sell. {{rate_source}} I also can't start a transfer from this chat."
+        hi: "मैं यह अनुमान नहीं लगा सकता कि कोई मुद्रा किस दिशा में जाएगी, और न यह सुझा सकता हूँ कि कब खरीदें या बेचें। {{rate_source}} मैं इस चैट से कोई ट्रांसफ़र भी शुरू नहीं कर सकता।"
+        hinglish: "Main yeh predict nahi kar sakta ki koi currency kis taraf jayegi, aur na yeh suggest kar sakta hoon ki kab kharidein ya bechein. {{rate_source}} Main is chat se koi transfer bhi shuru nahi kar sakta."
+  safety:
+    guardrails_enforced: [GR-ADV-04, GR-SEC-R3, GR-OUT-03]
+    must_not_contain: ["will fall", "will rise", "buy now", "wait until", "will depreciate"]
+    notes: "Transfer charges and forex rates are a gap (KB-ESC-016)."
+  a9: {patterns: [P4], anti_patterns_avoided: [AP3, AP8]}
+  kb_refs: [KB-ESC-016, KB-POL-001]
+  tests: [GR-ADV-04-01, GR-ADV-04-02, SS-HAL-08]
+
+- id: TPL-ADV-COMPARE
+  title: "Factual side-by-side with no verdict"
+  version: "1.0.0"
+  customer_facing: true
+  trigger:
+    intents: [PRD-001, PRD-005]
+    guardrails: [GR-ADV-09]
+    escalations: []
+    state: "comparison requested between catalogue products"
+  mode: template
+  compose_with: [TPL-ADV-ADVISOR-OFFER]
+  variant_selection: single
+  slots:
+    - {name: rows, source: {type: kb, ref: "KB-PRD-011 or the product entries compared", field: structured_fields}, locked: true}
+  variants:
+    - key: default
+      text:
+        en: "Here are the two side by side, feature by feature: {{rows}} I can't say which one to choose. Would you like more detail on any feature?"
+        hi: "दोनों की सुविधाएँ आमने-सामने इस प्रकार हैं: {{rows}} मैं यह नहीं बता सकता कि कौन सा चुनें। क्या आप किसी सुविधा के बारे में और जानना चाहेंगे?"
+        hinglish: "Dono ke features side by side yeh hain: {{rows}} Main yeh nahi bata sakta ki kaunsa chunein. Kya aap kisi feature ke baare mein aur jaanna chahenge?"
+  safety:
+    guardrails_enforced: [GR-ADV-09, GR-ADV-06, GR-OUT-01]
+    must_not_contain: ["is better", "wins", "ranked", "number one", "I would choose"]
+    notes: "Rows keep the KB order; no sorting by attractiveness. On voice and messaging channels rows render as short lines, not a table."
+  a9: {patterns: [P2], anti_patterns_avoided: [AP2, AP8]}
+  kb_refs: [KB-PRD-011, KB-PRD-003, KB-PRD-004]
+  tests: [GR-ADV-09-01, GR-ADV-09-02, GR-ADV-09-03, KB-BOSS-L3-01]
+
+- id: TPL-ADV-ADVISOR-OFFER
+  title: "Offer of a SEBI-registered advisor (ESC-013 offer, once per topic)"
+  version: "1.0.0"
+  customer_facing: true
+  trigger:
+    intents: [PRD-005, PRD-002, PRD-004, TXN-006]
+    guardrails: [GR-ADV-08]
+    escalations: [ESC-013]
+    state: "an ADV template was used and no advisor offer has been made for this topic (advisor_offer_max_per_topic)"
+  mode: template
+  variant_selection: single
+  slots: []
+  variants:
+    - key: default
+      text:
+        en: "For a personal recommendation, a SEBI-registered advisor at NexBank can help. Shall I arrange that for you?"
+        hi: "व्यक्तिगत सलाह के लिए नेक्सबैंक के SEBI-पंजीकृत सलाहकार आपकी मदद कर सकते हैं। क्या मैं इसकी व्यवस्था करूँ?"
+        hinglish: "Personal recommendation ke liye NexBank ke SEBI-registered advisor aapki madad kar sakte hain. Kya main iska arrangement karoon?"
+  safety:
+    guardrails_enforced: [GR-ADV-08, GR-REG-20, GR-REG-04]
+    must_not_contain: ["free", "30-minute", "minutes", "I am an advisor"]
+    notes: "The consultation length and price in Case Study 3 are not in the KB and are not stated (financial-advice.md section 6). An offer, never an automatic transfer."
+  a9: {patterns: [P4], anti_patterns_avoided: [AP4, AP3]}
+  kb_refs: [KB-ESC-008, KB-REG-005]
+  tests: [GR-ADV-08-01, ESC-T-013-01, SS-ESC-17]
+
+- id: TPL-ADV-ADVISOR-CONFIRM
+  title: "Advisor offer accepted (ESC-013 created)"
+  version: "1.0.0"
+  customer_facing: true
+  trigger:
+    intents: [PRD-005]
+    guardrails: [GR-ADV-08]
+    escalations: [ESC-013]
+    state: "customer accepted the advisor offer; ESC-013 record created"
+  mode: template
+  variant_selection: condition
+  slots:
+    - {name: topic, source: {type: state, ref: "topic_stack[active].intent mapped to a plain topic label", field: label}, locked: true}
+    - {name: queue_wait, source: {type: router, ref: "queue platform forecast", field: estimated_wait_text}, locked: true, required: false}
+  variants:
+    - key: no_wait
+      when: "the router supplied no wait estimate"
+      text:
+        en: "I'm connecting you to one of our SEBI-registered advisors. I've passed on your question about {{topic}}, so you won't need to repeat it. I'll stay here until they join."
+        hi: "मैं आपको हमारे एक SEBI-पंजीकृत सलाहकार से जोड़ रहा हूँ। {{topic}} से जुड़ा आपका सवाल मैंने उन्हें भेज दिया है, इसलिए आपको दोहराना नहीं पड़ेगा। उनके जुड़ने तक मैं यहीं हूँ।"
+        hinglish: "Main aapko hamare ek SEBI-registered advisor se connect kar raha hoon. {{topic}} wala aapka sawaal maine unhe bhej diya hai, isliye aapko repeat nahi karna padega. Unke join karne tak main yahin hoon."
+    - key: with_wait
+      when: "the router supplied a wait estimate"
+      text:
+        en: "I'm connecting you to one of our SEBI-registered advisors. I've passed on your question about {{topic}}, so you won't need to repeat it. The current estimate is {{queue_wait}}; it is an estimate, and I'll stay here until they join."
+        hi: "मैं आपको हमारे एक SEBI-पंजीकृत सलाहकार से जोड़ रहा हूँ। {{topic}} से जुड़ा आपका सवाल मैंने उन्हें भेज दिया है, इसलिए आपको दोहराना नहीं पड़ेगा। अभी का अनुमान {{queue_wait}} है; यह केवल अनुमान है, और उनके जुड़ने तक मैं यहीं हूँ।"
+        hinglish: "Main aapko hamare ek SEBI-registered advisor se connect kar raha hoon. {{topic}} wala aapka sawaal maine unhe bhej diya hai, isliye aapko repeat nahi karna padega. Abhi ka estimate {{queue_wait}} hai; yeh sirf estimate hai, aur unke join karne tak main yahin hoon."
+  safety:
+    guardrails_enforced: [GR-ADV-08, GR-OUT-05]
+    must_not_contain: ["will join in", "within", "your salary", "your age"]
+    notes: "queue_wait is never a promise (SS-COM-09). Volunteered circumstances are not restated (D-55)."
+  a9: {patterns: [P5], anti_patterns_avoided: [AP3, AP6]}
+  kb_refs: [KB-ESC-001, KB-ESC-008]
+  tests: [GR-ADV-08-01, ESC-T-013-01, SS-COM-09]
+
+- id: TPL-ADV-ADVISOR-DECLINED
+  title: "Advisor offer declined"
+  version: "1.0.0"
+  customer_facing: true
+  trigger:
+    intents: [PRD-005]
+    guardrails: [GR-ADV-08]
+    escalations: []
+    state: "customer declined the advisor offer"
+  mode: template
+  variant_selection: single
+  slots: []
+  variants:
+    - key: default
+      text:
+        en: "No problem. I'll keep to the facts. What would you like to know?"
+        hi: "ठीक है। मैं तथ्यों तक ही सीमित रहूँगा। आप क्या जानना चाहेंगे?"
+        hinglish: "Theek hai. Main facts tak hi rahunga. Aap kya jaanna chahenge?"
+  safety:
+    guardrails_enforced: [GR-ADV-08]
+    must_not_contain: ["are you sure", "advisor", "would you like to speak"]
+    notes: "The offer is not repeated for the same topic."
+  a9: {patterns: [P2], anti_patterns_avoided: [AP1, AP4]}
+  kb_refs: [KB-POL-001]
+  tests: [GR-ADV-08-02, ESC-T-013-02]
+
+- id: TPL-ADV-ADVISOR-UNAVAILABLE
+  title: "Advisor queue unavailable"
+  version: "1.0.0"
+  customer_facing: true
+  trigger:
+    intents: [PRD-005]
+    guardrails: [GR-ADV-08]
+    escalations: [ESC-013]
+    state: "Wealth Advisory queue closed or unavailable (after hours: callback only, D-122)"
+  mode: template
+  variant_selection: single
+  slots:
+    - {name: callback_option, source: {type: router, ref: schedule_callback, field: "available request windows as text"}, locked: true}
+  variants:
+    - key: default
+      text:
+        en: "Our advisors aren't available right now, and I don't want to give you advice in their place. I can request a callback for you: {{callback_option}} A callback time is a request and may change. Would you like me to request one?"
+        hi: "हमारे सलाहकार अभी उपलब्ध नहीं हैं, और मैं उनकी जगह आपको सलाह नहीं देना चाहता। मैं आपके लिए कॉलबैक का अनुरोध कर सकता हूँ: {{callback_option}} कॉलबैक का समय एक अनुरोध है और बदल सकता है। क्या मैं अनुरोध दर्ज करूँ?"
+        hinglish: "Hamare advisors abhi available nahi hain, aur main unki jagah aapko advice nahi dena chahta. Main aapke liye callback request kar sakta hoon: {{callback_option}} Callback ka time ek request hai aur badal sakta hai. Kya main request daal doon?"
+  safety:
+    guardrails_enforced: [GR-ADV-08, GR-OUT-05]
+    must_not_contain: ["will call you at", "in the meantime I suggest"]
+    notes: "No advice as a substitute."
+  a9: {patterns: [P4], anti_patterns_avoided: [AP3, AP8]}
+  kb_refs: [KB-POL-007, KB-ESC-008]
+  tests: [GR-ADV-08-03, SS-COM-04]
+
+- id: TPL-ADV-SAFE-FALLBACK
+  title: "Output Safety fallback for an unfixable advice draft"
+  version: "1.0.0"
+  customer_facing: true
+  trigger:
+    intents: [PRD-005, PRD-001, PRD-002, PRD-003, PRD-004]
+    guardrails: [GR-ADV-06, GR-SYS-01]
+    escalations: []
+    state: "Output Safety check C7 inconclusive or repair failed (ladder rung 2)"
+  mode: template
+  compose_with: [TPL-ADV-ADVISOR-OFFER]
+  variant_selection: single
+  slots: []
+  variants:
+    - key: default
+      text:
+        en: "I can give you factual information about our products, but I can't advise you on what to choose. Tell me which product you'd like the facts on."
+        hi: "मैं हमारे उत्पादों के बारे में तथ्यात्मक जानकारी दे सकता हूँ, पर यह सलाह नहीं दे सकता कि क्या चुनें। बताइए, आप किस उत्पाद के तथ्य जानना चाहते हैं।"
+        hinglish: "Main hamare products ke baare mein factual jaankari de sakta hoon, par yeh advice nahi de sakta ki kya chunein. Bataiye, aap kis product ke facts jaanna chahte hain."
+  safety:
+    guardrails_enforced: [GR-ADV-06, GR-SYS-01, GR-OUT-06]
+    must_not_contain: ["error", "I was unable to process"]
+    notes: "Holds no slot, so it cannot fail a grounding check."
+  a9: {patterns: [P4], anti_patterns_avoided: [AP8, AP1]}
+  kb_refs: [KB-POL-001]
+  tests: [GR-ADV-06-04, GR-SYS-01-01]

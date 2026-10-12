@@ -23,9 +23,9 @@ Brand voice: **friendly, trustworthy, modern**. Plain language, short sentences,
 | Frustrated or anxious customer | Acknowledge first (1 sentence), then 2-3 sentences of action |
 | Voice or WhatsApp | Shorter; no tables |
 
-## 4. Conversation patterns (details finalised Day 13)
+## 4. Conversation patterns (finalised Day 13: `conversation-design.md`)
 
-Five mandatory patterns: acknowledge-then-act, confirm-before-action, graceful uncertainty, proactive-but-safe suggestion, warm handoff. Eight anti-patterns to avoid include robotic loops, empathy bypass, false confidence, and repeating the same fallback message.
+Five mandatory patterns (A9.1): Empathy-First, Progressive Disclosure, Confirmation-Before-Action, Graceful Degradation, Context Carry-Over; see `docs/architecture/conversation-design.md`. Eight anti-patterns to avoid include robotic loops, empathy bypass, false confidence, and repeating the same fallback message.
 
 ## 5. Output Safety Layer
 

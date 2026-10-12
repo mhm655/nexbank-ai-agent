@@ -102,22 +102,22 @@ The agent may not: infer or use a stated salary, age or goal in the answer; pres
 
 ## 6. Safe-response patterns (template names; Day 13 writes the text)
 
-All patterns share the shape from disambiguation.md section 3: **fact from the KB (version cited) + one boundary sentence + the advisor offer + an offer of more factual detail**. They ask no income, age or portfolio question. Each exists in English, Hindi and Hinglish.
+All patterns share the shape from disambiguation.md section 3: **fact from the KB (version cited) + one boundary sentence + an offer of more factual detail**; the advisor offer is a separate template appended once per topic (section 7). They ask no income, age or portfolio question. Each exists in English, Hindi and Hinglish.
 
 | Template | Used when | Slots |
 |---|---|---|
-| TPL-ADV-BOUNDARY | generic decline with advisor offer (default) | `{fact}`, `{kb_version}` |
-| TPL-ADV-RATE | category 1: facts about rates and tenures; gap statement if the tenure is not held | `{rate_range}`, `{gap_statement}` |
-| TPL-ADV-LOAN | category 2: published criteria and EMI illustration, no affordability judgement | `{criteria}`, `{emi_illustration}` |
-| TPL-ADV-INVEST | category 3: product facts and risk disclosure statement, no pick | `{product_facts}`, `{risk_disclosure}` |
-| TPL-ADV-INSURANCE | category 4: cover facts, medical-check fact, no policy recommendation | `{cover_facts}` |
-| TPL-ADV-TAX | category 5: 80C and TDS applicability as facts | `{tax_facts}` |
-| TPL-ADV-FOREX | category 6: no direction or timing; rate availability only; transfer gap | `{rate_source}` |
-| TPL-ADV-COMPARE | factual comparison with no verdict | `{rows}` |
+| TPL-ADV-BOUNDARY | generic decline with advisor offer (default) | `{{fact}}` (the KB version travels in `citations[]`, not in the text) |
+| TPL-ADV-RATE | category 1: facts about rates and tenures; gap statement if the tenure is not held | `{{rate_range}}`, `{{gap_statement}}` |
+| TPL-ADV-LOAN | category 2: published criteria and EMI illustration, no affordability judgement | `{{criteria}}`, `{{emi_illustration}}` |
+| TPL-ADV-INVEST | category 3: product facts and risk disclosure statement, no pick | `{{product_facts}}`, `{{risk_disclosure}}` |
+| TPL-ADV-INSURANCE | category 4: cover facts, medical-check fact, no policy recommendation | `{{cover_facts}}` |
+| TPL-ADV-TAX | category 5: 80C and TDS applicability as facts | `{{tax_facts}}` |
+| TPL-ADV-FOREX | category 6: no direction or timing; rate availability only; transfer gap | `{{rate_source}}` |
+| TPL-ADV-COMPARE | factual comparison with no verdict | `{{rows}}` |
 | TPL-ADV-ADVISOR-OFFER | the ESC-013 offer (once per topic) | none |
-| TPL-ADV-ADVISOR-CONFIRM | customer accepts: confirm handoff to Wealth Advisory | `{queue_wait}` from the router, never a promise |
+| TPL-ADV-ADVISOR-CONFIRM | customer accepts: confirm handoff to Wealth Advisory | `{{queue_wait}}` from the router, never a promise |
 | TPL-ADV-ADVISOR-DECLINED | customer declines: continue with facts, no repeat offer | none |
-| TPL-ADV-ADVISOR-UNAVAILABLE | advisor queue unavailable: callback request, honest status | `{callback_option}` |
+| TPL-ADV-ADVISOR-UNAVAILABLE | advisor queue unavailable: callback request, honest status | `{{callback_option}}` |
 | TPL-ADV-SAFE-FALLBACK | Output Safety fallback when the draft cannot be fixed | none |
 
 The consultation described in the brief's Case Study 4 (duration, fee) is not held in the KB. Templates must not state a duration or a price unless a KB entry is added through the maintenance workflow.

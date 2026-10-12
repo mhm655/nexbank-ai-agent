@@ -66,7 +66,8 @@
           "status": { "type": "string", "enum": ["active", "parked", "resolved", "abandoned"] },
           "slots_snapshot": { "type": "object" },
           "parked_at_turn": { "type": "integer" },
-          "priority": { "type": "integer", "minimum": 0 }
+          "priority": { "type": "integer", "minimum": 0 },
+          "apology_given": { "type": "boolean", "description": "Set when the agent has apologised for this topic; the Robotic Apology check (AP7) reads it (D-150)." }
         }
       }
     },
@@ -177,6 +178,63 @@
         "prior_conversation_ids": { "type": "array", "items": { "type": "string" } },
         "open_tickets": { "type": "array", "items": { "type": "string" } },
         "context_reusable_until": { "type": "string", "format": "date-time", "description": "Context (not auth) may be reused within 24 h (decision D-05)." }
+      }
+    },
+    "last_response": {
+      "type": "object",
+      "description": "Template used for the latest agent reply, for attribution and turn logs (D-102, D-136, D-138).",
+      "required": ["template_id"],
+      "properties": {
+        "template_id": { "type": "string" },
+        "variant": { "type": "string" },
+        "template_version": { "type": "string" }
+      }
+    },
+    "escalation": {
+      "type": "object",
+      "description": "Escalation Router state (D-120, docs/escalation/triggers.md section 8).",
+      "properties": {
+        "fired": {
+          "type": "array",
+          "description": "Every trigger that has fired in the conversation.",
+          "items": {
+            "type": "object",
+            "required": ["trigger_id"],
+            "properties": {
+              "trigger_id": { "type": "string" },
+              "rule_id": { "type": "string" },
+              "turn": { "type": "integer", "minimum": 0 },
+              "source": { "type": "string" }
+            }
+          }
+        },
+        "pending": {
+          "description": "The live escalation, if any.",
+          "oneOf": [
+            { "type": "null" },
+            {
+              "type": "object",
+              "properties": {
+                "trigger_id": { "type": "string" },
+                "priority": { "type": "string", "enum": ["P0", "P1", "P2"] },
+                "queue": { "type": "string" },
+                "created_at": { "type": "string", "format": "date-time" },
+                "sla_deadline": { "type": "string", "format": "date-time" },
+                "status": { "type": "string" },
+                "handoff_attempts": { "type": "integer", "minimum": 0 }
+              }
+            }
+          ]
+        },
+        "secondary": { "type": "array", "items": { "type": "string" }, "description": "Secondary triggers of the pending escalation." },
+        "neg_sentiment_streak": { "type": "integer", "minimum": 0, "description": "Streak for ESC-004." },
+        "turns_since_resolution": { "type": "integer", "minimum": 0, "description": "Counter for ESC-010." },
+        "otp_failures": { "type": "integer", "minimum": 0, "description": "Counter for XTR-02." },
+        "outcome": {
+          "type": "string",
+          "enum": ["handed_off", "de_escalated_by_customer", "de_escalated_recovery", "withdrawn_condition_false", "callback_scheduled", "failed_handoff"],
+          "description": "Final state, used by the quality metrics."
+        }
       }
     },
     "versions": {

@@ -1,0 +1,357 @@
+# Complaint, knowledge-gap, survey and system templates (families CMP, KB, SRV, SYS). New on Day 13 (D-136).
+# Generic names used by earlier documents map here: `graceful_degradation` (retrieval-pipeline.md sections 9-10) is
+# TPL-KB-GAP for decision `gap` and TPL-KB-DEGRADE for decision `degrade`; the "static status message and the human line"
+# of the fail-closed ladder rung 5 (output-safety-layer.md section 6) is TPL-SYS-STATUS-STATIC.
+schema_version: "1.0"
+family: CMP
+review: {hi: not_native_reviewed, hinglish: not_native_reviewed}
+
+templates:
+
+- id: TPL-CMP-EMPATHY-FIRST
+  title: "Empathy-first reply to a complaint or a frustrated customer (Acknowledge, Assure, Act, Affirm)"
+  version: "1.0.0"
+  customer_facing: true
+  trigger:
+    intents: [CMP-001, CMP-003, CMP-004, TXN-003]
+    guardrails: [GR-OUT-04, GR-REG-03]
+    escalations: []
+    state: "empathy trigger set by the Policy Engine (sentiment.md section 5.3): smoothed sentiment at or below empathy_first_sentiment_max, an active frustration, anger, anxiety or resignation label, or a problem or complaint intent"
+  mode: llm-guided
+  variant_selection: condition
+  slots:
+    - name: ack
+      source: {type: llm, ref: "Acknowledge: one sentence naming the customer's specific situation", field: text}
+      locked: false
+      constraints: {max_words: 25, sentences: 1, must_not: [digits, promise, blame, apology_repetition, product_mention, naming_sarcasm, dramatic_emotion_words]}
+      fallback: {en: "I understand this has been frustrating, and I'm sorry for the trouble.", hi: "मैं समझता हूँ कि यह आपके लिए परेशानी भरा रहा है, और इस असुविधा के लिए मुझे खेद है।", hinglish: "Main samajhta hoon ki yeh aapke liye frustrating raha hai, aur is pareshani ke liye mujhe khed hai."}
+    - {name: action_now, source: {type: policy, ref: "Act: the concrete step the Policy Engine has chosen (lookup started, ticket offered, handoff)", field: text}, locked: true}
+    - {name: affirm, source: {type: policy, ref: "Affirm: what was done and what happens next, from ToolResult or state; no timeline unless a tool returned it", field: text}, locked: true, required: false}
+  variants:
+    - key: four_steps
+      when: "the action can start in this turn"
+      text:
+        en: "{{ack}} Let me help put this right. {{action_now}} {{affirm}}"
+        hi: "{{ack}} मैं इसे ठीक करने में आपकी मदद करता हूँ। {{action_now}} {{affirm}}"
+        hinglish: "{{ack}} Main ise theek karne mein aapki madad karta hoon. {{action_now}} {{affirm}}"
+    - key: needs_verification_first
+      when: "the action needs a verification step: acknowledgement still comes before the request to verify"
+      text:
+        en: "{{ack}} I want to look into this for you straight away. So that I can open your records, please complete the secure verification step I've opened."
+        hi: "{{ack}} मैं इसे तुरंत देखना चाहता हूँ। आपके रिकॉर्ड खोलने के लिए, कृपया मेरे खोले हुए सुरक्षित सत्यापन चरण को पूरा करें।"
+        hinglish: "{{ack}} Main ise turant dekhna chahta hoon. Aapke records kholne ke liye, please mere khole hue secure verification step ko poora karein."
+  safety:
+    guardrails_enforced: [GR-OUT-04, GR-OUT-05, GR-REG-03, GR-REG-04, GR-OUT-03]
+    must_not_contain: ["calm down", "deeply apologise", "sincerely regret", "we sincerely", "not a big deal", "you should have", "as per policy", "please provide your account number", "offer"]
+    notes: "The only llm-guided template in a complaint flow: the LLM writes the `ack` sentence under the stated constraints; the Assure sentence is fixed; Act and Affirm are policy-supplied. If the tone check fails twice the fallback text is used. One apology at most. Grievance information follows by the second agent turn (TPL-CMP-GRIEVANCE-INFO)."
+  a9: {patterns: [P1], anti_patterns_avoided: [AP5, AP7, AP3, AP2]}
+  kb_refs: [KB-REG-002, KB-ESC-005]
+  tests: [GR-REG-03-02, GR-OUT-04-02, ESC-BOSS-L6-03, ESC-T-004-01, XTR-T-03-01]
+
+- id: TPL-CMP-GRIEVANCE-INFO
+  title: "Grievance redressal information (within two turns of any complaint)"
+  version: "1.0.0"
+  customer_facing: true
+  trigger:
+    intents: [CMP-001, CMP-002, CMP-003, CMP-005]
+    guardrails: [GR-REG-03, GR-REG-19]
+    escalations: []
+    state: "complaint detected and grievance information not yet given; must be sent no later than the second agent turn after the complaint (grievance_info_max_turns), at any auth level. Variant by whether an ombudsman question was asked"
+  mode: template
+  variant_selection: condition
+  slots:
+    - {name: gap_statement, source: {type: kb, ref: KB-ESC-019, field: structured_fields.safe_statement}, locked: true, required: false}
+  variants:
+    - key: route
+      when: "default"
+      text:
+        en: "Here is how I can take this forward: I can register a formal complaint for you now and give you its reference, I can ask for it to be taken up by a senior colleague, or I can request a callback. You also have the right to take a complaint further under the RBI's ombudsman scheme if the bank does not resolve it. Which would you like me to do?"
+        hi: "मैं इसे इस तरह आगे बढ़ा सकता हूँ: मैं अभी आपकी औपचारिक शिकायत दर्ज करके उसका संदर्भ नंबर दे सकता हूँ, इसे किसी वरिष्ठ सहयोगी के पास भेजने का अनुरोध कर सकता हूँ, या कॉलबैक का अनुरोध कर सकता हूँ। अगर बैंक शिकायत का समाधान नहीं करता, तो आपको RBI की लोकपाल योजना के तहत इसे आगे ले जाने का अधिकार भी है। आप क्या चाहेंगे कि मैं करूँ?"
+        hinglish: "Main ise is tarah aage badha sakta hoon: main abhi aapki formal complaint register karke uska reference de sakta hoon, ise kisi senior colleague ke paas bhejne ki request kar sakta hoon, ya callback request kar sakta hoon. Agar bank complaint resolve nahi karta, to aapko RBI ki ombudsman scheme ke tahat ise aage le jaane ka right bhi hai. Aap kya chahenge ki main karoon?"
+    - key: ombudsman_detail_asked
+      when: "the customer asked for ombudsman contacts, time limits or award limits (known unknown; ESC-008 when the customer needs the specifics)"
+      text:
+        en: "You do have the right to approach the ombudsman under the RBI's scheme. {{gap_statement}}"
+        hi: "RBI की योजना के तहत आपको लोकपाल के पास जाने का अधिकार है। {{gap_statement}}"
+        hinglish: "RBI ki scheme ke tahat aapko ombudsman ke paas jaane ka right hai. {{gap_statement}}"
+  safety:
+    guardrails_enforced: [GR-REG-03, GR-REG-18, GR-REG-19, GR-OUT-05, GR-OUT-03]
+    must_not_contain: ["days", "you cannot sue", "we are not liable", "legally speaking", "no need to", "resolved in", "will call you"]
+    notes: "States the in-bank route and the existence of the ombudsman right (KB-REG-002). States no contact, time limit or award limit: the KB does not hold them (KB-ESC-019). Never discourages the customer from approaching a regulator. Preceded by the acknowledgement of TPL-CMP-EMPATHY-FIRST when both fall in the same turn."
+  a9: {patterns: [P1, P2, P4], anti_patterns_avoided: [AP3, AP8, AP2, AP5]}
+  kb_refs: [KB-REG-002, KB-ESC-019, KB-ESC-005]
+  tests: [GR-REG-03-01, GR-REG-03-02, GR-REG-03-03, SS-AUTH-20, SS-AUTH-22, ESC-T-002-02, GR-REG-18-01]
+
+- id: TPL-KB-DEGRADE
+  title: "Graceful degradation (no reliable information; rotating variants)"
+  version: "1.0.0"
+  customer_facing: true
+  legacy_names: [graceful_degradation]
+  trigger:
+    intents: [GEN-004]
+    guardrails: [GR-OUT-03, GR-SYS-01]
+    escalations: []
+    state: "retrieval decision `degrade` (top1 below retrieval_confidence_threshold, no regulatory tag), or a passage quarantined by GR-ATK-02, or a non-existent product named by the customer. Variant rotates; `with_adjacent` only when the Policy Engine supplies a nearby topic"
+  mode: template
+  variant_selection: rotate
+  slots:
+    - {name: adjacent_topic, source: {type: kb, ref: "title of a top-k entry that lists the top NLU intent (retrieval-pipeline.md section 9)", field: title}, locked: true, required: false}
+  variants:
+    - key: plain
+      when: "first use in the conversation"
+      text:
+        en: "I don't have reliable information on that, and I don't want to guess. Could you tell me a bit more about what you're looking for, or would you like me to bring in a colleague who can confirm it?"
+        hi: "इस बारे में मेरे पास भरोसेमंद जानकारी नहीं है, और मैं अंदाज़ा नहीं लगाना चाहता। क्या आप थोड़ा और बता सकते हैं कि आप क्या जानना चाहते हैं, या मैं किसी सहयोगी को जोड़ूँ जो इसकी पुष्टि कर सकें?"
+        hinglish: "Is baare mein mere paas reliable information nahi hai, aur main guess nahi karna chahta. Kya aap thoda aur bata sakte hain ki aap kya dhoondh rahe hain, ya main kisi colleague ko jodoon jo ise confirm kar sakein?"
+    - key: with_adjacent
+      when: "a nearby topic was supplied"
+      text:
+        en: "That's not something I have confirmed details on, so I'd rather not guess. I can tell you about {{adjacent_topic}}, or connect you with a colleague who can confirm what you asked. Which would help more?"
+        hi: "इसकी पुष्ट जानकारी मेरे पास नहीं है, इसलिए मैं अंदाज़ा नहीं लगाऊँगा। मैं आपको {{adjacent_topic}} के बारे में बता सकता हूँ, या आपको किसी सहयोगी से जोड़ सकता हूँ जो आपके सवाल की पुष्टि कर सकें। आपके लिए क्या ज़्यादा उपयोगी होगा?"
+        hinglish: "Iski confirmed details mere paas nahi hain, isliye main guess nahi karunga. Main aapko {{adjacent_topic}} ke baare mein bata sakta hoon, ya aapko kisi colleague se connect kar sakta hoon jo aapke sawaal ko confirm kar sakein. Aapke liye kya zyada useful hoga?"
+    - key: second_time
+      when: "second degrade in the conversation: no further question, a person is offered"
+      text:
+        en: "I still can't find a dependable answer to that, and I'm sorry to keep you waiting on it. The quickest way to get it right is a colleague from our team. Shall I bring one in, or request a callback for you?"
+        hi: "मुझे इसका भरोसेमंद जवाब अब भी नहीं मिल रहा है, और इसके लिए आपको रोके रखने का मुझे खेद है। सही जवाब पाने का सबसे तेज़ तरीका हमारी टीम के एक सहयोगी हैं। क्या मैं किसी को जोड़ूँ, या आपके लिए कॉलबैक का अनुरोध करूँ?"
+        hinglish: "Mujhe iska dependable jawab ab bhi nahi mil raha hai, aur iske liye aapko roke rakhne ka mujhe khed hai. Sahi jawab paane ka sabse tez tareeka hamari team ke ek colleague hain. Kya main kisi ko jodoon, ya aapke liye callback request karoon?"
+  safety:
+    guardrails_enforced: [GR-OUT-03, GR-OUT-01, GR-SYS-01, GR-OUT-05]
+    must_not_contain: ["I think", "probably", "usually", "typically", "as far as I know", "I didn't understand", "could you rephrase", "error", "database", "confidence"]
+    notes: "The Hinglish variants are the graceful-degradation Hinglish template promised on Day 8. No number, no hedged guess, no jargon. The same variant is never sent twice in a row (Robotic Loop). For a regulatory topic the decision is escalate_esc_008 and TPL-ESC-HANDOFF-WARM (regulatory_uncertain) is used instead."
+  a9: {patterns: [P4], anti_patterns_avoided: [AP1, AP3, AP8]}
+  kb_refs: [KB-ESC-020]
+  tests: [SS-HAL-02, SS-HAL-11, ESC-T-014-03, GR-OUT-03-01, GR-ATK-02-01, SS-ESC-03]
+
+- id: TPL-KB-GAP
+  title: "Known knowledge gap (gap entry safe statement, nearby facts, offer)"
+  version: "1.0.0"
+  customer_facing: true
+  legacy_names: [graceful_degradation]
+  trigger:
+    intents: [PRD-001, PRD-003, PRD-004, CRD-003, CRD-004, GEN-008, TXN-006]
+    guardrails: [GR-OUT-01, GR-OUT-03]
+    escalations: []
+    state: "retrieval decision `gap`: a gap entry (gap_handling true, KB-ESC-011 to KB-ESC-021) is in the evidence set and the question asks for a fact in its `unknown` list"
+  mode: template
+  variant_selection: condition
+  slots:
+    - {name: safe_statement, source: {type: kb, ref: "the gap entry in the evidence set (KB-ESC-011 to KB-ESC-021)", field: structured_fields.safe_statement}, locked: true}
+    - {name: adjacent_facts, source: {type: kb, ref: "entries listed in the gap entry's known_adjacent_facts that the retriever also returned", field: structured_fields}, locked: true, required: false}
+  variants:
+    - key: statement_only
+      when: "no adjacent entry was returned"
+      text:
+        en: "{{safe_statement}}"
+        hi: "{{safe_statement}}"
+        hinglish: "{{safe_statement}}"
+    - key: with_adjacent_facts
+      when: "adjacent entries were returned"
+      text:
+        en: "{{safe_statement}} What I can confirm is this: {{adjacent_facts}}"
+        hi: "{{safe_statement}} मैं इतना पुष्ट कर सकता हूँ: {{adjacent_facts}}"
+        hinglish: "{{safe_statement}} Main itna confirm kar sakta hoon: {{adjacent_facts}}"
+  safety:
+    guardrails_enforced: [GR-OUT-01, GR-OUT-03, GR-REG-01, GR-OUT-05]
+    must_not_contain: ["approximately", "around", "roughly", "I think", "usually", "processing fee is", "no fees at all", "zero fees", "no hidden charges"]
+    notes: "The customer-facing words are the gap entry's own `safe_statement`, so the template adds no claim of its own. A figure on a gap topic is an Output Safety fail (output-safety-layer.md section 3.4). Safe statements exist in English only today; Hindi and Hinglish render the English statement until the KB entries carry reviewed `body_i18n` (open item)."
+  a9: {patterns: [P4, P2], anti_patterns_avoided: [AP8, AP3, AP2]}
+  kb_refs: [KB-ESC-011, KB-ESC-012, KB-ESC-013, KB-ESC-014, KB-ESC-015, KB-ESC-016, KB-ESC-017, KB-ESC-018, KB-ESC-019, KB-ESC-021]
+  tests: [SS-HAL-01, SS-HAL-05, SS-HAL-06, SS-HAL-07, SS-HAL-09, SS-HAL-10, GR-OUT-01-01, KB-BOSS-L3-01]
+
+- id: TPL-SRV-CSAT
+  title: "Post-conversation satisfaction rating (CSAT, one question)"
+  version: "1.0.0"
+  customer_facing: true
+  trigger:
+    intents: [GEN-006, CMP-004]
+    guardrails: []
+    escalations: []
+    state: "dialogue_phase CLOSING after a completed task or GEN-006; for an escalated conversation, after the human closes it. Not asked: ESC-011 conversations, fraud or security cases still open, sessions with no customer message after the greeting, a customer surveyed within csat_resurvey_gap_days, opted-out customers (csat-signals.md section 3.1)"
+  mode: template
+  variant_selection: condition
+  slots: []
+  allowed_literals: ["1", "5"]
+  variants:
+    - key: ai_only
+      when: "conversation handled without a human"
+      text:
+        en: "Before you go, how would you rate the help you got today, from 1 (lowest) to 5 (highest)? You can add a comment if you like. It's optional."
+        hi: "जाने से पहले, आज मिली मदद को आप 1 (सबसे कम) से 5 (सबसे अधिक) के बीच कितने अंक देंगे? चाहें तो टिप्पणी भी लिख सकते हैं। यह वैकल्पिक है।"
+        hinglish: "Jaane se pehle, aaj mili madad ko aap 1 (sabse kam) se 5 (sabse zyada) ke beech kitna rate karenge? Chahein to comment bhi likh sakte hain. Yeh optional hai."
+    - key: after_human_ai_part
+      when: "escalated conversation, first of two questions (the AI assistant's part)"
+      text:
+        en: "Thank you. Two short optional questions. First, how would you rate the help from the AI assistant before your conversation with my colleague, from 1 (lowest) to 5 (highest)?"
+        hi: "धन्यवाद। दो छोटे वैकल्पिक सवाल। पहला, मेरे सहयोगी से बातचीत से पहले AI सहायक से मिली मदद को आप 1 (सबसे कम) से 5 (सबसे अधिक) के बीच कितने अंक देंगे?"
+        hinglish: "Thanks. Do chhote optional sawaal. Pehla, mere colleague se baat se pehle AI assistant se mili madad ko aap 1 (sabse kam) se 5 (sabse zyada) ke beech kitna rate karenge?"
+    - key: after_human_human_part
+      when: "escalated conversation, second question (the human colleague's part)"
+      text:
+        en: "And how would you rate the help from my colleague, from 1 (lowest) to 5 (highest)?"
+        hi: "और मेरे सहयोगी से मिली मदद को आप 1 (सबसे कम) से 5 (सबसे अधिक) के बीच कितने अंक देंगे?"
+        hinglish: "Aur mere colleague se mili madad ko aap 1 (sabse kam) se 5 (sabse zyada) ke beech kitna rate karenge?"
+  safety:
+    guardrails_enforced: [GR-REG-04, GR-OUT-02]
+    must_not_contain: ["reward", "points for", "please give", "five stars", "good rating"]
+    notes: "The digits 1 and 5 are the brief's scale (A5.2: 1 to 5 with an optional comment) and are the only literals allowed. The scale direction is stated every time. No incentive and no plea for a good rating. One prompt, no reminder. The comment passes RED-01 to RED-07 redaction (SS-PII-10)."
+  a9: {patterns: [P2], anti_patterns_avoided: [AP2, AP7]}
+  kb_refs: []
+  tests: [SS-PII-10, ESC-T-011-01, ESC-BOSS-L6-05]
+
+- id: TPL-SRV-CES
+  title: "Customer Effort Score question (sampled, separate survey)"
+  version: "1.0.0"
+  customer_facing: true
+  trigger:
+    intents: []
+    guardrails: []
+    escalations: []
+    state: "sampled follow-up survey, sent separately from the post-chat CSAT prompt (csat-signals.md section 3.1; kpi-framework.md); same exclusions as TPL-SRV-CSAT"
+  mode: template
+  variant_selection: single
+  slots: []
+  allowed_literals: ["1", "7"]
+  variants:
+    - key: default
+      text:
+        en: "One optional question about your recent chat with NexBank: how easy was it to get your issue handled, from 1 (very difficult) to 7 (very easy)?"
+        hi: "नेक्सबैंक के साथ आपकी हाल की चैट के बारे में एक वैकल्पिक सवाल: अपनी समस्या का समाधान करवाना कितना आसान रहा, 1 (बहुत कठिन) से 7 (बहुत आसान) के बीच?"
+        hinglish: "NexBank ke saath aapki recent chat ke baare mein ek optional sawaal: apna issue handle karwana kitna easy raha, 1 (bahut mushkil) se 7 (bahut easy) ke beech?"
+  safety:
+    guardrails_enforced: [GR-REG-04]
+    must_not_contain: ["reward", "please give", "good rating"]
+    notes: "The brief names CES with a 1 to 7 scale (A8.2). Sampling rate and channel are proposals owned by the CEB (D-149)."
+  a9: {patterns: [P2], anti_patterns_avoided: [AP2]}
+  kb_refs: []
+  tests: [SS-PII-10]
+
+- id: TPL-SRV-NPS
+  title: "Net Promoter Score question (sampled, relationship survey)"
+  version: "1.0.0"
+  customer_facing: true
+  trigger:
+    intents: []
+    guardrails: []
+    escalations: []
+    state: "sampled relationship survey, never inside a conversation and never within csat_resurvey_gap_days of another survey; same exclusions as TPL-SRV-CSAT"
+  mode: template
+  variant_selection: single
+  slots: []
+  allowed_literals: ["0", "10"]
+  variants:
+    - key: default
+      text:
+        en: "One optional question from NexBank: how likely are you to recommend NexBank to a friend or family member, from 0 (not at all likely) to 10 (extremely likely)?"
+        hi: "नेक्सबैंक की ओर से एक वैकल्पिक सवाल: आप किसी मित्र या परिवार के सदस्य को नेक्सबैंक की सलाह देने की कितनी संभावना रखते हैं, 0 (बिल्कुल नहीं) से 10 (बहुत अधिक) के बीच?"
+        hinglish: "NexBank ki taraf se ek optional sawaal: aap kisi friend ya family member ko NexBank recommend karne ki kitni sambhavna rakhte hain, 0 (bilkul nahi) se 10 (bahut zyada) ke beech?"
+  safety:
+    guardrails_enforced: [GR-REG-04]
+    must_not_contain: ["reward", "please give", "good rating"]
+    notes: "The brief names NPS (A8.2) without a scale; 0 to 10 is the standard NPS scale and is a proposal here (D-149). 'Recommend' in this question refers to the bank as a whole, not to a product, and is asked of the customer, so the advice guardrails do not apply; the validator allow-lists the word for this template only."
+  a9: {patterns: [P2], anti_patterns_avoided: [AP2]}
+  kb_refs: []
+  tests: [SS-PII-10]
+
+- id: TPL-SYS-STATUS-STATIC
+  title: "Static status message and the human line (fail-closed ladder rung 5)"
+  version: "1.0.0"
+  customer_facing: true
+  trigger:
+    intents: []
+    guardrails: [GR-SYS-01, GR-OUT-06, GR-SYS-04]
+    escalations: [ESC-014]
+    state: "every rung of the fail-closed ladder failed, the Output Safety Layer is unavailable, or the kill switch is on. Served from static storage with no model and no tool call"
+  mode: template
+  variant_selection: single
+  slots: []
+  variants:
+    - key: default
+      text:
+        en: "I'm not able to help with this in chat right now. I'm connecting you to a human colleague. If you need to report fraud or a lost card, please tell them straight away."
+        hi: "मैं अभी इस चैट में इस काम में मदद नहीं कर पा रहा हूँ। मैं आपको हमारे एक सहयोगी से जोड़ रहा हूँ। अगर आपको धोखाधड़ी या खोए हुए कार्ड की सूचना देनी है, तो कृपया उन्हें तुरंत बताएँ।"
+        hinglish: "Main abhi is chat mein is kaam mein madad nahi kar pa raha hoon. Main aapko hamare ek colleague se connect kar raha hoon. Agar aapko fraud ya lost card report karna hai, to please unhe turant batayein."
+  safety:
+    guardrails_enforced: [GR-SYS-01, GR-OUT-06, GR-SYS-04]
+    must_not_contain: ["error", "exception", "outage", "will be back", "try later", "technical issue", "within"]
+    notes: "No slot, so it cannot fail a check and needs no model. Pre-approved under safety change control; the only reply that may be delivered without a per-turn SafetyVerdict because its verdict is recorded at approval time (GR-OUT-06 fail mode). No restoration time."
+  a9: {patterns: [P4], anti_patterns_avoided: [AP3, AP8, AP1]}
+  kb_refs: [KB-TRB-009]
+  tests: [GR-SYS-01-02, GR-OUT-06-01, GR-OUT-06-02, GR-SYS-04-02]
+
+- id: TPL-SYS-NOTICE
+  title: "Customer wording for a layer 5 operational notice"
+  version: "1.0.0"
+  customer_facing: true
+  trigger:
+    intents: [TXN-001, TXN-003, TXN-004, GEN-008, PRD-001]
+    guardrails: [GR-SYS-01, GR-REG-04]
+    escalations: []
+    state: "an active layer 5 notice whose `affects` matches the turn (config/system-prompt/layer5-operational.md). Variant equals the notice type"
+  mode: template
+  variant_selection: condition
+  slots:
+    - {name: service_plain, source: {type: notice, ref: "notice.affects mapped to a plain service label", field: plain_label}, locked: true}
+    - {name: restoration_time, source: {type: notice, ref: "notice.restoration_time (status platform only)", field: restoration_time, format: date_dd_mm_yyyy_time}, locked: true, required: false}
+    - {name: policy_text, source: {type: kb, ref: "notice.kb_entry_id", field: structured_fields}, locked: true, required: false}
+    - {name: offer_title, source: {type: kb, ref: "notice.kb_entry_id", field: title}, locked: true, required: false}
+  variants:
+    - key: known_issue
+      when: "type known_issue or system_status, no restoration time"
+      text:
+        en: "We're aware of a problem affecting {{service_plain}} at the moment, and the team is working on it. I don't have a restoration time for it. Your money and your account are not changed by this, and I can note your details so you don't have to explain again."
+        hi: "हमें जानकारी है कि इस समय {{service_plain}} में एक समस्या आ रही है, और टीम उस पर काम कर रही है। यह कब तक ठीक होगी, इसका समय मेरे पास नहीं है। इससे आपके पैसे या खाते में कोई बदलाव नहीं होता, और मैं आपकी जानकारी नोट कर सकता हूँ ताकि आपको दोबारा समझाना न पड़े।"
+        hinglish: "Humein pata hai ki is time {{service_plain}} mein ek problem aa rahi hai, aur team us par kaam kar rahi hai. Yeh kab tak theek hogi, iska time mere paas nahi hai. Isse aapke paise ya account mein koi change nahi hota, aur main aapki details note kar sakta hoon taaki aapko dobara explain na karna pade."
+    - key: known_issue_with_time
+      when: "type known_issue or system_status and the status platform supplied restoration_time"
+      text:
+        en: "We're aware of a problem affecting {{service_plain}} at the moment. The current expected restoration time is {{restoration_time}}; that is an estimate from our status system and can change."
+        hi: "हमें जानकारी है कि इस समय {{service_plain}} में एक समस्या आ रही है। अभी अपेक्षित बहाली का समय {{restoration_time}} है; यह हमारे स्टेटस सिस्टम का अनुमान है और बदल सकता है।"
+        hinglish: "Humein pata hai ki is time {{service_plain}} mein ek problem aa rahi hai. Abhi expected restoration time {{restoration_time}} hai; yeh hamare status system ka estimate hai aur badal sakta hai."
+    - key: temporary_policy
+      when: "type temporary_policy"
+      text:
+        en: "There is a temporary change that applies to your request: {{policy_text}}"
+        hi: "आपके अनुरोध पर एक अस्थायी बदलाव लागू होता है: {{policy_text}}"
+        hinglish: "Aapki request par ek temporary change apply hota hai: {{policy_text}}"
+    - key: promotion
+      when: "type promotion, only when the customer asked about products and no suppression rule applies"
+      text:
+        en: "There is a current offer you may want to know about: {{offer_title}}. Would you like the details and terms?"
+        hi: "एक मौजूदा ऑफ़र है जिसके बारे में आप जानना चाह सकते हैं: {{offer_title}}। क्या आप उसका विवरण और शर्तें जानना चाहेंगे?"
+        hinglish: "Ek current offer hai jiske baare mein aap jaanna chah sakte hain: {{offer_title}}. Kya aap uski details aur terms jaanna chahenge?"
+  safety:
+    guardrails_enforced: [GR-SYS-01, GR-OUT-05, GR-REG-04, GR-REG-01, GR-ATK-02]
+    must_not_contain: ["limited time", "hurry", "act now", "don't miss", "lose this offer", "will be fixed in", "error", "outage code"]
+    notes: "The notice `summary` is never shown to the customer. The claim that money and account are unchanged in `known_issue` must be true for the notice type: a notice for an issue that does affect balances may not use this variant and needs its own reviewed variant (open item). Promotion terms come only from the KB entry, on request (Progressive Disclosure)."
+  a9: {patterns: [P4, P2], anti_patterns_avoided: [AP3, AP2, AP8]}
+  kb_refs: [KB-TRB-009]
+  tests: [SS-LRN-17, GR-REG-04-01]
+
+- id: TPL-SYS-CORRECTION
+  title: "Correction of an earlier wrong statement (pre-approved incident wording)"
+  version: "1.0.0"
+  customer_facing: true
+  trigger:
+    intents: []
+    guardrails: [GR-OUT-01, GR-OUT-03]
+    escalations: []
+    state: "incident response: a wrong fact was delivered to this customer (incident-response-playbook.md, correction step), or the agent detects in-conversation that its earlier statement contradicts the KB or a tool result. Sent proactively on the same channel; approved by the incident commander for bulk use"
+  mode: template
+  variant_selection: single
+  slots:
+    - {name: topic_plain, source: {type: state, ref: "topic of the wrong statement, plain label", field: text}, locked: true}
+    - {name: correct_fact, source: {type: kb, ref: "the KB entry or tool result that holds the correct fact", field: structured_fields}, locked: true}
+  variants:
+    - key: default
+      text:
+        en: "I need to correct something I told you earlier about {{topic_plain}}. That information was wrong, and I'm sorry. The correct information is: {{correct_fact}} If you acted on what I said earlier, please tell me and I'll bring in a colleague to help put it right."
+        hi: "मुझे {{topic_plain}} के बारे में पहले बताई गई एक बात सुधारनी है। वह जानकारी गलत थी, और इसके लिए मुझे खेद है। सही जानकारी यह है: {{correct_fact}} अगर आपने मेरी पहले की बात के आधार पर कोई कदम उठाया है, तो कृपया बताएँ, मैं इसे ठीक करने में मदद के लिए एक सहयोगी को जोड़ूँगा।"
+        hinglish: "Mujhe {{topic_plain}} ke baare mein pehle batayi ek baat correct karni hai. Woh information galat thi, aur iske liye mujhe khed hai. Sahi information yeh hai: {{correct_fact}} Agar aapne meri pehle ki baat ke basis par koi step liya hai, to please batayein, main ise theek karne mein madad ke liye ek colleague ko jodunga."
+  safety:
+    guardrails_enforced: [GR-OUT-01, GR-OUT-03, GR-OUT-05, GR-OUT-04]
+    must_not_contain: ["compensat", "we are not liable", "system error", "glitch", "will be refunded", "deeply apologise"]
+    notes: "One specific apology, the correct fact from a locked slot, and a route to a human. No promise of compensation: that is a human decision. Holding statements written during an incident stay human-authored (playbook open item 4); this template covers the individual correction only."
+  a9: {patterns: [P1, P4], anti_patterns_avoided: [AP7, AP3, AP8]}
+  kb_refs: [KB-POL-007]
+  tests: [GR-OUT-01-01, GR-OUT-01-02, SS-HAL-03]

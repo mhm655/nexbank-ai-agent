@@ -57,7 +57,7 @@ Safeguards, so that a noisy score does not cause a false escalation, or a missed
 
 - Both turns must have `confidence` >= 0.70. Below that, the turn is counted as "uncertain" and neither adds to nor breaks the streak.
 - A turn flagged `sarcasm_suspected` is scored using the sarcasm-adjusted polarity (section 7), not the literal one.
-- For the secondary languages the model confidence is usually lower, so the rule also accepts the EMA: `m_t` <= threshold with a falling slope for 3 turns triggers the same route. This removes the language disparity that a confidence gate alone would create; the fairness test on this (counterfactual language swap) is in the Day 14 risk matrix.
+- For the secondary languages the model confidence is usually lower, so the rule also accepts the EMA: 2 consecutive raw scores strictly below the threshold, with the sentiment-confidence gate waived and the smoothed score `m_t` strictly below the threshold, trigger the same route (D-165: the route waives only the confidence gate). This removes the language disparity that a confidence gate alone would create; the fairness test on this (counterfactual language swap) is in the Day 14 risk matrix.
 - The default threshold is the brief's. It is a CEB-owned parameter; changing it is outside this specification's authority (D-18).
 
 ### 5.2 Escalation proximity

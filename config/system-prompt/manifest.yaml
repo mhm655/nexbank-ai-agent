@@ -1,0 +1,25 @@
+# Prompt bundle manifest (A12.2 "Version Control: every prompt version stored with metadata (author, approval chain,
+# deployment date, model version)"). Hash fields are written by `python tests/templates/validate_templates.py --rehash`
+# and verified on every validator run. Scheme: config/system-prompt/README.md section 7 (D-138).
+schema_version: "1.0"
+bundle:
+  bundle_version: "1.0.0"
+  status: draft
+  prompt_version: "sp-1.0.0+518d5a1e.n000000"
+  bundle_sha256: "518d5a1ecbbc68e00ad2df12b16b219f7c8d9ae74ad6f993e9ec156a352b7990"
+  immutable_sha256: "df2fdd63849c3f16844cd50d43dc20a15cb06d6a1a3611e69a3758ff981c12a6"
+  notice_set: "n000000"
+  author: "Day 13 specification draft"
+  approval_chain: ["Risk Committee (layers 0-2): pending", "Prompt owners and Risk Committee review (layers 3-4): pending", "Operations owner (layer 5 notices): pending"]
+  deployment_date: null
+  model_version: "unbound (provider-agnostic; recorded at deployment)"
+  model_temperature: 0.3
+  parameters_file: config/parameters.yaml
+  templates_dir: config/templates
+layers:
+  - {layer: 0, file: layer0-identity.md, version: "1.0.0", sha256: "1844344f560ec4c11231e27e7c85ce9e99bd345b739702208469af38d3400612", words: 550}
+  - {layer: 1, file: layer1-safety.md, version: "1.0.0", sha256: "f233361ae1e8c13224ed2f6f078d1e05b3b906ece38696e5d29efb3a4b194811", words: 1392}
+  - {layer: 2, file: layer2-regulatory.md, version: "1.0.0", sha256: "ac1a163b1c9331fd3c21f6b46c83b7767799c4cfce85626046c915e53b7ce31b", words: 773}
+  - {layer: 3, file: layer3-dialogue.md, version: "1.0.0", sha256: "8299a7cc672cb9fbe54de4172fef802d6e54d0fc8093d0d31d58139431928fb6", words: 1127}
+  - {layer: 4, file: layer4-knowledge.md, version: "1.0.0", sha256: "35985b600e9caf56958810fc1d7723e9c819fd675b1b2dba2b16c982f0fbeb9f", words: 641}
+  - {layer: 5, file: layer5-operational.md, version: "1.0.0", sha256: "8ca17d367b8b835810d3bfa54cb53ffb350701c5d26c2e216a4128d653514346", words: 250}

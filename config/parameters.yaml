@@ -1,0 +1,303 @@
+# NexBank governed parameters (Day 13). Single source of truth for thresholds and limits, by reference.
+# Brief refs: A12.3 p.34 (8 configuration parameters: default, range, owner, change process), A12.2 p.33 (layered immutability),
+#   A4.2 p.13 rule 7 (5-minute timeout), A6 pp.16-17 (trigger constants), A2.3 (retrieval targets), A5.4 p.15 (immutable layer).
+# Docs: config/system-prompt/README.md, docs/learning-pipeline/overview.md section 3 (update classes U1-U5, exclusions X1-X6),
+#   docs/learning-pipeline/ab-testing.md section 11 (approval workflow per A12.3 parameter).
+# Validator: tests/templates/validate_templates.py (checks the 8 A12.3 names, default inside range, effective range inside brief range,
+#   and that every `mirror` below equals the value in the file it names, so two copies cannot drift silently).
+#
+# How to read this file (decision D-142)
+#   governed_parameters : the 8 parameters of A12.3, copied from the brief's table. `default` and `brief_range` are the brief's.
+#                         `effective_range` is narrower only where a project decision narrows it (D-56, D-143); it is never wider.
+#   project_parameters  : every other threshold the project uses at runtime, collected here by reference. `value` restates the value in
+#                         `defined_in`; this file does not change any of them. `status` says where the number comes from:
+#                           brief_fixed = stated by the brief (cite); decided = a project decision; proposal = a number the brief does
+#                           not give, to be tuned or approved; default = a Day 2-3 working default with no decision ID.
+#   by_reference        : parameter families that stay in their home document and are NOT restated here (learning-pipeline gates,
+#                         statistics, queue capacity, dashboard alerts). They are listed so that nothing is governed "nowhere".
+#   learning            : may_propose = the learning pipeline may file a change proposal (class U3) that then follows the owner's
+#                         change process; no = excluded (X4 registry parameters, X5 trigger conditions, rule layer). No value in this
+#                         file is ever applied by the pipeline itself: promotion is a human action (D-113).
+#   No value in this file is a measurement. Nothing here has been run or tuned.
+
+schema_version: "1.0"
+status: draft_day13
+source: "A12.3 p.34"
+
+# ------------------------------------------------------------------------------------------------ A12.3 governed parameters (8)
+governed_parameters:
+
+- name: intent_confidence_threshold
+  type: float
+  default: 0.70
+  brief_range: {min: 0.50, max: 0.95, text: "0.50-0.95"}
+  effective_range: {min: 0.50, max: 0.95}
+  owner: NLU Team
+  change_process: A/B test required
+  brief_ref: "A12.3 p.34"
+  meaning: "Secondary-layer intent confidence at or above which the agent acts without a clarifying question."
+  decisions: [D-06, D-19]
+  learning: may_propose
+  update_class: U3
+  mirrors:
+    - {file: config/intents.yaml, path: thresholds.secondary.act}
+  used_by: [config/intents.yaml, docs/architecture/nlu-pipeline-overview.md section 3, docs/architecture/dialogue-management.md section 2,
+            config/escalation_rules.yaml parameters_ref, config/system-prompt/layer3-dialogue.md]
+  notes: "The clarify floor 0.40 (D-06, ESC-003 in A6) and the safety-flow entry 0.50 (D-19) are separate project parameters below; changing this value does not move them."
+
+- name: escalation_sentiment_threshold
+  type: float
+  default: -0.70
+  brief_range: {min: -1.0, max: -0.3, text: "-1.0 to -0.3"}
+  effective_range: {min: -1.0, max: -0.3}
+  owner: CX Team
+  change_process: CEB approval
+  brief_ref: "A12.3 p.34; A6 p.16 (ESC-004: sentiment below -0.7 for 2+ consecutive turns)"
+  meaning: "Raw sentiment score below which a customer turn counts toward ESC-004."
+  decisions: [D-18]
+  learning: may_propose
+  update_class: U3
+  mirrors: []
+  used_by: [docs/intent-taxonomy/sentiment.md section 5, config/escalation_rules.yaml parameters_ref, docs/escalation/triggers.md]
+  notes: "A6 states -0.7 inside the ESC-004 condition itself. Moving this parameter therefore changes a brief trigger and needs the CEB (A12.3) and, by D-58 and X5, a Risk Committee view."
+
+- name: max_conversation_turns
+  type: integer
+  default: 25
+  brief_range: {min: 10, max: 50, text: "10-50"}
+  effective_range: {min: 15, max: 50}
+  owner: Product
+  change_process: Standard change
+  brief_ref: "A12.3 p.34"
+  meaning: "Hard ceiling on messages in one conversation (turn unit: one logged customer or agent message, D-119). XTR-06 says what happens at the ceiling."
+  decisions: [D-119, D-129, D-143]
+  learning: may_propose
+  update_class: U3
+  mirrors: []
+  used_by: [config/escalation_rules.yaml parameters_ref and XTR-06, docs/escalation/triggers.md]
+  notes: "Effective floor 15 (D-143, proposal): below it the ceiling would close a conversation before ESC-010 (A6: more than 15 turns without resolution) could fire. The brief's range 10-50 is kept as the outer bound."
+
+- name: session_timeout_minutes
+  type: integer
+  default: 5
+  brief_range: {min: 3, max: 15, text: "3-15"}
+  effective_range: {min: 3, max: 5}
+  owner: Security
+  change_process: RC approval
+  brief_ref: "A12.3 p.34; A4.2 p.13 rule 7"
+  meaning: "Minutes of customer inactivity after which authentication is dropped and re-authentication is required."
+  decisions: [D-05, D-56]
+  learning: "no"
+  update_class: X4
+  mirrors:
+    - {file: config/guardrails.yaml, path: parameters.session_timeout_minutes}
+  used_by: [config/guardrails.yaml GR-SEC-R7 and GR-SYS-03, docs/guardrails/account-security.md, docs/architecture/dialogue-management.md section 3,
+            config/templates/auth.yaml TPL-AUTH-SESSION-TIMEOUT]
+  notes: "D-56: A4.2 rule 7 fixes 5 minutes, so the ceiling is 5. The value may be lowered to 3 with Risk Committee approval and never raised, although the A12.3 range reads 3-15."
+
+- name: knowledge_retrieval_top_k
+  type: integer
+  default: 5
+  brief_range: {min: 3, max: 10, text: "3-10"}
+  effective_range: {min: 3, max: 10}
+  owner: NLU Team
+  change_process: A/B test required
+  brief_ref: "A12.3 p.34"
+  meaning: "Number of re-ranked KB entries returned to the generator."
+  decisions: [D-41]
+  learning: may_propose
+  update_class: U3
+  mirrors: []
+  used_by: [docs/knowledge-base/retrieval-pipeline.md section 8, config/system-prompt/layer4-knowledge.md]
+  notes: "The retrieval latency budget (200 ms p95, A2.3) is a Tier 0 constraint on any experiment with this value (ab-testing.md section 11)."
+
+- name: retrieval_confidence_threshold
+  type: float
+  default: 0.65
+  brief_range: {min: 0.50, max: 0.90, text: "0.50-0.90"}
+  effective_range: {min: 0.50, max: 0.90}
+  owner: NLU Team
+  change_process: A/B test required
+  brief_ref: "A12.3 p.34; A2.3 (uncertainty acknowledgment threshold)"
+  meaning: "Calibrated relevance of the rank-1 KB entry below which the agent must acknowledge uncertainty; also the evidence floor for citing an entry."
+  decisions: [D-43]
+  learning: may_propose
+  update_class: U3
+  mirrors: []
+  used_by: [docs/knowledge-base/retrieval-pipeline.md sections 8-9, docs/intent-taxonomy/language-detection.md section 6,
+            config/escalation_rules.yaml parameters_ref, config/templates/kb.yaml]
+  notes: "Same value for every language. ESC-008 reads it for regulatory topics (D-43), so a change is safety-adjacent (safety-invariants.md section 5.1)."
+
+- name: guardrail_strictness_level
+  type: enum
+  default: HIGH
+  brief_range: {values: [MEDIUM, HIGH, CRITICAL], text: "MED/HIGH/CRIT"}
+  effective_range: {values: [HIGH, CRITICAL]}
+  owner: RC
+  change_process: RC approval required
+  brief_ref: "A12.3 p.34"
+  meaning: "Strictness of the configurable guardrail thresholds."
+  decisions: [D-86, D-143]
+  learning: "no"
+  update_class: X4
+  mirrors:
+    - {file: config/guardrails.yaml, path: parameters.guardrail_strictness_level}
+  used_by: [config/guardrails.yaml GR-SYS-03, docs/guardrails/incident-response-playbook.md lever 6, docs/learning-pipeline/ab-testing.md section 11]
+  notes: "The registry and its false-positive budget assume HIGH or above (config/guardrails.yaml parameters). MEDIUM stays in the brief's range but is not a tested configuration: selecting it needs Risk Committee approval and a re-run of the fixed suite (D-143, proposal). Raising to CRITICAL is pre-approved for incidents (D-86). Never an experiment arm."
+
+- name: model_temperature
+  type: float
+  default: 0.3
+  brief_range: {min: 0.0, max: 1.0, text: "0.0-1.0"}
+  effective_range: {min: 0.0, max: 1.0}
+  owner: ML Team
+  change_process: A/B test + RC review
+  brief_ref: "A12.3 p.34"
+  meaning: "Sampling temperature of the generation model for `hybrid` free slots and `llm-guided` templates. Template-mode text and locked slots are not generated, so the value has no effect on them."
+  decisions: [D-144]
+  learning: may_propose
+  update_class: U3
+  mirrors: []
+  used_by: [docs/architecture/response-generation.md, config/templates/README.md section 3]
+  notes: "A prompt bundle records the temperature it was approved with (config/system-prompt/manifest.yaml)."
+
+# ------------------------------------------------------------------------------------------------ project parameters, by reference
+# Fields: name, value, unit, status, decision (ID or null), brief_ref (when brief_fixed), defined_in, mirror (optional, checked by the
+# validator), learning. Values are restated, never changed. Where two files state the same number, `defined_in` names the owner copy.
+project_parameters:
+
+# --- NLU and dialogue (config/intents.yaml thresholds)
+- {name: primary_act_confidence,          value: 0.85, unit: probability, status: default,     decision: null,  defined_in: "config/intents.yaml thresholds.primary.act",             mirror: {file: config/intents.yaml, path: thresholds.primary.act},             learning: may_propose}
+- {name: primary_clarify_floor,           value: 0.50, unit: probability, status: default,     decision: null,  defined_in: "config/intents.yaml thresholds.primary.clarify_floor",   mirror: {file: config/intents.yaml, path: thresholds.primary.clarify_floor},   learning: may_propose}
+- {name: secondary_clarify_floor,         value: 0.40, unit: probability, status: brief_fixed, decision: D-06,  brief_ref: "A6 p.17 ESC-003 (confidence below 40%)", defined_in: "config/intents.yaml thresholds.secondary.clarify_floor", mirror: {file: config/intents.yaml, path: thresholds.secondary.clarify_floor}, learning: "no"}
+- {name: tertiary_act_confidence,         value: 0.65, unit: probability, status: default,     decision: null,  defined_in: "config/intents.yaml thresholds.tertiary.act",            mirror: {file: config/intents.yaml, path: thresholds.tertiary.act},            learning: "no"}
+- {name: tertiary_clarify_floor,          value: 0.40, unit: probability, status: default,     decision: null,  defined_in: "config/intents.yaml thresholds.tertiary.clarify_floor",  mirror: {file: config/intents.yaml, path: thresholds.tertiary.clarify_floor},  learning: may_propose}
+- {name: safety_elevated_execution_confidence, value: 0.85, unit: probability, status: decided, decision: D-19, defined_in: "config/intents.yaml thresholds.safety_elevated.secondary_act", mirror: {file: config/intents.yaml, path: thresholds.safety_elevated.secondary_act}, learning: "no"}
+- {name: flow_entry_confidence,           value: 0.50, unit: probability, status: decided,     decision: D-19,  defined_in: "config/intents.yaml thresholds.flow_entry_overrides (SEC-001, SEC-004, GEN-007, GEN-003, PRD-005)", mirror: {file: config/escalation_rules.yaml, path: proposals.flow_entry_confidence}, learning: "no"}
+- {name: ambiguity_gap,                   value: 0.15, unit: probability, status: default,     decision: null,  defined_in: "config/intents.yaml thresholds.ambiguity_gap",           mirror: {file: config/intents.yaml, path: thresholds.ambiguity_gap},           learning: may_propose}
+- {name: max_clarification_turns,         value: 2,    unit: turns,       status: default,     decision: null,  defined_in: "config/intents.yaml thresholds.max_clarification_turns", mirror: {file: config/intents.yaml, path: thresholds.max_clarification_turns}, learning: "no"}
+- {name: multi_intent_second_min,         value: 0.60, unit: probability, status: default,     decision: null,  defined_in: "config/intents.yaml thresholds.multi_intent_second_min", mirror: {file: config/intents.yaml, path: thresholds.multi_intent_second_min}, learning: may_propose}
+- {name: implicit_intent_confidence_cap,  value: 0.75, unit: probability, status: default,     decision: null,  defined_in: "docs/architecture/dialogue-management.md section 5.3", learning: may_propose}
+- {name: confirmation_window_turns,       value: 2,    unit: turns,       status: default,     decision: null,  defined_in: "docs/architecture/dialogue-management.md section 2 (CONFIRM > EXECUTE)", learning: "no"}
+- {name: confirmation_window_minutes,     value: 2,    unit: minutes,     status: default,     decision: null,  defined_in: "docs/architecture/dialogue-management.md section 2 (CONFIRM > EXECUTE)", learning: "no"}
+- {name: history_verbatim_turns,          value: 20,   unit: turns,       status: default,     decision: null,  defined_in: "docs/architecture/dialogue-management.md section 5.5", learning: "no"}
+- {name: summary_refresh_turns,           value: 10,   unit: turns,       status: default,     decision: null,  defined_in: "docs/architecture/dialogue-management.md section 5.5", learning: "no"}
+- {name: topic_stack_depth_max,           value: 5,    unit: topics,      status: default,     decision: null,  defined_in: "docs/architecture/dialogue-management.md section 5.2", learning: "no"}
+- {name: escalation_proximity_prepare,    value: 0.6,  unit: score,       status: default,     decision: null,  defined_in: "docs/architecture/dialogue-management.md section 6", learning: may_propose}
+- {name: escalation_proximity_offer_human, value: 0.8, unit: score,       status: default,     decision: null,  defined_in: "docs/architecture/dialogue-management.md section 6", learning: may_propose}
+- {name: context_carry_over_window_hours, value: 24,   unit: hours,       status: decided,     decision: D-05,  defined_in: "docs/architecture/dialogue-management.md section 3; KB-POL-003", learning: "no"}
+
+# --- Sentiment (docs/intent-taxonomy/sentiment.md)
+- {name: sentiment_turn_confidence_min,   value: 0.70, unit: probability, status: decided,     decision: D-18,  defined_in: "docs/intent-taxonomy/sentiment.md section 5.1", mirror: {file: config/escalation_rules.yaml, path: proposals.sentiment_turn_confidence_min}, learning: "no"}
+- {name: sentiment_ema_alpha,             value: 0.5,  unit: weight,      status: proposal,    decision: D-18,  defined_in: "docs/intent-taxonomy/sentiment.md section 4", learning: "no"}
+- {name: emotion_active_min,              value: 0.50, unit: intensity,   status: proposal,    decision: null,  defined_in: "docs/intent-taxonomy/sentiment.md section 1", learning: may_propose}
+- {name: sarcasm_suspected_min,           value: 0.60, unit: probability, status: proposal,    decision: null,  defined_in: "docs/intent-taxonomy/sentiment.md sections 1 and 7", learning: "no"}
+- {name: sentiment_spike_drop,            value: 0.6,  unit: score,       status: proposal,    decision: null,  defined_in: "docs/intent-taxonomy/sentiment.md section 4", learning: may_propose}
+- {name: sentiment_recovery_slope_min,    value: 0.15, unit: score per turn, status: proposal, decision: null,  defined_in: "docs/intent-taxonomy/sentiment.md section 4 (over 3 turns, smoothed score at or above -0.2)", learning: may_propose}
+- {name: empathy_first_sentiment_max,     value: -0.30, unit: score,      status: proposal,    decision: null,  defined_in: "docs/intent-taxonomy/sentiment.md section 5.3", learning: may_propose}
+- {name: no_proactive_offer_sentiment_max, value: -0.40, unit: score,     status: proposal,    decision: null,  defined_in: "docs/intent-taxonomy/sentiment.md section 5.4; docs/architecture/dialogue-management.md section 4.6", learning: "no"}
+
+# --- Language (docs/intent-taxonomy/language-detection.md, D-20)
+- {name: lang_id_accept,                  value: 0.80, unit: probability, status: proposal,    decision: D-20,  defined_in: "docs/intent-taxonomy/language-detection.md section 3", learning: may_propose}
+- {name: lang_id_floor,                   value: 0.50, unit: probability, status: proposal,    decision: D-20,  defined_in: "docs/intent-taxonomy/language-detection.md section 3", learning: may_propose}
+- {name: pivot_quality_floor,             value: 0.60, unit: score,       status: proposal,    decision: D-20,  defined_in: "docs/intent-taxonomy/language-detection.md section 6", learning: may_propose}
+- {name: language_switch_stable_turns,    value: 2,    unit: turns,       status: proposal,    decision: D-20,  defined_in: "docs/intent-taxonomy/language-detection.md section 3", learning: "no"}
+
+# --- Retrieval and KB (docs/knowledge-base/)
+- {name: fusion_weight_dense,             value: 0.6,  unit: weight,      status: proposal,    decision: D-41,  defined_in: "docs/knowledge-base/retrieval-pipeline.md section 7", learning: may_propose}
+- {name: fusion_weight_sparse,            value: 0.4,  unit: weight,      status: proposal,    decision: D-41,  defined_in: "docs/knowledge-base/retrieval-pipeline.md section 7", learning: may_propose}
+- {name: rerank_candidates,               value: 20,   unit: entries,     status: proposal,    decision: D-41,  defined_in: "docs/knowledge-base/retrieval-pipeline.md section 7", learning: may_propose}
+- {name: intent_prior_boost,              value: 0.05, unit: score,       status: proposal,    decision: D-41,  defined_in: "docs/knowledge-base/retrieval-pipeline.md section 7.1", learning: may_propose}
+- {name: retrieval_relevance_target,      value: 0.85, unit: mean relevance, status: brief_fixed, decision: null, brief_ref: "A8.1 p.19 (average relevance score above 0.85)", defined_in: "docs/knowledge-base/retrieval-pipeline.md section 15", learning: "no"}
+- {name: retrieval_latency_p95_ms,        value: 200,  unit: ms,          status: brief_fixed, decision: D-45,  brief_ref: "A2.3 p.7 (200 ms latency at 95th percentile)", defined_in: "docs/knowledge-base/retrieval-pipeline.md section 12", learning: "no"}
+- {name: ttl_days_regulatory,             value: 90,   unit: days,        status: proposal,    decision: D-27,  defined_in: "docs/knowledge-base/kb-schema.md section 7", learning: "no"}
+- {name: ttl_days_rates,                  value: 90,   unit: days,        status: proposal,    decision: D-27,  defined_in: "docs/knowledge-base/kb-schema.md section 7", learning: "no"}
+- {name: ttl_days_product_features,       value: 180,  unit: days,        status: proposal,    decision: D-27,  defined_in: "docs/knowledge-base/kb-schema.md section 7", learning: "no"}
+- {name: ttl_days_policy,                 value: 180,  unit: days,        status: proposal,    decision: D-27,  defined_in: "docs/knowledge-base/kb-schema.md section 7", learning: "no"}
+- {name: ttl_days_faq_troubleshooting,    value: 120,  unit: days,        status: proposal,    decision: D-27,  defined_in: "docs/knowledge-base/kb-schema.md section 7", learning: "no"}
+- {name: ttl_days_escalation_procedure,   value: 365,  unit: days,        status: proposal,    decision: D-27,  defined_in: "docs/knowledge-base/kb-schema.md section 7", learning: "no"}
+- {name: ttl_soft_expiry_grace_days,      value: 30,   unit: days,        status: proposal,    decision: D-27,  defined_in: "docs/knowledge-base/maintenance-workflow.md section 6", learning: "no"}
+- {name: ttl_early_warning_days,          value: 14,   unit: days,        status: proposal,    decision: D-27,  defined_in: "docs/knowledge-base/maintenance-workflow.md section 6", learning: "no"}
+
+# --- Guardrail registry parameters (config/guardrails.yaml parameters; X4: Risk Committee only)
+- {name: session_timeout_ceiling_minutes, value: 5,    unit: minutes,     status: decided,     decision: D-56,  defined_in: "config/guardrails.yaml parameters", mirror: {file: config/guardrails.yaml, path: parameters.session_timeout_ceiling_minutes}, learning: "no"}
+- {name: advice_boundary_act,             value: 0.50, unit: probability, status: proposal,    decision: D-54,  defined_in: "config/guardrails.yaml parameters; docs/intent-taxonomy/disambiguation.md section 3", mirror: {file: config/guardrails.yaml, path: parameters.advice_boundary_act}, learning: "no"}
+- {name: advice_boundary_flag,            value: 0.30, unit: probability, status: proposal,    decision: D-54,  defined_in: "config/guardrails.yaml parameters", mirror: {file: config/guardrails.yaml, path: parameters.advice_boundary_flag}, learning: "no"}
+- {name: grievance_info_max_turns,        value: 2,    unit: turns,       status: brief_fixed, decision: null,  brief_ref: "A4.3 p.13 (within 2 turns of any complaint)", defined_in: "config/guardrails.yaml parameters", mirror: {file: config/guardrails.yaml, path: parameters.grievance_info_max_turns}, learning: "no"}
+- {name: fp_reserve_pct,                  value: 0.5,  unit: percentage points, status: proposal, decision: D-64,  defined_in: "config/guardrails.yaml parameters", mirror: {file: config/guardrails.yaml, path: parameters.fp_reserve_pct}, learning: "no"}
+- {name: fp_overall_target_pct,           value: 3,    unit: percent,     status: proposal,    decision: D-64,  defined_in: "config/guardrails.yaml parameters", mirror: {file: config/guardrails.yaml, path: parameters.fp_overall_target_pct}, learning: "no"}
+- {name: atk_decode_depth_max,            value: 2,    unit: levels,      status: proposal,    decision: D-69,  defined_in: "config/guardrails.yaml parameters", mirror: {file: config/guardrails.yaml, path: parameters.atk_decode_depth_max}, learning: "no"}
+- {name: atk_adversarial_flags_safe_mode, value: 3,    unit: flagged turns, status: proposal,  decision: D-72,  defined_in: "config/guardrails.yaml parameters", mirror: {file: config/guardrails.yaml, path: parameters.atk_adversarial_flags_safe_mode}, learning: "no"}
+- {name: atk_prompt_overlap_words,        value: 8,    unit: words,       status: proposal,    decision: D-73,  defined_in: "config/guardrails.yaml parameters", mirror: {file: config/guardrails.yaml, path: parameters.atk_prompt_overlap_words}, learning: "no"}
+- {name: atk_msgs_per_minute_per_session, value: 20,   unit: messages per minute, status: proposal, decision: D-74, defined_in: "config/guardrails.yaml parameters", mirror: {file: config/guardrails.yaml, path: parameters.atk_msgs_per_minute_per_session}, learning: "no"}
+- {name: atk_new_sessions_per_hour_per_identity, value: 10, unit: sessions per hour, status: proposal, decision: D-74, defined_in: "config/guardrails.yaml parameters", mirror: {file: config/guardrails.yaml, path: parameters.atk_new_sessions_per_hour_per_identity}, learning: "no"}
+- {name: atk_input_max_chars,             value: 4000, unit: characters,  status: proposal,    decision: D-74,  defined_in: "config/guardrails.yaml parameters", mirror: {file: config/guardrails.yaml, path: parameters.atk_input_max_chars}, learning: "no"}
+- {name: atk_tool_calls_per_turn,         value: 3,    unit: calls,       status: proposal,    decision: D-74,  defined_in: "config/guardrails.yaml parameters", mirror: {file: config/guardrails.yaml, path: parameters.atk_tool_calls_per_turn}, learning: "no"}
+- {name: atk_output_max_words,            value: 250,  unit: words,       status: proposal,    decision: D-74,  defined_in: "config/guardrails.yaml parameters", mirror: {file: config/guardrails.yaml, path: parameters.atk_output_max_words}, learning: "no"}
+- {name: atk_conversation_max_turns,      value: 15,   unit: turns,       status: brief_fixed, decision: D-74,  brief_ref: "A6 p.17 ESC-010 (exceeds 15 turns without resolution)", defined_in: "config/guardrails.yaml parameters", mirror: {file: config/guardrails.yaml, path: parameters.atk_conversation_max_turns}, learning: "no"}
+
+# --- Output Safety Layer (docs/guardrails/output-safety-layer.md)
+- {name: osl_grounding_support_pass,      value: 0.80, unit: score,       status: proposal,    decision: D-80,  defined_in: "docs/guardrails/output-safety-layer.md section 3.4", learning: "no"}
+- {name: osl_grounding_support_block,     value: 0.50, unit: score,       status: proposal,    decision: D-80,  defined_in: "docs/guardrails/output-safety-layer.md section 3.4", learning: "no"}
+- {name: osl_tone_score_min,              value: 0.60, unit: score,       status: proposal,    decision: D-80,  defined_in: "docs/guardrails/output-safety-layer.md section 3.5", learning: "no"}
+- {name: osl_commitment_score_fail,       value: 0.50, unit: score,       status: proposal,    decision: D-80,  defined_in: "docs/guardrails/output-safety-layer.md section 3.6", learning: "no"}
+- {name: osl_budget_p95_ms,               value: 300,  unit: ms,          status: decided,     decision: D-81,  defined_in: "docs/guardrails/output-safety-layer.md section 4; docs/architecture/latency-scalability-cost.md section 1", learning: "no"}
+- {name: osl_model_stage_timeout_ms,      value: 150,  unit: ms,          status: proposal,    decision: D-81,  defined_in: "docs/guardrails/output-safety-layer.md section 4", learning: "no"}
+
+# --- Latency and tools
+- {name: turn_latency_p95_budget_ms,      value: 3000, unit: ms,          status: decided,     decision: D-07,  defined_in: "docs/architecture/latency-scalability-cost.md", learning: "no"}
+- {name: turn_latency_slo_ms,             value: 5000, unit: ms,          status: decided,     decision: D-07,  defined_in: "docs/architecture/latency-scalability-cost.md", learning: "no"}
+- {name: first_reply_ceiling_s,           value: 30,   unit: seconds,     status: brief_fixed, decision: D-07,  brief_ref: "A1.4 p.5 (under 30-second first reply)", defined_in: "docs/architecture/latency-scalability-cost.md", learning: "no"}
+- {name: tool_call_timeout_ms,            value: 400,  unit: ms,          status: default,     decision: null,  defined_in: "docs/architecture/component-interfaces.md row 7", learning: "no"}
+- {name: tool_read_retries,               value: 1,    unit: retries,     status: default,     decision: null,  defined_in: "docs/architecture/component-interfaces.md row 7 (reads only; writes are never retried)", learning: "no"}
+
+# --- Escalation constants fixed by A6 (config/escalation_rules.yaml constants; X5: never tuned)
+- {name: esc003_confidence_floor,         value: 0.40, unit: probability, status: brief_fixed, decision: D-06,  brief_ref: "A6 p.17 ESC-003", defined_in: "config/escalation_rules.yaml constants", mirror: {file: config/escalation_rules.yaml, path: constants.esc003_confidence_floor}, learning: "no"}
+- {name: esc003_consecutive_turns,        value: 3,    unit: turns,       status: brief_fixed, decision: null,  brief_ref: "A6 p.17 ESC-003", defined_in: "config/escalation_rules.yaml constants", mirror: {file: config/escalation_rules.yaml, path: constants.esc003_consecutive_turns}, learning: "no"}
+- {name: esc004_consecutive_turns,        value: 2,    unit: turns,       status: brief_fixed, decision: null,  brief_ref: "A6 p.16 ESC-004", defined_in: "config/escalation_rules.yaml constants", mirror: {file: config/escalation_rules.yaml, path: constants.esc004_consecutive_turns}, learning: "no"}
+- {name: esc005_dispute_amount_inr,       value: 50000, unit: INR,        status: brief_fixed, decision: null,  brief_ref: "A6 p.16 ESC-005", defined_in: "config/escalation_rules.yaml constants", mirror: {file: config/escalation_rules.yaml, path: constants.esc005_dispute_amount_inr}, learning: "no"}
+- {name: esc006_human_requests,           value: 3,    unit: requests,    status: brief_fixed, decision: D-117, brief_ref: "A6 p.17 ESC-006", defined_in: "config/escalation_rules.yaml constants", mirror: {file: config/escalation_rules.yaml, path: constants.esc006_human_requests}, learning: "no"}
+- {name: esc007_high_value_inr,           value: 500000, unit: INR,       status: brief_fixed, decision: D-126, brief_ref: "A6 p.16 ESC-007 (above 5L)", defined_in: "config/escalation_rules.yaml constants", mirror: {file: config/escalation_rules.yaml, path: constants.esc007_high_value_inr}, learning: "no"}
+- {name: esc010_turns,                    value: 15,   unit: turns,       status: brief_fixed, decision: D-119, brief_ref: "A6 p.17 ESC-010", defined_in: "config/escalation_rules.yaml constants", mirror: {file: config/escalation_rules.yaml, path: constants.esc010_turns}, learning: "no"}
+
+# --- Escalation proposals (config/escalation_rules.yaml proposals; names kept as Day 12 asked)
+- {name: legal_threat_tertiary_confidence, value: 0.65, unit: probability, status: proposal,   decision: D-115, defined_in: "config/escalation_rules.yaml proposals", mirror: {file: config/escalation_rules.yaml, path: proposals.legal_threat_tertiary_confidence}, learning: "no"}
+- {name: otp_failures_lock,               value: 3,    unit: attempts,    status: decided,     decision: D-65,  defined_in: "config/escalation_rules.yaml proposals; diagrams/auth-flow.mmd", mirror: {file: config/escalation_rules.yaml, path: proposals.otp_failures_lock}, learning: "no"}
+- {name: crisis_pickup_target_seconds,    value: 60,   unit: seconds,     status: proposal,    decision: D-118, defined_in: "config/escalation_rules.yaml proposals", mirror: {file: config/escalation_rules.yaml, path: proposals.crisis_pickup_target_seconds}, learning: "no"}
+- {name: esc004_cancel_sentiment_min,     value: -0.40, unit: score,      status: proposal,    decision: D-125, defined_in: "config/escalation_rules.yaml proposals", mirror: {file: config/escalation_rules.yaml, path: proposals.esc004_cancel_sentiment_min}, learning: "no"}
+- {name: wait_update_interval_seconds,    value: 60,   unit: seconds,     status: proposal,    decision: D-124, defined_in: "config/escalation_rules.yaml proposals", mirror: {file: config/escalation_rules.yaml, path: proposals.wait_update_interval_seconds}, learning: may_propose}
+- {name: handoff_attempts_max,            value: 2,    unit: attempts,    status: proposal,    decision: D-123, defined_in: "config/escalation_rules.yaml proposals", mirror: {file: config/escalation_rules.yaml, path: proposals.handoff_attempts_max}, learning: "no"}
+- {name: sla_warn_fraction,               value: 0.70, unit: fraction,    status: proposal,    decision: D-128, defined_in: "config/escalation_rules.yaml proposals", mirror: {file: config/escalation_rules.yaml, path: proposals.sla_warn_fraction}, learning: "no"}
+- {name: ageing_boost_fraction,           value: 0.80, unit: fraction,    status: proposal,    decision: D-127, defined_in: "config/escalation_rules.yaml proposals", mirror: {file: config/escalation_rules.yaml, path: proposals.ageing_boost_fraction}, learning: "no"}
+- {name: repeat_contact_window_days,      value: 7,    unit: days,        status: proposal,    decision: D-121, defined_in: "config/escalation_rules.yaml proposals", mirror: {file: config/escalation_rules.yaml, path: proposals.repeat_contact_window_days}, learning: "no"}
+- {name: clarification_failures_handoff,  value: 2,    unit: failures,    status: default,     decision: null,  defined_in: "config/escalation_rules.yaml proposals; docs/architecture/dialogue-management.md section 4.4", mirror: {file: config/escalation_rules.yaml, path: proposals.clarification_failures_handoff}, learning: "no"}
+
+# --- Conversation design and templates (Day 13, config/templates/, docs/architecture/conversation-design.md)
+- {name: template_variant_min_rotating,   value: 3,    unit: variants,    status: proposal,    decision: D-147, defined_in: "config/templates/README.md section 5", learning: "no"}
+- {name: llm_ack_slot_max_words,          value: 25,   unit: words,       status: proposal,    decision: D-151, defined_in: "config/templates/README.md section 4", learning: may_propose}
+- {name: checkin_max_per_conversation,    value: 2,    unit: check-ins,   status: proposal,    decision: D-99,  defined_in: "docs/learning-pipeline/csat-signals.md section 2", learning: may_propose}
+- {name: checkin_max_per_task,            value: 1,    unit: check-ins,   status: proposal,    decision: D-99,  defined_in: "docs/learning-pipeline/csat-signals.md section 2", learning: may_propose}
+- {name: csat_resurvey_gap_days,          value: 7,    unit: days,        status: proposal,    decision: D-99,  defined_in: "docs/learning-pipeline/csat-signals.md section 3.1", learning: may_propose}
+- {name: advisor_offer_max_per_topic,     value: 1,    unit: offers,      status: decided,     decision: D-55,  defined_in: "docs/guardrails/financial-advice.md section 7", learning: "no"}
+- {name: deescalation_check_max,          value: 1,    unit: questions,   status: proposal,    decision: D-125, defined_in: "docs/escalation/routing-and-handoff.md section 9.2", learning: "no"}
+- {name: layer5_notice_max_chars,         value: 280,  unit: characters,  status: proposal,    decision: D-140, defined_in: "config/system-prompt/layer5-operational.md section 3", learning: "no"}
+- {name: layer5_notice_max_active,        value: 5,    unit: notices,     status: proposal,    decision: D-140, defined_in: "config/system-prompt/layer5-operational.md section 3", learning: "no"}
+- {name: prompt_token_budget_total,       value: 7300, unit: tokens,      status: proposal,    decision: D-139, defined_in: "config/system-prompt/README.md section 6", learning: "no"}
+
+# ------------------------------------------------------------------------------------------------ families held by reference only
+# Not restated here. The home document owns the values; a change follows that document's process.
+by_reference:
+- {family: "SLA, priority and queue per escalation trigger", home: "config/escalation_rules.yaml triggers[]; KB-ESC-010", source: "A6 pp.16-17", learning: "no"}
+- {family: "SLA attainment targets per priority", home: "config/escalation_rules.yaml proposals.sla_attainment_target_pct", source: "D-128", learning: "no"}
+- {family: "False-positive class bounds, typical path and reserve", home: "config/guardrails.yaml parameters (fp_class_bounds_pct, fp_typical_path, fp_reserve_pct) and per-guardrail fp_target_pct", source: "D-64, D-76", learning: "no"}
+- {family: "Per-stage latency budgets", home: "docs/architecture/latency-scalability-cost.md section 1; docs/knowledge-base/retrieval-pipeline.md section 12; docs/guardrails/output-safety-layer.md section 4", source: "D-07, D-45, D-81", learning: "no"}
+- {family: "Retrieval evaluation gates (Recall@5, MRR, nDCG@5)", home: "docs/knowledge-base/retrieval-pipeline.md section 15", source: "D-47", learning: "no"}
+- {family: "Authentication matrix per intent", home: "config/intents.yaml intents[].auth", source: "A3, D-17", learning: "no"}
+- {family: "Learning-pipeline gates G0-G9, canary sizes, rollout ladder, breaker conditions", home: "docs/learning-pipeline/safety-invariants.md; docs/guardrails/monitoring-dashboard.md section 8", source: "A5.4, D-113", learning: "no"}
+- {family: "A/B testing statistics (alpha, power, boundaries, sample sizes)", home: "docs/learning-pipeline/ab-testing.md", source: "D-107 to D-111", learning: "no"}
+- {family: "Sampling rates for supervisor review", home: "docs/learning-pipeline/supervisor-corrections.md", source: "A5.1", learning: "no"}
+- {family: "Outcome windows and repeat-contact windows", home: "docs/learning-pipeline/outcome-tracking.md", source: "A5.3, D-103", learning: "no"}
+- {family: "Queue hours, overflow chains, capacity model inputs", home: "config/escalation_rules.yaml queues; docs/escalation/queue-management.md", source: "D-122, D-127, D-130", learning: "no"}
+- {family: "KPI targets and alert thresholds", home: "docs/metrics/kpi-framework.md", source: "A8, D-132", learning: "no"}
+- {family: "Sentiment and NLU evaluation targets", home: "docs/intent-taxonomy/sentiment.md section 9; docs/architecture/nlu-pipeline-overview.md", source: "A8, proposals", learning: "no"}
+- {family: "Incident severity targets and containment levers", home: "docs/guardrails/incident-response-playbook.md", source: "D-83, D-86", learning: "no"}
