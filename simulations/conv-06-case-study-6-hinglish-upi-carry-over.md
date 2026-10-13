@@ -27,7 +27,7 @@ Non-English text in this file (customer lines, template wording, glosses) is not
 | Templates used | TPL-GEN-GREETING, TPL-GEN-CARRYOVER, TPL-AUTH-OTP-REQUEST, TPL-TXN-STATUS, TPL-SRV-CSAT, TPL-GEN-CLOSING, TPL-ESC-REFERRAL |
 | KB entries cited | KB-POL-003, KB-TRB-001, KB-TRB-002, KB-POL-007, KB-POL-004 |
 | Tools called | get_complaint_status, get_txn |
-| prompt_version | sp-1.0.0+518d5a1e.n000000 (template_version 1.0.0 for every template; model_version unbound) |
+| prompt_version | sp-1.1.0+1527a050.n000000 (template versions as listed in config/templates, shown with each Generation row; model_version unbound) |
 | What this conversation proves | The earlier contact is not named until this session is verified, the customer does not have to explain it again afterwards, no regulatory reversal time is invented, and a missed follow-up becomes a referral with an honest notification. |
 
 Setup: Prior session yesterday on the same channel: a complaint about this UPI payment was registered. carry_over.open_tickets has one entry and context_reusable_until has not passed (context_carry_over_window_hours). The earlier session's verification expired with that session.
@@ -54,9 +54,9 @@ _English gloss (annotation only, not customer-facing; not native-reviewed): Hell
 
 ### T2 | Agent
 
-> Namaste, main NexBank ka AI assistant hoon. Welcome back. Agar yeh aapki pichhli request ke baare mein hai, to secure verification step poora hote hi main wahin se aage badh sakta hoon, aur aapko dobara explain nahi karna padega. Main UPI payment check karne mein aapki madad kar sakta hoon. Aapke account ki safety ke liye pehle mujhe verify karna hoga ki yeh aap hi hain. Maine ek secure verification box khola hai: please apne registered contact par bheja gaya one-time code wahin enter karein, is chat mein nahi.
+> Namaste, main NexBank ka AI assistant hoon. Welcome back. Please mere khole hue secure verification step ko poora karein, phir main wahin se aage badhunga. Main UPI payment check karne mein aapki madad kar sakta hoon. Aapke account ki safety ke liye pehle mujhe verify karna hoga ki yeh aap hi hain. Maine ek secure verification box khola hai: please apne registered contact par bheja gaya one-time code wahin enter karein, is chat mein nahi.
 
-_English gloss (annotation only, not customer-facing; not native-reviewed): Hello, I'm NexBank's AI assistant. Welcome back. If this is about your earlier request, I can pick it up as soon as the secure verification step is complete, and you won't need to explain it again. I can help you check your UPI payment. To keep your account safe I need to verify it's you first. I've opened a secure verification box: please enter the one-time code sent to your registered contact there, not in this chat._
+_English gloss (annotation only, not customer-facing; not native-reviewed): Hello, I'm NexBank's AI assistant. Welcome back. Please complete the secure verification step I've opened, and I'll take it from there. I can help you check your UPI payment. To keep your account safe I need to verify it's you first. I've opened a secure verification box: please enter the one-time code sent to your registered contact there, not in this chat._
 
 | Field | Value |
 |---|---|
@@ -65,7 +65,7 @@ _English gloss (annotation only, not customer-facing; not native-reviewed): Hell
 | Guardrails | checked: Output Safety Layer: GR-OUT-01, GR-OUT-02, GR-OUT-03, GR-OUT-04, GR-OUT-05, GR-OUT-06; triggered: GR-REG-16 (AI disclosure in the first reply), GR-SEC-R7 (re-authentication), GR-SEC-R1 (no detail of the earlier contact before verification) |
 | KB / tools | KB: KB-POL-003@1.0.0 (0.83); retrieval confidence 0.83; decision answer |
 | Action | transfer: to the authentication flow; returning context is acknowledged without revealing any detail of it |
-| Generation | template `TPL-GEN-GREETING/with_request@1.0.0` + `TPL-GEN-CARRYOVER/needs_verification@1.0.0` + `TPL-AUTH-OTP-REQUEST/default@1.0.0` (language hinglish); patterns: P2, P5; anti-pattern check: none |
+| Generation | template `TPL-GEN-GREETING/with_request@1.1.0` + `TPL-GEN-CARRYOVER/needs_verification@1.1.0` + `TPL-AUTH-OTP-REQUEST/default@1.0.0` (language hinglish); patterns: P2, P5; anti-pattern check: none |
 | State | phase AUTH_REQUIRED; auth anonymous; turn_count 2; topic_stack [TXN-003: active]; slots {}; pending_confirmation none; counters: all 0; turns_since_resolution 2; escalation_proximity 0.00 |
 | Decision point | Brief turn 2 names the earlier complaint and its reference before any verification, and turn 3 treats the customer as 'OTP-Verified (from prior session within 24hrs)'. Here context is reused and authentication is not (D-05, A4.2 rule 7). |
 
@@ -90,7 +90,7 @@ _English gloss (annotation only, not customer-facing; not native-reviewed): Welc
 | Guardrails | checked: Output Safety Layer: GR-OUT-01, GR-OUT-02, GR-OUT-03, GR-OUT-04, GR-OUT-05, GR-OUT-06; triggered: none |
 | KB / tools | tool: `get_complaint_status`(latest open complaint (from carry_over.open_tickets)) -> ok: {complaint_ref: CMP-SYN-79012, topic: UPI payment to Swiggy, amount: INR 2,500, status: open} |
 | Action | respond: the earlier topic is named now that this session is verified; the customer is not asked to describe it again |
-| Generation | template `TPL-GEN-CARRYOVER/verified@1.0.0` (language hinglish); patterns: P5; anti-pattern check: none |
+| Generation | template `TPL-GEN-CARRYOVER/verified@1.1.0` (language hinglish); patterns: P5; anti-pattern check: none |
 | State | phase RESPOND; auth otp_verified; turn_count 3; topic_stack [TXN-003: active]; slots {complaint_id=CMP-SYN-79012 (from history); merchant_name=Swiggy (from history); amount=INR 2,500 (from history)}; pending_confirmation none; counters: all 0; turns_since_resolution 3; escalation_proximity 0.00 |
 
 ### T4 | Customer
@@ -282,7 +282,7 @@ _English gloss (annotation only, not customer-facing; not native-reviewed): I sa
 | Code | Anti-pattern | Result | At-risk turns where the design prevents it |
 |---|---|---|---|
 | AP1 | Robotic Loop | absent: 7 agent messages, no two consecutive ones identical, no text sent three times | T2, T3 |
-| AP2 | Information Dump | absent: longest agent message is 89 words (cap `atk_output_max_words`); one concept per message | T2, T5, T9, T11 |
+| AP2 | Information Dump | absent: longest agent message is 75 words (cap `atk_output_max_words`); one concept per message | T2, T5, T9, T11 |
 | AP3 | False Confidence | absent: no timeline, wait or outcome is stated except values returned by a tool or the router on that turn | T2, T3, T5, T12 |
 | AP4 | Premature Escalation | absent: escalation only on XTR-05 at E2 | none at risk |
 | AP5 | Empathy Bypass | absent: every reply to a customer message with a problem or a negative emotion opens with the acknowledgement | T2, T5 |

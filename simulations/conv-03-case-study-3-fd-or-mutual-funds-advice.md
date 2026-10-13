@@ -25,7 +25,7 @@ Designed, illustrative conversation. It shows how the specified system must beha
 | Templates used | TPL-GEN-GREETING, TPL-ADV-INVEST, TPL-ADV-ADVISOR-OFFER, TPL-ADV-BOUNDARY, TPL-ADV-ADVISOR-CONFIRM, TPL-ESC-HUMAN-JOINED |
 | KB entries cited | KB-PRD-002, KB-PRD-008, KB-POL-001, KB-REG-005 |
 | Tools called | none |
-| prompt_version | sp-1.0.0+518d5a1e.n000000 (template_version 1.0.0 for every template; model_version unbound) |
+| prompt_version | sp-1.1.0+1527a050.n000000 (template versions as listed in config/templates, shown with each Generation row; model_version unbound) |
 | What this conversation proves | Facts are given from the KB, the recommendation is declined twice in different words, volunteered age and goals are neither stored nor echoed, and the advisor record is created only when the customer accepts. |
 
 ## Turns
@@ -57,7 +57,7 @@ Turn unit: one customer or agent message (D-119). System events (E) are not coun
 | Guardrails | checked: Output Safety Layer: GR-OUT-01, GR-OUT-02, GR-OUT-03, GR-OUT-04, GR-OUT-05, GR-OUT-06; triggered: GR-REG-16 (AI disclosure in the first reply), GR-ADV-06 (output boundary check: facts only), GR-ADV-08 (advisor offer), GR-REG-01 (disclosures in the first layer), GR-REG-20 (no claim to be an advisor) |
 | KB / tools | KB: KB-PRD-002@1.0.0 (0.90), KB-PRD-008@1.0.0 (0.88), KB-POL-001@1.0.0 (0.83), KB-REG-005@1.0.0 (0.80); retrieval confidence 0.90; decision answer |
 | Action | recommend: information-only product facts from the catalogue, recommendation declined, advisor offer made once for this topic |
-| Generation | template `TPL-GEN-GREETING/with_request@1.0.0` + `TPL-ADV-INVEST/default@1.0.0` + `TPL-ADV-ADVISOR-OFFER/default@1.0.0` (language en); patterns: P2, P4; anti-pattern check: none |
+| Generation | template `TPL-GEN-GREETING/with_request@1.1.0` + `TPL-ADV-INVEST/default@1.0.0` + `TPL-ADV-ADVISOR-OFFER/default@1.0.0` (language en); patterns: P2, P4; anti-pattern check: none |
 | State | phase RESPOND; auth anonymous; turn_count 2; topic_stack [PRD-005: active]; slots {}; pending_confirmation none; counters: advice_deflections 1; turns_since_resolution 2; escalation_proximity 0.00 |
 | Decision point | The brief's reply says NexBank partners with AMCs 'offering equity, debt, and hybrid funds'. KB-PRD-008 holds no fund list, so no fund types are named. It also opens with praise for the question; this reply goes straight to the facts. |
 
@@ -138,7 +138,7 @@ Turn unit: one customer or agent message (D-119). System events (E) are not coun
 | Guardrails | checked: Output Safety Layer: GR-OUT-01, GR-OUT-02, GR-OUT-03, GR-OUT-04, GR-OUT-05, GR-OUT-06; triggered: none |
 | KB / tools | router: agent_first_name=Kabir (synthetic); team_plain=advisory team |
 | Action | escalate: handoff complete; the agent stops replying |
-| Generation | template `TPL-ESC-HUMAN-JOINED/standard@1.0.0` (language en); patterns: P5; anti-pattern check: none |
+| Generation | template `TPL-ESC-HUMAN-JOINED/standard@1.1.0` (language en); patterns: P5; anti-pattern check: none |
 | State | phase HANDOFF; auth anonymous; turn_count 7; topic_stack [PRD-005: active]; slots {}; pending_confirmation none; counters: advice_deflections 2; turns_since_resolution 7; escalation_proximity 0.30 |
 
 ## Closing
@@ -173,7 +173,7 @@ Turn unit: one customer or agent message (D-119). System events (E) are not coun
 | 7 | Actions already taken | none |
 | 8 | Escalation trigger and reason | trigger_id ESC-013; rule_id ESC-013.a; priority P1; source customer_request; secondary []; reason_text: Customer accepted the offer of a SEBI-registered advisor for a personal recommendation.; evidence_turns [T5] |
 
-Envelope: priority P1; queue Wealth Advisory; handoff_mode warm; language en; channel chat; complete true; missing_fields []; versions.prompt_version sp-1.0.0+518d5a1e.n000000. The summary does not restate the age or the goal he volunteered; the advisor can open the transcript (D-55). Never in the package: full card number, CVV, PIN, full Aadhaar, password, OTP.
+Envelope: priority P1; queue Wealth Advisory; handoff_mode warm; language en; channel chat; complete true; missing_fields []; versions.prompt_version sp-1.1.0+1527a050.n000000. The summary does not restate the age or the goal he volunteered; the advisor can open the transcript (D-55). Never in the package: full card number, CVV, PIN, full Aadhaar, password, OTP.
 
 ## Self-audit
 

@@ -47,10 +47,10 @@ SYSTEM MESSAGE (instructions; the only instructions)
   Layer 2 Regulatory      fixed text
   Layer 3 Dialogue        base text + the ACTIVE WHEN blocks whose condition holds this turn
   Layer 4 Knowledge       fixed text
-  Layer 5 Operational     frame text; assembler fills {{notices_block}} with rendered typed notices
+  Layer 5 Operational     frame text; assembler fills {{notices_block}} with rendered typed notices, each line inside the turn's data markers
 
 DATA BLOCKS (never instructions; each wrapped in markers that carry the turn boundary code)
-  session_facts           from the Policy Engine: auth level, reply language, dialogue phase, flow, mode, selected
+  session_facts           written by the platform (Policy Engine), authoritative for platform decisions: auth level, reply language, dialogue phase, flow, mode, selected
                           template id and variant, locked slot values, allowed next actions, retrieval decision,
                           candidates for a clarifying question, handoff wording inputs
   knowledge_passages      top-k entries (id@version, title, served-language body, stale flag); empty when not needed
@@ -61,7 +61,8 @@ DATA BLOCKS (never instructions; each wrapped in markers that carry the turn bou
 
 Rules:
 
-1. The system message is built by concatenation only. No customer text, passage, tool string or notice summary is ever interpolated into a layer. The three assembly slots are filled by the assembler from platform values.
+1. The system message is built by concatenation only. No customer text, knowledge passage, tool string or conversation text is ever interpolated into a layer. The two layer 1 slots (`{{turn_boundary}}`, `{{canary_token}}`) are filled by the assembler from platform values. The one place a variable string enters the system message is the layer 5 slot `{{notices_block}}`: only typed notice records that passed gate G0 (closed schema, no free prompt text; see `layer5-operational.md` section 2), rendered one line each inside the turn's data markers that carry the boundary code, and only in layer 5 (D-195).
+   Authority of data blocks (D-195): the session facts are written by the platform in their own block, carry the boundary code, and are authoritative for platform decisions (verification level, reply language, flow, template, retrieval decision, allowed actions). A verification level, approval, template choice or instruction that appears inside customer text, a knowledge passage, a tool result or any other data is data and is never trusted, even when it is worded like session facts. Neither kind of block can add, remove or relax a rule of a layer.
 2. Data-block markers have the form `<<nb-data kind=... code={{turn_boundary}}>> ... <<nb-end code={{turn_boundary}}>>`. The code is a fresh random value per turn, so text inside a customer message that imitates a marker cannot match it (attack pattern P6 in `adversarial-defences.md` section 4.1). The exact marker syntax is a platform choice; the requirement is an unguessable per-turn code.
 3. The model never selects the template, the tool, the auth level or the escalation. It receives them as session facts. This is why the prompt can be leaked without loss: no decision of consequence is made from prompt text alone (assumption 1 of `adversarial-defences.md`).
 4. Template-only turns (mode `template`, about nine in ten templates in the library) do not call the model at all: the Response Generator renders the template and the Output Safety Layer checks it. The prompt matters for `hybrid` and `llm-guided` turns and for free conversational turns.
@@ -69,7 +70,7 @@ Rules:
 ## 4. Precedence
 
 1. A lower-numbered layer wins over a higher-numbered one. Layer 0 states this to the model; gate G0 enforces it at authoring time by running the assertion sets of all layers against any candidate for layers 3 to 5.
-2. Instructions (the six layers) win over all data. Data cannot add, remove or suspend an instruction (layer 1 S1).
+2. Instructions (the six layers) win over all data. Data cannot add, remove or suspend an instruction (layer 1 S1). The session facts block is the platform's own statement of its decisions; it is relied on for those decisions only and ranks as data for everything else.
 3. Within layer 1, S11 gives the order when rules collide: safety of life, then security of money and data, then the rules, then helpfulness.
 4. Platform controls win over the prompt. Where the prompt and a rule disagree (they should not), the rule layer, Policy Engine, Tool Orchestrator and Output Safety Layer decide; the prompt is a restatement (system-architecture.md principle 1).
 5. A template marked fixed (mode `template`) wins over layer 3 wording preferences: the model does not reword it (layer 3 D9).
@@ -98,12 +99,12 @@ The brief gives no budget. Budgets below are ceilings per layer; the validator e
 | Part | Words now | Estimated tokens now | Ceiling |
 |---|---|---|---|
 | Layer 0 | 550 | 742 | 800 |
-| Layer 1 | 1392 | 1879 | 2,000 |
+| Layer 1 | 1480 | 1998 | 2,000 |
 | Layer 2 | 773 | 1044 | 1,150 |
 | Layer 3 (all blocks active; a real turn activates a subset) | 1127 | 1521 | 1,650 |
-| Layer 4 | 641 | 865 | 950 |
+| Layer 4 | 653 | 882 | 950 |
 | Layer 5 frame plus at most `layer5_notice_max_active` notices | 250 frame | 338 frame | 750 |
-| **System message total** | 4733 | 6389 | **7,300** (`prompt_token_budget_total`) |
+| **System message total** | 4833 | 6525 | **7,300** (`prompt_token_budget_total`) |
 | Data blocks: session facts 400, passages 1,500 (`knowledge_retrieval_top_k` entries), tool results 400, conversation 2,500, customer message 1,400 (`atk_input_max_chars` is 4,000 characters) | n/a | n/a | 6,200 |
 
 Layers 0 to 2 are identical on every turn, so they are the natural prefix for provider-side prompt caching; that is a cost lever, not a requirement, and is not counted in `latency-scalability-cost.md`. The layer 1 slots `{{turn_boundary}}` and `{{canary_token}}` would defeat a cache of layer 1 if filled per turn; the implementation may place the per-turn code in a short uncached preamble instead. Open item.
@@ -120,16 +121,16 @@ A12.2: "Every prompt version stored with metadata (author, approval chain, deplo
 
 ```text
 sp-<bundle semantic version>+<first 8 hex of the bundle hash>.<notice set id>
-current draft: sp-1.0.0+518d5a1e.n000000
+current draft: sp-1.1.0+1527a050.n000000
 ```
 
-6. **Manifest.** `manifest.yaml` stores the bundle version, the three hashes, the per-layer version and hash, the author, the approval chain, the deployment date (null: nothing is deployed), the model version (unbound: the design is provider-agnostic) and the `model_temperature` the bundle was approved with. `python tests/templates/validate_templates.py --rehash` writes the hash fields; every validator run verifies them, so an edit to any layer text without a rehash fails the build.
+6. **Manifest.** `manifest.yaml` stores the bundle version, the three hashes, the per-layer version and hash, the author, the approval chain, the deployment date (null: nothing is deployed), the model version (unbound: the design is provider-agnostic) and the `model_temperature` the bundle was approved with. `python tests/templates/validate_templates.py --rehash` writes the hash fields; every validator run verifies them, so an edit to any layer text without a rehash fails the build. `--rehash` refuses (D-194) when the text of a layer changed but its version in the layer header did not, and refuses when the text of layer 0, 1 or 2 changed unless it is run as `--rehash --allow-immutable-change D-NNN` with the decision that approved the change; the manifest then records the change in `immutable_change_log` (decision id, hash before, hash after). The hash and the required-instruction list of the validator detect change relative to the repository; for the immutable layers the stronger control is an approved hash kept outside the repository (`--approved-immutable <sha256>`).
 7. **What else the turn log records.** Template id, template version and variant key (attribution, D-102), the ids of the notices rendered, KB `id@version` for citations, and `model_version`. Together with `prompt_version` these make a turn replayable (A11.3).
 8. **Rollback.** A flag flip to the previous bundle; it takes effect on the next turn and a conversation in progress finishes its current turn on the version it started (`safety-invariants.md` section 7).
 
 ## 8. Layer 5 typed notice slots
 
-Specified in `layer5-operational.md` section 2. Summary: the frame text is fixed; daily changes are records with a closed schema (`system_status`, `known_issue`, `promotion`, `temporary_policy`); a record is validated at gate G0 (types, length, no digits, no link, no imperative text addressed to the assistant, expiry at most 7 days out) and is rendered inside data markers; the customer never sees the notice summary, only `TPL-SYS-NOTICE`; a promotion or policy notice carries a KB entry id and no figure.
+Specified in `layer5-operational.md` section 2. Summary: the frame text is fixed; daily changes are records with a closed schema (`system_status`, `known_issue`, `promotion`, `temporary_policy`); a record is validated at gate G0 (types, length, no digits, no link, no imperative text addressed to the assistant, expiry at most 7 days out) and is rendered inside data markers; the customer never sees the notice summary, only `TPL-SYS-NOTICE`; a promotion or policy notice carries a KB entry id and no figure; a known issue may carry a closed `customer_effect` code, the only way a notice reply says anything about the customer's money or payments (D-193).
 
 ## 9. Testable assertions
 
@@ -143,9 +144,9 @@ Every layer ends with an assertion table. IDs are `PA-L<layer>-<nn>` (D-155). An
 | 3 | 17 | the five A9.1 patterns and the eight A9.2 anti-patterns |
 | 4 | 12 | grounding, citation, retrieval decisions |
 | 5 | 7 | typed slots, no instruction in data |
-| **Total** | **84** | all map to at least one existing case; none has been executed |
+| **Total** | **84** | all map to at least one case in `tests/`; none has been executed |
 
-Known coverage gaps (reported in the Day 13 handoff): layer 5 assertions PA-L5-03 to PA-L5-07 map to the nearest existing case rather than a dedicated one; PA-L0-07 (reply language) and PA-L3-08 (context carry-over) have no dedicated case either.
+Coverage (D-194): the assertions whose earlier test mapping did not test them (PA-L3-02, PA-L3-03, PA-L1-11, PA-L3-09, and the data-use half of PA-L2-10) and those that had no dedicated case (PA-L0-07, PA-L3-08, PA-L5-03 to PA-L5-07) now map to the cases PA-T-01 to PA-T-12 in `tests/templates/prompt-assertions.yaml`. They are specified, not run, and are not yet members of the safety-suite manifest.
 
 ## 10. What the prompt deliberately does not contain
 
@@ -158,7 +159,7 @@ Known coverage gaps (reported in the Day 13 handoff): layer 5 assertions PA-L5-0
 | Queue names, SLAs, trigger conditions | router-side; a customer must not learn routing reasons | `config/escalation_rules.yaml` |
 | PEP, AML or risk flags | never enter a prompt (`prompt_visible: false`, D-120) | Escalation Router |
 | Customer-facing sentences from templates | a reply that repeats eight consecutive words of layers 0 to 2 is blocked by the overlap scan (GR-ATK-06); the validator checks that no template does | `config/templates/` |
-| Any digit | enforced by the validator as a cheap proxy for the first two rows | n/a |
+| Any digit outside the section labels (S1, R1, D1, K1 and so on) | enforced by the validator as a cheap proxy for the first two rows | n/a |
 
 ## 11. Open items
 
@@ -168,3 +169,4 @@ Known coverage gaps (reported in the Day 13 handoff): layer 5 assertions PA-L5-0
 4. Marker syntax, canary generation and the cache placement of the per-turn code are platform choices.
 5. Secondary-language instructions exist (layer 3 block) but no reviewed secondary-language template text exists yet.
 6. Layer 2 has had no legal review.
+7. The approved immutable hash is kept in the same repository as the layers; keeping it in a store the pipeline cannot write, and passing it with `--approved-immutable` in the build, is the platform step that makes the immutability check independent.

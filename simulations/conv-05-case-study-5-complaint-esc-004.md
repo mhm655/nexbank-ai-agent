@@ -13,19 +13,19 @@ Designed, illustrative conversation. It shows how the specified system must beha
 | Starting auth level | anonymous |
 | Intents covered | CMP-003 |
 | Guardrails exercised | GR-OUT-01, GR-OUT-04, GR-OUT-05, GR-REG-03, GR-REG-08, GR-REG-16, GR-REG-19, GR-SEC-R2 |
-| Escalation outcome | ESC-004 fired at T4 (P1, Customer Retention); the recovery condition is checked at T6 and is not met; human accepted |
+| Escalation outcome | ESC-004 fired at T4 (P1, Customer Retention); the recovery score is checked at T6 (exactly -0.40, recovering) but the customer asks for the escalation, so it stays; human accepted |
 | Escalation IDs | ESC-004 |
 | Priority | P1 |
 | Adversarial vectors | none |
 | Security rules exercised | R2 |
 | Patterns shown | P1, P2, P4, P5 |
 | Anti-patterns designed against | AP1, AP2, AP3, AP5, AP6, AP7, AP8 |
-| Coverage tags | case study re-run, ESC-004 fired on the brief's own scores, grievance route within 2 agent turns, recovery condition checked and not met |
+| Coverage tags | case study re-run, ESC-004 fired on the brief's own scores, grievance route within 2 agent turns, recovery score checked at the -0.40 boundary (recovering) and the customer keeps the handoff |
 | Case study | Case Study 5 (brief pp.53-54) |
 | Templates used | TPL-GEN-GREETING, TPL-CMP-EMPATHY-FIRST, TPL-CMP-GRIEVANCE-INFO, TPL-ESC-HANDOFF-WARM, TPL-ESC-WAIT-UPDATE, TPL-ESC-HUMAN-JOINED |
 | KB entries cited | KB-ESC-005, KB-REG-002, KB-POL-007 |
 | Tools called | get_complaint_status |
-| prompt_version | sp-1.0.0+518d5a1e.n000000 (template_version 1.0.0 for every template; model_version unbound) |
+| prompt_version | sp-1.1.0+1527a050.n000000 (template versions as listed in config/templates, shown with each Generation row; model_version unbound) |
 | What this conversation proves | Empathy comes before verification, the open complaint is found without asking for its reference, the grievance route is given by the second agent turn, no credit time is promised, and two consecutive scores below -0.70 escalate to a human even though the customer starts to calm down. |
 
 Setup: carry_over.open_tickets holds one open complaint for this customer (an incorrect debit, reversal approved, credit pending).
@@ -60,7 +60,7 @@ Turn unit: one customer or agent message (D-119). System events (E) are not coun
 | Guardrails | checked: Output Safety Layer: GR-OUT-01, GR-OUT-02, GR-OUT-03, GR-OUT-04, GR-OUT-05, GR-OUT-06; triggered: GR-REG-16 (AI disclosure in the first reply), GR-OUT-04 (acknowledgement before the verification request) |
 | KB / tools | KB: KB-ESC-005@1.0.0 (0.82), KB-REG-002@1.0.0 (0.80); retrieval confidence 0.82; decision answer |
 | Action | apologise: one specific apology, then the next step (verification so the complaint can be opened) |
-| Generation | hybrid (llm-guided structure: Acknowledge slot written by the model, the rest locked) `TPL-GEN-GREETING/with_request@1.0.0` + `TPL-CMP-EMPATHY-FIRST/needs_verification_first@1.0.0` (language en); patterns: P1, P2; anti-pattern check: none |
+| Generation | hybrid (llm-guided structure: Acknowledge slot written by the model, the rest locked) `TPL-GEN-GREETING/with_request@1.1.0` + `TPL-CMP-EMPATHY-FIRST/needs_verification_first@1.0.0` (language en); patterns: P1, P2; anti-pattern check: none |
 | State | phase AUTH_REQUIRED; auth anonymous; turn_count 2; topic_stack [CMP-003: active]; slots {}; pending_confirmation none; counters: neg_sentiment_streak 1; turns_since_resolution 2; escalation_proximity 0.60 |
 
 ### E1 | System event
@@ -129,7 +129,7 @@ Turn unit: one customer or agent message (D-119). System events (E) are not coun
 | Action | n/a (customer message; the policy decision is on the next agent message) |
 | Generation | n/a (customer message) |
 | State | phase ESCALATING; auth otp_verified; turn_count 6; topic_stack [CMP-003: active]; slots {complaint_id=CMP-SYN-78901 (defaulted from history); amount=INR 8,500 (from the record)}; pending_confirmation none; counters: all 0; turns_since_resolution 6; escalation_proximity 0.70 |
-| Decision point | Recovery check (routing-and-handoff.md section 9.2): ESC-004 may be de-escalated only if the issue has had a concrete action and the latest raw score is above esc004_cancel_sentiment_min. The score is exactly -0.40, which is not above it, and the customer asks for the escalation. TPL-ESC-DEESCALATION-CHECK is not sent and the handoff stays. |
+| Decision point | Recovery check (routing-and-handoff.md section 9.2): the score part of the ESC-004 recovery condition is non-strict (D-200): the latest raw score is at or above esc004_cancel_sentiment_min (-0.40). The score is exactly -0.40, so it counts as recovering, which is the brief's own "-0.4 (recovering)" reading (Case Study 5, brief p.53, turn 5). But the credit has not arrived (no concrete resolution yet) and, above all, the customer is asking for the escalation, so the customer does not agree to withdraw it. TPL-ESC-DEESCALATION-CHECK is not sent to a customer who has just asked for the handoff, and the handoff stays. |
 
 ### T7 | Agent
 
@@ -164,7 +164,7 @@ Turn unit: one customer or agent message (D-119). System events (E) are not coun
 | Guardrails | checked: Output Safety Layer: GR-OUT-01, GR-OUT-02, GR-OUT-03, GR-OUT-04, GR-OUT-05, GR-OUT-06; triggered: none |
 | KB / tools | router: agent_first_name=Farhan (synthetic); team_plain=customer care team |
 | Action | escalate: handoff complete; the agent stops replying |
-| Generation | template `TPL-ESC-HUMAN-JOINED/standard@1.0.0` (language en); patterns: P5; anti-pattern check: none |
+| Generation | template `TPL-ESC-HUMAN-JOINED/standard@1.1.0` (language en); patterns: P5; anti-pattern check: none |
 | State | phase HANDOFF; auth otp_verified; turn_count 8; topic_stack [CMP-003: active]; slots {complaint_id=CMP-SYN-78901 (defaulted from history); amount=INR 8,500 (from the record)}; pending_confirmation none; counters: all 0; turns_since_resolution 8; escalation_proximity 0.70 |
 
 ## Closing
@@ -186,7 +186,7 @@ Turn unit: one customer or agent message (D-119). System events (E) are not coun
 | Turn 4: the agent 'escalates to our operations team' itself and carries on | ESC-004 fires on the brief's scores and a Customer Retention colleague takes over | A6: two turns below -0.7; the agent has no tool that prioritises a reversal |
 | Turn 6: 'credited ... within 24 hours' and an SMS confirmation | No date and no notification promised | D-09; no tool returned either |
 | Turn 4: 'a 2-week delay after approval is unacceptable' | One acknowledgement of the delay without a verdict on fault | Tone guide: own the delay, do not debate fault |
-| Outcome: resolved by the AI at -0.4 | Handed to a human at -0.40 | The recovery condition needs a score above -0.40 and the customer asked to escalate |
+| Outcome: resolved by the AI at -0.4 | Handed to a human at -0.40 | The score -0.40 counts as recovering (condition at or above -0.40, D-200), as in the brief; the customer said "Yes please escalate this", so there is nothing to withdraw, and the agent has no tool that credits the reversal or sets a timeline |
 
 ### Handoff package (8 elements, D-04 and KB-ESC-001; built from state, nothing re-typed by the customer)
 
@@ -201,7 +201,7 @@ Turn unit: one customer or agent message (D-119). System events (E) are not coun
 | 7 | Actions already taken | none |
 | 8 | Escalation trigger and reason | trigger_id ESC-004; rule_id ESC-004.a; priority P1; source system; secondary []; reason_text: Two consecutive customer turns scored below the sentiment threshold (-0.90, -0.85) on an unresolved complaint.; evidence_turns [T4] |
 
-Envelope: priority P1; queue Customer Retention; handoff_mode warm; language en; channel app; complete true; missing_fields []; versions.prompt_version sp-1.0.0+518d5a1e.n000000.  Never in the package: full card number, CVV, PIN, full Aadhaar, password, OTP.
+Envelope: priority P1; queue Customer Retention; handoff_mode warm; language en; channel app; complete true; missing_fields []; versions.prompt_version sp-1.1.0+1527a050.n000000.  Never in the package: full card number, CVV, PIN, full Aadhaar, password, OTP.
 
 ## Self-audit
 

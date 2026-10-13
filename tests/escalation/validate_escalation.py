@@ -14,6 +14,20 @@ import yaml
 ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 
+def _max_decision():
+    """Highest D- row of docs/assumptions-and-decisions.md: upper bound for cited decision IDs."""
+    ids = []
+    with open(os.path.join(ROOT, "docs", "assumptions-and-decisions.md"), encoding="utf8") as fh:
+        for line in fh:
+            m = re.match(r"\|\s*D-(\d+)\s*\|", line)
+            if m:
+                ids.append(int(m.group(1)))
+    return max(ids)
+
+
+MAX_DECISION = _max_decision()
+
+
 def load(*parts):
     with open(os.path.join(ROOT, *parts), encoding="utf8") as fh:
         return yaml.safe_load(fh)
@@ -475,8 +489,8 @@ for parts in DOCS:
         if ref not in DM_IDS:
             err("%s: unknown dashboard metric %s" % (label, ref))
     for ref in set(re.findall(r"\bD-(\d{1,3})\b", text)):
-        if not 1 <= int(ref) <= 170:
-            err("%s: decision D-%s is outside D-01..D-170" % (label, ref))
+        if not 1 <= int(ref) <= MAX_DECISION:
+            err("%s: decision D-%s is outside D-01..D-%d" % (label, ref, MAX_DECISION))
     for ref in set(re.findall(r"\b(?:ESC-T-\d{3}-\d{2}|XTR-T-\d{2}-\d{2}|ESC-BOSS-L6-\d{2})\b", text)):
         if ref not in seen:
             err("%s: unknown test id %s" % (label, ref))

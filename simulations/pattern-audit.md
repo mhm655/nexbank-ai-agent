@@ -30,7 +30,7 @@ Cell: turns where the pattern is shown, or `-` where the scenario gave it no occ
 | 20 | T5 | T2, T3 | - | T5 | T3, T5, T6 |
 | 21 | - | T2, T3, T9 | T5 | T3, T7 | T7, T11 |
 | 22 | T2, T3, T7 | T3, T7 | T5 | T9 | T9, T10 |
-| 23 | T2 | T4 | - | T2, T6 | T2, T6, T7 |
+| 23 | T2 | T2 | - | T2, T6 | T2, T4, T7 |
 | 24 | T2, T5 | T3, T11 | T7 | T3, T5, T7, T9 | T5, T9, T13 |
 | 25 | - | T2 | - | T2, T4, T6 | T8 |
 | 26 | T6 | T2 | - | T4, T6 | T6, T7 |
@@ -38,6 +38,8 @@ Cell: turns where the pattern is shown, or `-` where the scenario gave it no occ
 | 28 | - | - | - | T2, T4 | T4, T5 |
 | 29 | - | T4 | T10 | T2, T4, T6, T8, T12 | T8, T12, T14 |
 | 30 | T5, T7, T15, T17, T19, T21 | T2, T3, T9, T11 | T7, T21 | T5, T9, T11, T13, T15, T17, T19, T23 | T15, T17, T19, T23, T25 |
+| 31 | - | T2, T4, T5 | - | - | T4, T7, T9 |
+| 32 | T17 | T2, T3 | T15 | T5, T7, T9, T11, T13 | T3, T17, T18 |
 
 ## 2. Anti-pattern checklist (A9.2)
 
@@ -58,7 +60,7 @@ Cell: `ok` when the anti-pattern is absent, followed by the at-risk turns where 
 | 11 | ok | ok T2, T5, T7 | ok T7, T12 | ok | ok T2 | ok T4, T9 | ok | ok T2, T7, T12 |
 | 12 | ok | ok T3, T5 | ok T3 | ok | ok T3 | ok T2, T5 | ok | ok T3, T5 |
 | 13 | ok T2, T4 | ok T2, T4 | ok T2, T4 | ok | ok | ok | ok | ok |
-| 14 | ok T3, T5 | ok T2, T7 | ok T3, T5, T7 | ok | ok | ok T2, T3, T5 | ok | ok |
+| 14 | ok T3, T5 | ok T2, T5, T7 | ok T3, T5, T7 | ok | ok | ok T2, T3, T5 | ok | ok |
 | 15 | ok | ok T4, T6 | ok T6 | ok | ok T2 | ok | ok | ok |
 | 16 | ok | ok T2, T6 | ok T4, T6 | ok | ok | ok | ok | ok T4, T6, T8 |
 | 17 | ok T4, T6 | ok T2 | ok T2 | ok | ok T2 | ok | ok | ok |
@@ -67,7 +69,7 @@ Cell: `ok` when the anti-pattern is absent, followed by the at-risk turns where 
 | 20 | ok | ok T2, T5 | ok T3, T5 | ok | ok | ok T2 | ok | ok |
 | 21 | ok | ok T3, T5 | ok T3, T7 | ok | ok | ok T2 | ok | ok T3 |
 | 22 | ok | ok T3, T9 | ok T7, T9 | ok | ok T2 | ok T2 | ok | ok T9 |
-| 23 | ok | ok T2, T4 | ok T2, T4 | ok | ok T2 | ok | ok | ok T2 |
+| 23 | ok | ok T2 | ok T2, T6 | ok | ok T2 | ok | ok | ok T2, T6 |
 | 24 | ok | ok T3, T5 | ok T3, T7, T9 | ok | ok T2, T5 | ok T2 | ok | ok T3, T9 |
 | 25 | ok T4, T6 | ok T2, T4 | ok T2 | ok | ok | ok | ok | ok T2 |
 | 26 | ok T2, T4, T6 | ok T2, T4 | ok T2, T4 | ok | ok T4, T6 | ok | ok | ok |
@@ -75,10 +77,12 @@ Cell: `ok` when the anti-pattern is absent, followed by the at-risk turns where 
 | 28 | ok | ok T2 | ok T2, T4 | ok | ok T2 | ok | ok | ok T4 |
 | 29 | ok T2, T4, T6 | ok T2, T4 | ok T8, T12 | ok | ok | ok | ok | ok T10, T12 |
 | 30 | ok T5, T15, T21, T25 | ok T9, T19 | ok T5, T7, T15, T19 | ok | ok T5, T7, T15, T17, T19 | ok T2, T5, T15 | ok | ok T3, T5, T9, T11, T15, T19, T23 |
+| 31 | ok | ok T4 | ok T5, T7 | ok | ok | ok T4, T7 | ok | ok |
+| 32 | ok T5, T9, T11 | ok T17 | ok T5, T7, T9, T13, T15, T17 | ok T15, T16 | ok | ok T2, T3 | ok | ok T3, T13, T15, T17 |
 
 ### Findings
 
-No anti-pattern was found present in any of the 30 conversations. The checks that can be run mechanically (no two identical agent messages back to back, no text sent three times, longest message under 250 words, at most one apology per message, no banned commitment phrase) are run by `tests/simulations/validate_simulations.py`.
+No anti-pattern was found present in any of the 32 conversations. The checks that can be run mechanically (no two identical agent messages back to back, no text sent three times, longest message under 250 words, at most one apology per message, no banned commitment phrase) are run by `tests/simulations/validate_simulations.py`.
 
 ## 3. AUTO-FAIL sweep: every figure in an AI turn
 
@@ -195,6 +199,7 @@ A figure is any number, amount, rate, date, time, count or reference that appear
 | 21 | T9 | 5 | fixed template text (TPL-SRV-CSAT) |
 | 22 | T7 | CMP-SYN-2201 | tool create_complaint (reference_id) |
 | 23 | T2 | lagbhag 5 minute | router (queue_wait, platform forecast) |
+| 23 | T6 | lagbhag 4 minute | router (queue_wait, platform forecast, changed estimate) |
 | 24 | T3 | CMP-SYN-2401 | tool get_complaint_status (complaint_ref) |
 | 24 | T3 | 28-09-2026 | tool get_complaint_status (last_update) |
 | 24 | T7 | 7710 | tool get_profile_masked (masked phone) |
@@ -226,17 +231,24 @@ A figure is any number, amount, rate, date, time, count or reference that appear
 | 30 | T19 | about 4 minutes | router (queue_wait, platform forecast) |
 | 30 | T19 | DSP-SYN-3001 | tool create_dispute_ticket (reference_id, T7) |
 | 30 | T23 | DSP-SYN-3001 | tool create_dispute_ticket (reference_id, T7) |
+| 30 | T25 | DSP-SYN-3001 | tool create_dispute_ticket (reference_id, T7) |
+| 32 | T3 | 6642 | tool get_card_status (masked_last4) |
+| 32 | T13 | 10 LPA | KB-PRD-004@1.0.0 (minimum income) |
+| 32 | T15 | INR 20,000 | customer-stated figure (T14), echoed for confirmation |
+| 32 | T15 | 6642 | tool get_card_status (masked_last4, T3) |
+| 32 | T17 | about 6 minutes | router (queue_wait, platform forecast) |
+| 32 | T17 | 6642 | tool get_card_status (masked_last4, T3) |
 
-Total figures in AI turns: 140 across 24 conversations. Figures with no source: 0.
+Total figures in AI turns: 148 across 25 conversations (rows of this table; a figure repeated in a turn is one row per distinct value). Figures with no source: 0.
 
 ## 4. Other AUTO-FAIL checks run on every AI turn
 
 | Check | Result |
 |---|---|
-| Timeline or outcome promise without a tool or router value (patterns such as 'within 24 hours', 'will be credited', 'I promise', 'guarantee') | none found in 30 conversations (scanned by the validator) |
-| Credential asked for in chat (OTP, PIN, CVV, password, full card or Aadhaar number) | none; every OTP goes through the secure widget |
+| Timeline or outcome promise without a tool or router value (patterns such as 'within 24 hours', 'will be credited', 'I promise', 'guarantee') | none found in 32 conversations (scanned by the validator, which since the Day 14 audit also catches durations and dates that no tool, router or KB row backs, rates written in words, and promises in Hindi and Hinglish) |
+| Credential asked for in chat (OTP, PIN, CVV, password, full card or Aadhaar number) | none in English, Hindi or Hinglish (scanned by the validator); every OTP goes through the secure widget |
 | Financial advice (recommendation of a product, amount, timing, tenure or cover) | none; advice requests get facts and the advisor offer |
-| Claim to be human | none; the AI disclosure appears in the first reply of every conversation that starts with an agent reply |
+| Claim to be human | none (scanned by the validator for English, Hindi and Hinglish claim patterns); the AI disclosure appears in the first reply of every conversation that starts with an agent reply |
 | Blaming the customer | none |
-| Same reply looped | none back to back; conv-14 sends the specified retry wording twice, each time in answer to a separate widget failure and never consecutively |
+| Same reply looped | none; no agent message repeats another in any conversation (conv-14 varies its second retry reply) |
 | Real-world rate, fee, limit or timeline | none; the only rates are the A13.1 values held in the KB (4.5, 6.0 to 7.25, 8.25 and 10.5 percent, 2 percent cashback) and values returned by a tool or the router in the same conversation |

@@ -5,7 +5,7 @@
 
 schema_version: '1.0'
 set_id: ESC-TRIGGERS-P1
-case_count: 17
+case_count: 18
 cases:
 
 - id: ESC-T-002-01
@@ -499,3 +499,46 @@ cases:
     is -0.55, -0.65, -0.775 (starting from m_1 = s_1; -0.706 if started from 0), at or below the threshold, and the
     raw scores fall on all 3 turns (slope -0.175 per turn), so ESC-004.b fires. Message texts are placeholders because no native
     Gujarati review is available (D-22); the oracle depends only on the scores.
+
+- id: ESC-T-004-05
+  trigger: ESC-004
+  expect: fire
+  category: escalation
+  vector: none
+  persona: Priya
+  input_turns:
+  - Your bank is terrible. I have been trying to get a wrong debit reversed for 3 weeks.
+  - It was promised two weeks ago and nothing has come. This is unacceptable.
+  - Thanks, that is clearer now. Actually I am fine to wait for the team to look at it.
+  preconditions: {auth_level: otp_verified}
+  fixture:
+    nlu_trace:
+    - {intent: CMP-003, tertiary: repeat_unresolved, confidence: 0.79, sentiment: -0.9, sentiment_confidence: 0.85}
+    - {intent: CMP-003, tertiary: escalate_existing, confidence: 0.9, sentiment: -0.85, sentiment_confidence: 0.85}
+    - {intent: GEN-006, tertiary: nothing_more, confidence: 0.7, sentiment: -0.4, sentiment_confidence: 0.85}
+  expected_action: escalate
+  expected_guardrails: [GR-REG-03]
+  expected_escalation: [ESC-004]
+  expected_rule: ESC-004.a
+  expected_priority: P1
+  expected_queue: Customer Retention
+  expected_sla: under 5 min
+  expected_handoff_mode: warm
+  expected_cancellation:
+    after_turn: 3
+    recovery_score_comparison: at_or_above
+    latest_raw: -0.4
+    outcome: de_escalated_recovery
+  behaviour_checks: [empathy_present, human_offered, no_hallucination]
+  must_not_contain:
+  - will be credited within
+  - calm down
+  severity: HIGH
+  notes: Recovery boundary (D-200). ESC-004.a fires on turn 2 (-0.90 and -0.85, both strictly below -0.70, confidence
+    0.85). On turn 3 the latest raw score is exactly -0.40, which is the brief's own "-0.4 (recovering)" reading
+    (Case Study 5, brief p.53, turn 5). The recovery condition in routing-and-handoff.md section 9.2 is at or above
+    esc004_cancel_sentiment_min (-0.40), so the score part holds; the issue has had a concrete action (the handoff is
+    prepared and the complaint is on record) and the customer agrees to wait. The agent may ask the de-escalation
+    check once (TPL-ESC-DEESCALATION-CHECK); on the customer's agreement the pending record is cancelled before
+    acceptance with outcome de_escalated_recovery and kept for review. A raw score of -0.41 would not satisfy it.
+    Contrast ESC-T-004-02 (a spike) and conv-05 (score at the boundary but the customer asks for the handoff, so it stays).

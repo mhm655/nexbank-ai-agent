@@ -25,7 +25,7 @@ Designed, illustrative conversation. It shows how the specified system must beha
 | Templates used | TPL-GEN-GREETING, TPL-AUTH-OTP-REQUEST, TPL-ACT-CONFIRM, TPL-ACT-DONE, TPL-KB-GAP, TPL-SRV-CSAT, TPL-GEN-CLOSING |
 | KB entries cited | KB-POL-003, KB-ESC-003, KB-FAQ-010, KB-TRB-010, KB-ESC-014, KB-FAQ-008, KB-PRD-002 |
 | Tools called | get_profile_masked, get_statement |
-| prompt_version | sp-1.0.0+518d5a1e.n000000 (template_version 1.0.0 for every template; model_version unbound) |
+| prompt_version | sp-1.1.0+1527a050.n000000 (template versions as listed in config/templates, shown with each Generation row; model_version unbound) |
 | What this conversation proves | A stated difficulty changes the pace and the wording but no threshold (XTR-03, GR-REG-17), the statement goes to the registered email only after a soft confirmation, and the FD rate for a tenure the KB does not hold is answered with the gap statement and the published range, not an invented figure. |
 
 Setup: Meera, retired teacher, Jaipur, uses the app on her phone. No earlier session, no open ticket. She holds one NexSave account (masked ending 4417).
@@ -60,7 +60,7 @@ Turn unit: one customer or agent message (D-119). System events (E) are not coun
 | Guardrails | checked: Output Safety Layer: GR-OUT-01, GR-OUT-02, GR-OUT-03, GR-OUT-04, GR-OUT-05, GR-OUT-06; triggered: GR-REG-16 (AI disclosure in the first reply), GR-SEC-R2 (statement needs otp_verified), GR-SEC-R5 (the code goes to the secure widget, never typed in chat), GR-REG-17 (no threshold changed) |
 | KB / tools | KB: KB-POL-003@1.0.0 (0.81), KB-ESC-003@1.0.0 (0.66); retrieval confidence 0.81; decision answer |
 | Action | transfer: to the authentication flow; XTR-03 handling: short sentences, one step at a time, one human offer (the human request is not counted until she makes one) |
-| Generation | hybrid `TPL-GEN-GREETING/with_request@1.0.0` + `TPL-AUTH-OTP-REQUEST/default@1.0.0` + free text (grounded on the cited entries) (language en); patterns: P1, P2; anti-pattern check: none |
+| Generation | hybrid `TPL-GEN-GREETING/with_request@1.1.0` + `TPL-AUTH-OTP-REQUEST/default@1.0.0` + free text (grounded on the cited entries) (language en); patterns: P1, P2; anti-pattern check: none |
 | State | phase AUTH_REQUIRED; auth anonymous; turn_count 2; topic_stack [ACC-002 (email_statement): active]; slots {}; pending_confirmation none; counters: care_flag 1; turns_since_resolution 2; escalation_proximity 0.00 |
 | Decision point | No template carries the XTR-03 offer, so that sentence is free text checked by the Output Safety Layer and grounded on KB-ESC-003. The gap is reported in the handoff. |
 
@@ -83,7 +83,7 @@ Turn unit: one customer or agent message (D-119). System events (E) are not coun
 | Guardrails | checked: Output Safety Layer: GR-OUT-01, GR-OUT-02, GR-OUT-03, GR-OUT-04, GR-OUT-05, GR-OUT-06; triggered: GR-SEC-R1 (account shown by its last four digits), GR-SEC-R2 (otp_verified meets the intent level) |
 | KB / tools | KB: KB-FAQ-010@1.0.0 (0.88); retrieval confidence 0.88; decision answer<br>tool: `get_profile_masked`() -> ok: {accounts: [savings ending 4417], email: registered (masked)} |
 | Action | confirm: soft confirmation before the statement is sent; defaults from KB-FAQ-010 (last 30 days, PDF, registered email only) |
-| Generation | template `TPL-ACT-CONFIRM/default@1.0.0` (language en); patterns: P2, P3; anti-pattern check: none |
+| Generation | template `TPL-ACT-CONFIRM/default@1.1.0` (language en); patterns: P2, P3; anti-pattern check: none |
 | State | phase RESPOND > CONFIRM; auth otp_verified; turn_count 3; topic_stack [ACC-002 (email_statement): active]; slots {account_type=savings (from profile); account_last4=4417 (from profile); date_range=last 30 days (default); format=PDF (default); destination=registered email (default)}; pending_confirmation send_statement, soft, awaiting yes or no; counters: care_flag 1; turns_since_resolution 3; escalation_proximity 0.00 |
 
 ### T4 | Customer

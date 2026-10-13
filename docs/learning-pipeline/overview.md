@@ -19,7 +19,7 @@ The pipeline turns what happens in conversations into reviewed, tested and rever
 | `safety-invariants.md` | immutable layer, fixed suite, gates G0 to G9, canary, circuit breaker (A5.4) |
 | `boss-level5.md` | Level 5 boss: one simulated update traced through every gate |
 | `diagrams/learning-loop.mmd` | flowchart of the loop and the gates |
-| `tests/safety-suite/` | the fixed safety regression suite (355 cases) and its validator |
+| `tests/safety-suite/` | the fixed safety regression suite (356 cases) and its validator |
 
 ## 2. The loop end to end
 
@@ -62,7 +62,7 @@ A12.2 states "Layers 0-2 immutable by learning pipeline. Only Layers 3-5 modifia
 |---|---|---|---|---|
 | U1 | Knowledge base entries (`docs/knowledge-base/`) | raise a change request with evidence; it never edits or publishes an entry | the entry's approval chain in `docs/knowledge-base/maintenance-workflow.md` | canary comparison of that workflow; a powered A/B only when the claim is a CSAT or FCR gain |
 | U2 | Prompt layers 3 (dialogue), 4 (knowledge), 5 (operational) | draft a new version | layers 3 and 4: prompt owner plus Risk Committee review (A12.2); layer 5: operations owner, no Risk Committee review, typed notice slots only | layers 3 and 4: yes; layer 5: no (status notices), suite and lint only |
-| U3 | A12.3 parameters and the registered thresholds marked proposable in `config/parameters.yaml` (D-171; a threshold of a guardrail, the rule layer or an ESC trigger condition stays excluded), inside their governed range | propose a value with evidence | the owner and change process of A12.3 (`ab-testing.md` section 11) | where A12.3 says so |
+| U3 | A12.3 parameters and the registered thresholds marked proposable in `config/parameters.yaml` (D-171 as amended by D-197; a threshold of a guardrail or the rule layer, and the structure of an ESC trigger condition, stay excluded; the three A12.3 parameters inside ESC conditions stay proposable with bounds), inside their governed range | propose a value with evidence | the owner and change process of A12.3 (`ab-testing.md` section 11) | where A12.3 says so |
 | U4 | NLU and retrieval models: intent, entity, sentiment, language ID, embedder, re-ranker, fusion weights | build a retrained candidate from a released dataset version | NLU Team lead; Risk Committee review if a CRITICAL intent slice moves | yes |
 | U5 | Policy model: the learned ranking among actions the rules already allow; a change of the generation model version | build or evaluate a candidate | ML Team lead plus Risk Committee review (A12.3 treats `model_temperature` this way) | yes |
 
@@ -76,7 +76,7 @@ Order of preference means: a finding is fixed with the lowest class that can fix
 | X2 | The rule layer: redaction rules RED-01 to RED-07, validators, lexicons, allow and deny lists, the auth matrix in `config/intents.yaml`, tool scopes | A5.4, system-architecture.md section 5 | safety change control (`safety-invariants.md` section 9) |
 | X3 | All 58 registered guardrails: rule, action, threshold, enforcement point, and the classifier weights of hybrid and model guardrails | D-58; every entry has `immutable: true` | safety change control |
 | X4 | Registry parameters: `guardrail_strictness_level`, `session_timeout_minutes`, advice thresholds, false-positive bounds, adversarial limits | GR-SYS-03, A12.3 | Risk Committee |
-| X5 | The escalation triggers ESC-001 to ESC-015 as conditions (brief A6; `config/escalation_rules.yaml`, Day 12) | escalation is "a critical safety component" (A6) | escalation owner with Risk Committee; `escalation_sentiment_threshold` alone follows A12.3 (CX Team, CEB approval) |
+| X5 | The escalation triggers ESC-001 to ESC-015 as conditions (brief A6; `config/escalation_rules.yaml`, Day 12) | escalation is "a critical safety component" (A6) | escalation owner with Risk Committee; `escalation_sentiment_threshold`, `max_conversation_turns` and `retrieval_confidence_threshold` follow A12.3 and stay proposable within the bounds and maximum steps of `config/parameters.yaml` (D-197, which amends D-171) |
 | X6 | The fixed safety suite and its manifest, the circuit-breaker conditions, the containment levers, audit logs, consent and deletion records | they are the controls on the pipeline | their own owners; cases are add-only |
 
 For an excluded artefact the pipeline may file an observation (for example "RED-04 redacted 14 postal codes this week") to the owner. It cannot submit a change, and a change proposal that names an excluded target is rejected at gate G0 and logged (GR-SYS-02, cases SS-LRN-01 to SS-LRN-06). Enforcement is structural: the pipeline's service identity has no write permission on these artefacts (`safety-invariants.md` section 2).

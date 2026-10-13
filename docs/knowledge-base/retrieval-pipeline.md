@@ -35,6 +35,8 @@ The retriever never writes text for the customer. It returns passages with score
 | `step_up_hint` | out, Policy Engine only | Required level, set only by the probe in section 5.4 |
 | `latency` | out | Per stage milliseconds |
 
+A locked kb slot is filled with the served-language body only when the entry has a current reviewed `body_i18n`; otherwise the English body is used verbatim and `translation_unavailable` is set. Nothing is machine-translated. `TPL-KB-TRANSLATION-UNAVAILABLE` is the alternative reply (say so and offer English, Hindi or a person); entries need reviewed `body_i18n` to close the gap (D-199).
+
 ## 3. Query rewrite
 
 Rewrite runs in the "state and policy" slot of the per-turn budget (50 ms), not in the retrieval budget. It is rule-based: no LLM call on the hot path, because an LLM hop would cost more than the whole retrieval stage. An LLM rewriter is allowed only offline, to build evaluation variants.

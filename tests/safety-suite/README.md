@@ -12,7 +12,7 @@ This is the suite every candidate must pass, at 100%, before any model, prompt, 
 
 | Path | Cases | Purpose |
 |---|---|---|
-| `manifest.yaml` | 355 rows | generated index of every case: id, source file, suite category, guardrail, ESC, intent and KB IDs, severity, run tier, SHA-256 |
+| `manifest.yaml` | 356 rows | generated index of every case: id, source file, suite category, guardrail, ESC, intent and KB IDs, severity, run tier, SHA-256 |
 | `tests/adversarial/*.yaml` (6 files, Day 10) | 62 | indexed by reference, not copied |
 | `tests/guardrails/*.yaml` (4 files, Day 10) | 128 | indexed by reference, not copied |
 | `tests/escalation/*.yaml` (5 files, Day 12) | 57 | indexed by reference, not copied; added to the manifest on Day 12 (D-112) |
@@ -26,7 +26,7 @@ This is the suite every candidate must pass, at 100%, before any model, prompt, 
 | `validate_manifest.py` | | validator and add-only, change-controlled manifest builder |
 | `README.md` | | this file |
 
-Totals: 253 referenced cases (190 from Day 10, 63 from Day 12) plus 102 new cases, **355** in all (the brief's minimum is 200). The suite stood at 291 cases on Day 11 and grew to 348 when the 57 `tests/escalation/` cases joined on Day 12, to 349 when the boundary control SS-ESC-20 was added in the Day 11 audit (D-156), and to 355 when 6 escalation cases were added in the Day 12 audit (D-161); the escalation case schema is compatible with this validator, so no case was changed.
+Totals: 254 referenced cases (190 from Day 10, 64 from Day 12) plus 102 new cases, **356** in all (the brief's minimum is 200). The suite stood at 291 cases on Day 11 and grew to 348 when the 57 `tests/escalation/` cases joined on Day 12, to 349 when the boundary control SS-ESC-20 was added in the Day 11 audit (D-156), and to 355 when 6 escalation cases were added in the Day 12 audit (D-161), and to 356 when ESC-T-004-05 was added in the Day 14 audit (D-200); the escalation case schema is compatible with this validator, so no case was changed.
 
 ## 3. Composition
 
@@ -38,16 +38,16 @@ Totals: 253 referenced cases (190 from Day 10, 63 from Day 12) plus 102 new case
 | pii_masking | 19 | 10 | 29 | GR-SEC-R1-*, GR-SEC-R5-*, GR-OUT-02-*, GR-REG-05-*, GR-REG-06-*, GR-ATK-07-02 |
 | learning_invariant | 4 | 22 | 26 | GR-SYS-02-*, GR-SYS-03-* |
 | hallucination_trap | 7 | 14 | 21 | GR-OUT-01-*, GR-OUT-03-*, GR-REG-18-*, GR-REG-02-02 |
-| escalation_trigger | 63 | 20 | 83 | all `tests/escalation/*.yaml` cases (Day 12); Day 10 cases that expect an escalation stay in their own category |
+| escalation_trigger | 64 | 20 | 84 | all `tests/escalation/*.yaml` cases (Day 12); Day 10 cases that expect an escalation stay in their own category |
 | commitment_trap | 3 | 9 | 12 | GR-OUT-05-*, GR-ATK-09-02 |
-| **Total** | **253** | **102** | **355** | |
+| **Total** | **254** | **102** | **356** | |
 
-Other counts over the 355: severity CRITICAL 162, HIGH 141, MEDIUM 52; controls 18 (9 new); boss cases 37 (27 from Day 10, the red-team regression set, and the 10 Level 6 boss cases of Day 12); multi-turn 63 (11 new); run tier 1 / 2 / 3: 125 / 146 / 84. Of the new cases 5 are Hinglish.
+Other counts over the 356: severity CRITICAL 162, HIGH 142, MEDIUM 52; controls 18 (9 new); boss cases 37 (27 from Day 10, the red-team regression set, and the 10 Level 6 boss cases of Day 12); multi-turn 64 (11 new); run tier 1 / 2 / 3: 125 / 146 / 85. Of the new cases 5 are Hinglish.
 
 Coverage, checked by the validator:
 
 - every one of the 58 registered guardrails is listed by at least one case;
-- every escalation trigger ESC-001 to ESC-015 has at least one non-control case that expects it. Positive cases per trigger: ESC-001 28, ESC-002 3, ESC-003 2, ESC-004 4, ESC-005 3, ESC-006 4, ESC-007 3, ESC-008 12, ESC-009 7, ESC-010 4, ESC-011 5, ESC-012 7, ESC-013 6, ESC-014 3, ESC-015 5. ESC-003, ESC-004, ESC-007 and ESC-011 had no case before Day 11;
+- every escalation trigger ESC-001 to ESC-015 has at least one non-control case that expects it. Positive cases per trigger: ESC-001 28, ESC-002 3, ESC-003 2, ESC-004 5, ESC-005 3, ESC-006 4, ESC-007 3, ESC-008 12, ESC-009 7, ESC-010 4, ESC-011 5, ESC-012 7, ESC-013 6, ESC-014 3, ESC-015 5. ESC-003, ESC-004, ESC-007 and ESC-011 had no case before Day 11;
 - every intent whose `auth` level is above anonymous has an auth-gating case;
 - every `kb_gap` intent (ACC-007, CRD-004, PRD-003, GEN-008) has a hallucination trap;
 - all 190 reserved test IDs of the registry are present.

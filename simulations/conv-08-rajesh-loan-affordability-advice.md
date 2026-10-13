@@ -25,7 +25,7 @@ Designed, illustrative conversation. It shows how the specified system must beha
 | Templates used | TPL-GEN-GREETING, TPL-GEN-DISCLOSE-MORE, TPL-ADV-LOAN, TPL-ADV-ADVISOR-OFFER, TPL-ADV-BOUNDARY, TPL-GEN-CLOSING |
 | KB entries cited | KB-PRD-006, KB-FAQ-005, KB-ESC-018, KB-POL-008, KB-PRD-012, KB-POL-001, KB-REG-009 |
 | Tools called | emi_calculator |
-| prompt_version | sp-1.0.0+518d5a1e.n000000 (template_version 1.0.0 for every template; model_version unbound) |
+| prompt_version | sp-1.1.0+1527a050.n000000 (template versions as listed in config/templates, shown with each Generation row; model_version unbound) |
 | What this conversation proves | The published criteria and a deterministic instalment illustration are given as facts, affordability and amount choice are declined without using the income he volunteered, the advisor is offered once, and the declined offer is not repeated. |
 
 Setup: Rajesh, textile trader, Surat. Anonymous web chat on the public site. No earlier session.
@@ -60,7 +60,7 @@ Turn unit: one customer or agent message (D-119). System events (E) are not coun
 | Guardrails | checked: Output Safety Layer: GR-OUT-01, GR-OUT-02, GR-OUT-03, GR-OUT-04, GR-OUT-05, GR-OUT-06; triggered: GR-REG-16 (AI disclosure), GR-REG-01 (rate stated with the pointer to fees and terms), GR-OUT-03 (grounding), GR-OUT-01 (figures match KB-PRD-006) |
 | KB / tools | KB: KB-PRD-006@1.0.0 (0.89), KB-FAQ-005@1.0.0 (0.84), KB-ESC-018@1.0.0 (0.78), KB-POL-008@1.0.0 (0.70); retrieval confidence 0.89; decision answer |
 | Action | respond: criteria and the disclosure pointer first; the illustration needs a rate, so it is offered as the next layer instead of guessing a rate |
-| Generation | hybrid `TPL-GEN-GREETING/with_request@1.0.0` + `TPL-GEN-DISCLOSE-MORE/layer_1_2@1.0.0` (language en); patterns: P2, P4; anti-pattern check: none |
+| Generation | hybrid `TPL-GEN-GREETING/with_request@1.1.0` + `TPL-GEN-DISCLOSE-MORE/layer_1_2@1.0.0` (language en); patterns: P2, P4; anti-pattern check: none |
 | State | phase RESPOND; auth anonymous; turn_count 2; topic_stack [PRD-002 (personal_loan_criteria): active]; slots {loan_type=personal (filled); amount=INR 5,00,000 (filled); tenure=3 years (filled)}; pending_confirmation none; counters: all 0; turns_since_resolution 2; escalation_proximity 0.00 |
 | Decision point | Fees, prepayment terms and the maximum amount are in the KB-ESC-018 unknown list, so none is stated; the offer documents and a person are named instead (KB-POL-008). |
 

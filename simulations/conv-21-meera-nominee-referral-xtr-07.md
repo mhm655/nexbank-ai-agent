@@ -11,7 +11,7 @@ Designed, illustrative conversation. It shows how the specified system must beha
 | Channel | app |
 | Language | en |
 | Starting auth level | anonymous |
-| Intents covered | ACC-006, GEN-006 |
+| Intents covered | ACC-006, CMP-005, GEN-006 |
 | Guardrails exercised | GR-OUT-03, GR-OUT-05, GR-REG-16, GR-SEC-R1, GR-SEC-R2 |
 | Escalation outcome | XTR-07 referral (not a live escalation): no brief trigger fired; a referral is opened with the callback reference; counted as a referral, not an escalation |
 | Escalation IDs | XTR-07 |
@@ -25,7 +25,7 @@ Designed, illustrative conversation. It shows how the specified system must beha
 | Templates used | TPL-GEN-GREETING, TPL-AUTH-STEP-UP, TPL-ESC-REFERRAL, TPL-ESC-CALLBACK-OFFER, TPL-SRV-CSAT, TPL-GEN-CLOSING |
 | KB entries cited | KB-POL-003, KB-POL-005, KB-ESC-015, KB-POL-004, KB-ESC-003, KB-POL-007 |
 | Tools called | get_profile_masked, schedule_callback |
-| prompt_version | sp-1.0.0+518d5a1e.n000000 (template_version 1.0.0 for every template; model_version unbound) |
+| prompt_version | sp-1.1.0+1527a050.n000000 (template versions as listed in config/templates, shown with each Generation row; model_version unbound) |
 | What this conversation proves | A guarded answer is withheld until the higher level is met, the limit of the assistant is stated once, the missing branch and document details are stated as unknown rather than invented, and the callback is described as a request. |
 
 Setup: Meera, Jaipur, opens the app anonymously. No earlier session. Session time is 11:00 IST. She holds a NexSave account (masked ending 3345 is her registered phone, used only for the callback).
@@ -59,7 +59,7 @@ Turn unit: one customer or agent message (D-119). System events (E) are not coun
 | Guardrails | checked: Output Safety Layer: GR-OUT-01, GR-OUT-02, GR-OUT-03, GR-OUT-04, GR-OUT-05, GR-OUT-06; triggered: GR-REG-16 (AI disclosure), GR-SEC-R2 (the answer exists but needs a higher level: KB auth filtering before retrieval), GR-SEC-R1 |
 | KB / tools | KB: KB-POL-003@1.0.0 (0.78); retrieval confidence 0.78; decision answer<br>KB: no passage returned at auth level anonymous for the process; the auth probe found a guarded entry (KB-POL-005, full_kyc); retrieval confidence 0.00; decision step_up |
 | Action | transfer: retrieval decision step_up; the secure full-KYC flow is opened and no process detail is given before it |
-| Generation | template `TPL-GEN-GREETING/with_request@1.0.0` + `TPL-AUTH-STEP-UP/for_information@1.0.0` (language en); patterns: P2; anti-pattern check: none |
+| Generation | template `TPL-GEN-GREETING/with_request@1.1.0` + `TPL-AUTH-STEP-UP/for_information@1.0.0` (language en); patterns: P2; anti-pattern check: none |
 | State | phase AUTH_REQUIRED; auth anonymous; turn_count 2; topic_stack [ACC-006 (add_nominee): active]; slots {relationship=daughter (filled)}; pending_confirmation none; counters: all 0; turns_since_resolution 2; escalation_proximity 0.00 |
 
 ### E1 | System event

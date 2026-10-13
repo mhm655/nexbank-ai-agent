@@ -48,7 +48,7 @@ proposals:                 # not in the brief; each is recorded as a decision an
   otp_failures_lock: 3                      # D-65 (existing), auth-flow.mmd
   crisis_pickup_target_seconds: 60          # D-118: operational reading of IMMEDIATE
   turn_unit: message                        # D-119: one logged customer or agent message (A10.2 turn record); system turns excluded
-  esc004_cancel_sentiment_min: -0.40        # D-125: anchor is Case Study 5 (-0.4, "recovering")
+  esc004_cancel_sentiment_min: -0.40        # D-200 (amends D-125): recovery when latest raw >= this value (non-strict); anchor is Case Study 5 p.53 turn 5 (-0.4, "recovering")
   wait_update_interval_seconds: 60          # D-124
   handoff_attempts_max: 2                   # D-123
   sla_warn_fraction: 0.70                   # D-128: same warn convention as monitoring-dashboard.md section 6
@@ -246,7 +246,7 @@ triggers:
   intents: [GEN-004]
   guardrails: [GR-SYS-01]
   kb_entries: [KB-ESC-010, KB-ESC-020]
-  templates: [TPL-ESC-HANDOFF-WARM]
+  templates: [TPL-ESC-HANDOFF-WARM, TPL-ESC-ABANDONED-P2, TPL-ESC-HANDOFF-CANCELLED]
   tests: [ESC-T-003-01, ESC-T-003-02, ESC-T-003-03]
   decisions: [D-06]
 
@@ -274,8 +274,8 @@ triggers:
   intents: [CMP-001, CMP-003, CMP-005]
   guardrails: [GR-REG-03]
   kb_entries: [KB-ESC-005, KB-ESC-010]
-  templates: [TPL-ESC-HANDOFF-WARM, TPL-ESC-DEESCALATION-CHECK]
-  tests: [ESC-T-004-01, ESC-T-004-02, ESC-T-004-03, ESC-T-004-04]
+  templates: [TPL-ESC-HANDOFF-WARM, TPL-ESC-DEESCALATION-CHECK, TPL-ESC-HANDOFF-CANCELLED]
+  tests: [ESC-T-004-01, ESC-T-004-02, ESC-T-004-03, ESC-T-004-04, ESC-T-004-05]
   decisions: [D-18, D-125, D-165]
 
 - id: ESC-005
@@ -328,7 +328,7 @@ triggers:
   intents: [CMP-005, GEN-003]
   guardrails: [GR-REG-16]
   kb_entries: [KB-ESC-003, KB-ESC-010]
-  templates: [TPL-ESC-HANDOFF-WARM]
+  templates: [TPL-ESC-HANDOFF-WARM, TPL-ESC-ABANDONED-P2]
   tests: [ESC-T-006-01, ESC-T-006-02]
   decisions: [D-117]
 
@@ -440,7 +440,7 @@ triggers:
   intents: [CMP-002, CMP-003]
   guardrails: [GR-REG-03, GR-REG-19, GR-ATK-09]
   kb_entries: [KB-ESC-005, KB-ESC-010]
-  templates: [TPL-ESC-HANDOFF-WARM]
+  templates: [TPL-ESC-HANDOFF-WARM, TPL-ESC-ABANDONED-P2, TPL-ESC-HANDOFF-CANCELLED]
   tests: [ESC-T-010-01, ESC-T-010-02, ESC-T-010-03]
   decisions: [D-119]
 
@@ -549,7 +549,7 @@ triggers:
   intents: [TXN-001, TXN-003, TXN-004]
   guardrails: [GR-SYS-01]
   kb_entries: [KB-ESC-010, KB-TRB-001, KB-TRB-002, KB-TRB-004, KB-TRB-009]
-  templates: [TPL-ESC-HANDOFF-WARM]
+  templates: [TPL-ESC-HANDOFF-WARM, TPL-ESC-ABANDONED-P2, TPL-ESC-HANDOFF-CANCELLED]
   tests: [ESC-T-014-01, ESC-T-014-02, ESC-T-014-03]
   decisions: [D-125]
 
@@ -599,6 +599,7 @@ extra_rules:
   handoff_mode: warm
   intents: [GEN-003, CMP-005]
   guardrails: [GR-REG-16]
+  templates: [TPL-ESC-HUMAN-REQUEST-FIRST]
   kb_entries: [KB-ESC-003]
   tests: [XTR-T-01-01, XTR-T-01-02]
   decisions: [D-117]
@@ -631,6 +632,7 @@ extra_rules:
   handoff_mode: warm
   intents: [PRD-002]
   guardrails: [GR-REG-17]
+  templates: [TPL-ESC-CARE-OFFER]
   kb_entries: [KB-ESC-018]
   tests: [XTR-T-03-01, XTR-T-03-02]
   decisions: [D-129]
@@ -679,6 +681,7 @@ extra_rules:
   handoff_mode: warm
   intents: []
   guardrails: [GR-ATK-09]
+  templates: [TPL-GEN-LIMIT-CLOSE]
   kb_entries: [KB-ESC-010]
   tests: [XTR-T-06-01, XTR-T-06-02]
   decisions: [D-119, D-129]
@@ -695,6 +698,7 @@ extra_rules:
   handoff_mode: warm
   intents: [ACC-005, ACC-006]
   guardrails: [GR-SEC-R2]
+  templates: [TPL-ACC-CLOSURE-REASON]
   kb_entries: [KB-POL-005]
   tests: [XTR-T-07-01, XTR-T-07-02]
   decisions: [D-129]

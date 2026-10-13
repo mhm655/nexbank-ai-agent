@@ -11,7 +11,7 @@ Designed, illustrative conversation. It shows how the specified system must beha
 | Channel | app |
 | Language | en |
 | Starting auth level | otp_verified |
-| Intents covered | GEN-003 |
+| Intents covered | ACC-002, GEN-003 |
 | Guardrails exercised | GR-OUT-04, GR-OUT-05, GR-REG-16 |
 | Escalation outcome | XTR-01 on requests 1 and 2 (T1, T3), then ESC-006.a on request 3 (T5); P2 Next Available Agent; human accepted |
 | Escalation IDs | XTR-01, ESC-006 |
@@ -25,7 +25,7 @@ Designed, illustrative conversation. It shows how the specified system must beha
 | Templates used | TPL-GEN-GREETING, TPL-ESC-HANDOFF-WARM, TPL-ESC-WAIT-UPDATE, TPL-ESC-HUMAN-JOINED |
 | KB entries cited | KB-ESC-003, KB-TRB-010 |
 | Tools called | none |
-| prompt_version | sp-1.0.0+518d5a1e.n000000 (template_version 1.0.0 for every template; model_version unbound) |
+| prompt_version | sp-1.1.0+1527a050.n000000 (template versions as listed in config/templates, shown with each Generation row; model_version unbound) |
 | What this conversation proves | The first request for a person is honoured at once with a single offer that does not block it, the second gets none, and the third is the hard backstop: no question, no counter-offer and no delay. |
 
 Setup: Priya is signed in (otp_verified). A statement she requested yesterday has not arrived. Next Available Agent is staffed around the clock.
@@ -60,7 +60,7 @@ Turn unit: one customer or agent message (D-119). System events (E) are not coun
 | Guardrails | checked: Output Safety Layer: GR-OUT-01, GR-OUT-02, GR-OUT-03, GR-OUT-04, GR-OUT-05, GR-OUT-06; triggered: GR-REG-16 (AI disclosure; human arranged), GR-OUT-04 (the offer is one sentence and does not block the handoff) |
 | KB / tools | KB: KB-ESC-003@1.0.0 (0.93), KB-TRB-010@1.0.0 (0.78); retrieval confidence 0.93; decision answer<br>router: queue=Next Available Agent (24x7, open); handoff preparation started; no wait estimate supplied |
 | Action | escalate: XTR-01 request 1 honoured; one concrete offer (the in-app download, KB-TRB-010) is made once and the handoff proceeds unless she takes it |
-| Generation | hybrid `TPL-GEN-GREETING/with_request@1.0.0` + `TPL-ESC-HANDOFF-WARM/customer_asked@1.0.0` + free text (grounded on the cited entries) (language en); patterns: P4, P5; anti-pattern check: none |
+| Generation | hybrid `TPL-GEN-GREETING/with_request@1.1.0` + `TPL-ESC-HANDOFF-WARM/customer_asked@1.0.0` + free text (grounded on the cited entries) (language en); patterns: P4, P5; anti-pattern check: none |
 | State | phase ESCALATING; auth otp_verified; turn_count 2; topic_stack [GEN-003 (first_request): active, ACC-002: parked]; slots {topic=statement not received (filled)}; pending_confirmation none; counters: human_requests 1; turns_since_resolution 2; escalation_proximity 0.30 |
 | Decision point | No template carries the XTR-01 offer, so that sentence is free text grounded on KB-TRB-010 and checked by the Output Safety Layer. The gap is reported in the handoff. |
 
@@ -141,7 +141,7 @@ Turn unit: one customer or agent message (D-119). System events (E) are not coun
 | Guardrails | checked: Output Safety Layer: GR-OUT-01, GR-OUT-02, GR-OUT-03, GR-OUT-04, GR-OUT-05, GR-OUT-06; triggered: none |
 | KB / tools | router: agent_first_name=Arun (synthetic); team_plain=support team |
 | Action | escalate: handoff complete; the agent posts one line and stops replying |
-| Generation | template `TPL-ESC-HUMAN-JOINED/standard@1.0.0` (language en); patterns: P5; anti-pattern check: none |
+| Generation | template `TPL-ESC-HUMAN-JOINED/standard@1.1.0` (language en); patterns: P5; anti-pattern check: none |
 | State | phase HANDOFF; auth otp_verified; turn_count 7; topic_stack [GEN-003 (first_request): active, ACC-002: parked]; slots {topic=statement not received (filled)}; pending_confirmation none; counters: human_requests 3; turns_since_resolution 7; escalation_proximity 0.85 |
 
 ## Closing
@@ -167,7 +167,7 @@ Turn unit: one customer or agent message (D-119). System events (E) are not coun
 | 7 | Actions already taken | none |
 | 8 | Escalation trigger and reason | trigger_id ESC-006; rule_id ESC-006.a (XTR-01 relabelled); priority P2; source customer_request; secondary []; reason_text: Customer requested a human agent 3 times.; evidence_turns [T1, T3, T5] |
 
-Envelope: priority P2; queue Next Available Agent; handoff_mode warm; language en; channel app; complete true; missing_fields []; versions.prompt_version sp-1.0.0+518d5a1e.n000000.  Never in the package: full card number, CVV, PIN, full Aadhaar, password, OTP.
+Envelope: priority P2; queue Next Available Agent; handoff_mode warm; language en; channel app; complete true; missing_fields []; versions.prompt_version sp-1.1.0+1527a050.n000000.  Never in the package: full card number, CVV, PIN, full Aadhaar, password, OTP.
 
 ## Self-audit
 

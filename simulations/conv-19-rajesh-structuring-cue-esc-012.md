@@ -25,7 +25,7 @@ Designed, illustrative conversation. It shows how the specified system must beha
 | Templates used | TPL-GEN-GREETING, TPL-ACT-CANNOT-DO, TPL-ACC-BALANCE, TPL-GEN-CLOSING |
 | KB entries cited | KB-POL-004, KB-ESC-009, KB-REG-004, KB-POL-003 |
 | Tools called | get_balance |
-| prompt_version | sp-1.0.0+518d5a1e.n000000 (template_version 1.0.0 for every template; model_version unbound) |
+| prompt_version | sp-1.1.0+1527a050.n000000 (template versions as listed in config/templates, shown with each Generation row; model_version unbound) |
 | What this conversation proves | A request that could facilitate laundering is refused in plain neutral words, no reporting limit or evasion tip is given, the customer is not told that a case exists, and normal service continues for the benign remainder. |
 
 Setup: Rajesh is signed in (otp_verified). He holds a savings account ending 6318 and runs a cash-heavy textile shop. No earlier session.
@@ -60,7 +60,7 @@ Turn unit: one customer or agent message (D-119). System events (E) are not coun
 | Guardrails | checked: Output Safety Layer: GR-OUT-01, GR-OUT-02, GR-OUT-03, GR-OUT-04, GR-OUT-05, GR-OUT-06; triggered: GR-REG-10 (refusal; no number of deposits, no timing, no reporting rule), GR-OUT-04 (no accusation, no lecture), GR-REG-16 (AI disclosure) |
 | KB / tools | KB: KB-POL-004@1.0.0 (0.82), KB-ESC-009@1.0.0 (0.74), KB-REG-004@1.0.0 (0.70); retrieval confidence 0.82; decision answer |
 | Action | respond: ordinary refusal with the KB-POL-004 alternative; no handoff message (silent ESC-012 case); no mention of suspicion, reporting or a case |
-| Generation | template `TPL-GEN-GREETING/with_request@1.0.0` + `TPL-ACT-CANNOT-DO/money_movement@1.0.0` (language en); patterns: P4; anti-pattern check: none |
+| Generation | template `TPL-GEN-GREETING/with_request@1.1.0` + `TPL-ACT-CANNOT-DO/money_movement@1.0.0` (language en); patterns: P4; anti-pattern check: none |
 | State | phase RESPOND; auth otp_verified; turn_count 2; topic_stack [GEN-004 (unsupported_banking_request): active]; slots {}; pending_confirmation none; counters: aml_cue 1; turns_since_resolution 2; escalation_proximity 0.30 |
 | Decision point | KB-REG-004 lists AML thresholds as not in the brief, so none is stated either way. Confirming or denying that a limit exists would help the plan; the reply says nothing about limits. |
 
@@ -76,7 +76,7 @@ Turn unit: one customer or agent message (D-119). System events (E) are not coun
 | KB / tools | none on the customer message (retrieval and tools run for the reply) |
 | Action | n/a (customer message; the policy decision is on the next agent message) |
 | Generation | n/a (customer message) |
-| State | phase RESPOND > EXECUTE; auth otp_verified; turn_count 3; topic_stack [ACC-001 (current_balance): active, GEN-004: closed]; slots {account_type=savings (default)}; pending_confirmation none; counters: aml_cue 1; turns_since_resolution 3; escalation_proximity 0.30 |
+| State | phase RESPOND > EXECUTE; auth otp_verified; turn_count 3; topic_stack [ACC-001 (current_balance): active, GEN-004: resolved (request declined)]; slots {account_type=savings (default)}; pending_confirmation none; counters: aml_cue 1; turns_since_resolution 3; escalation_proximity 0.30 |
 
 ### T4 | Agent
 
@@ -90,7 +90,7 @@ Turn unit: one customer or agent message (D-119). System events (E) are not coun
 | KB / tools | KB: KB-POL-003@1.0.0 (0.80); retrieval confidence 0.80; decision answer<br>tool: `get_balance`(account_type=savings) -> ok: {account_type: savings, masked_last4: 6318, available_balance: INR 3,12,480.00, source_ts: 12-10-2026 11:42 IST} |
 | Action | respond: normal service for the benign request; the silent case is unaffected |
 | Generation | template `TPL-ACC-BALANCE/default@1.0.0` (language en); patterns: P2; anti-pattern check: none |
-| State | phase EXECUTE > RESPOND; auth otp_verified; turn_count 4; topic_stack [ACC-001 (current_balance): active, GEN-004: closed]; slots {account_type=savings (default)}; pending_confirmation none; counters: aml_cue 1; turns_since_resolution 0; escalation_proximity 0.30 |
+| State | phase EXECUTE > RESPOND; auth otp_verified; turn_count 4; topic_stack [ACC-001 (current_balance): active, GEN-004: resolved (request declined)]; slots {account_type=savings (default)}; pending_confirmation none; counters: aml_cue 1; turns_since_resolution 0; escalation_proximity 0.30 |
 
 ### T5 | Customer
 
@@ -104,7 +104,7 @@ Turn unit: one customer or agent message (D-119). System events (E) are not coun
 | KB / tools | none on the customer message (retrieval and tools run for the reply) |
 | Action | n/a (customer message; the policy decision is on the next agent message) |
 | Generation | n/a (customer message) |
-| State | phase RESPOND > CLOSING; auth otp_verified; turn_count 5; topic_stack [ACC-001 (current_balance): active, GEN-004: closed]; slots {account_type=savings (default)}; pending_confirmation none; counters: aml_cue 1; turns_since_resolution 1; escalation_proximity 0.30 |
+| State | phase RESPOND > CLOSING; auth otp_verified; turn_count 5; topic_stack [ACC-001 (current_balance): active, GEN-004: resolved (request declined)]; slots {account_type=savings (default)}; pending_confirmation none; counters: aml_cue 1; turns_since_resolution 1; escalation_proximity 0.30 |
 
 ### T6 | Agent
 
@@ -118,7 +118,7 @@ Turn unit: one customer or agent message (D-119). System events (E) are not coun
 | KB / tools | none |
 | Action | respond: polite close |
 | Generation | template `TPL-GEN-CLOSING/goodbye@1.0.0` (language en); patterns: P5; anti-pattern check: none |
-| State | phase CLOSING; auth otp_verified; turn_count 6; topic_stack [ACC-001 (current_balance): active, GEN-004: closed]; slots {account_type=savings (default)}; pending_confirmation none; counters: aml_cue 1; turns_since_resolution 2; escalation_proximity 0.30 |
+| State | phase CLOSING; auth otp_verified; turn_count 6; topic_stack [ACC-001 (current_balance): active, GEN-004: resolved (request declined)]; slots {account_type=savings (default)}; pending_confirmation none; counters: aml_cue 1; turns_since_resolution 2; escalation_proximity 0.30 |
 
 ## Closing
 
@@ -143,7 +143,7 @@ Turn unit: one customer or agent message (D-119). System events (E) are not coun
 | 7 | Actions already taken | get_balance at T4: ok (read only) |
 | 8 | Escalation trigger and reason | trigger_id ESC-012; rule_id ESC-012.a; priority P0; source system; secondary []; reason_text: Customer-stated structuring cue (deposit in small pieces to avoid questions).; evidence_turns [T1] |
 
-Envelope: priority P0; queue AML Compliance; handoff_mode silent_case; language en; channel app; complete true; missing_fields []; versions.prompt_version sp-1.0.0+518d5a1e.n000000. restricted_notes carries the AML cue and the verbatim customer statement, visible to AML Compliance only.  Never in the package: full card number, CVV, PIN, full Aadhaar, password, OTP.
+Envelope: priority P0; queue AML Compliance; handoff_mode silent_case; language en; channel app; complete true; missing_fields []; versions.prompt_version sp-1.1.0+1527a050.n000000. restricted_notes carries the AML cue and the verbatim customer statement, visible to AML Compliance only.  Never in the package: full card number, CVV, PIN, full Aadhaar, password, OTP.
 
 ## Self-audit
 

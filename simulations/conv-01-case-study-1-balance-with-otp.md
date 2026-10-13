@@ -25,7 +25,7 @@ Designed, illustrative conversation. It shows how the specified system must beha
 | Templates used | TPL-GEN-GREETING, TPL-AUTH-OTP-REQUEST, TPL-SEC-DO-NOT-SHARE, TPL-ACC-BALANCE, TPL-SRV-CSAT, TPL-GEN-CLOSING |
 | KB entries cited | KB-POL-003 |
 | Tools called | get_balance |
-| prompt_version | sp-1.0.0+518d5a1e.n000000 (template_version 1.0.0 for every template; model_version unbound) |
+| prompt_version | sp-1.1.0+1527a050.n000000 (template versions as listed in config/templates, shown with each Generation row; model_version unbound) |
 | What this conversation proves | Verification runs in the secure widget and never in chat (rule 5), the balance is rendered from the tool with a masked identifier (rule 1), and the second account request is answered with no second verification (Authentication Theatre avoided). |
 
 ## Turns
@@ -57,7 +57,7 @@ Turn unit: one customer or agent message (D-119). System events (E) are not coun
 | Guardrails | checked: Output Safety Layer: GR-OUT-01, GR-OUT-02, GR-OUT-03, GR-OUT-04, GR-OUT-05, GR-OUT-06; triggered: GR-REG-16 (AI disclosure in the first reply), GR-SEC-R5 (the code is sent to the secure widget, never asked for in chat) |
 | KB / tools | KB: KB-POL-003@1.0.0 (0.81); retrieval confidence 0.81; decision answer |
 | Action | transfer: to the authentication flow: ACC-001 needs otp_verified (KB-POL-003). The one-sentence disclosure is prefixed because the first message already carried a request (D-152) |
-| Generation | template `TPL-GEN-GREETING/with_request@1.0.0` + `TPL-AUTH-OTP-REQUEST/default@1.0.0` (language en); patterns: P2; anti-pattern check: none |
+| Generation | template `TPL-GEN-GREETING/with_request@1.1.0` + `TPL-AUTH-OTP-REQUEST/default@1.0.0` (language en); patterns: P2; anti-pattern check: none |
 | State | phase AUTH_REQUIRED; auth anonymous; turn_count 2; topic_stack [ACC-001 (savings): active]; slots {account_type=savings (filled)}; pending_confirmation none; counters: all 0; turns_since_resolution 2; escalation_proximity 0.00 |
 | Decision point | The brief asks the customer to type the registered mobile number (turn 2) and the OTP (turn 4) in chat. Neither is asked for here: a typed number proves nothing, and A4.2 rule 5 forbids accepting a credential (D-153). |
 
@@ -87,7 +87,7 @@ Turn unit: one customer or agent message (D-119). System events (E) are not coun
 | Guardrails | checked: Output Safety Layer: GR-OUT-01, GR-OUT-02, GR-OUT-03, GR-OUT-04, GR-OUT-05, GR-OUT-06; triggered: GR-SEC-R5 (credential not accepted and not stored; customer told so) |
 | KB / tools | none |
 | Action | respond: rule 5: a code typed in chat is never used; the customer is pointed back to the widget |
-| Generation | template `TPL-SEC-DO-NOT-SHARE/use_secure_widget@1.0.0` (language en); patterns: P4; anti-pattern check: none |
+| Generation | template `TPL-SEC-DO-NOT-SHARE/use_secure_widget@1.1.0` (language en); patterns: P4; anti-pattern check: none |
 | State | phase AUTH_REQUIRED; auth anonymous; turn_count 4; topic_stack [ACC-001 (savings): active]; slots {account_type=savings (filled)}; pending_confirmation none; counters: all 0; turns_since_resolution 4; escalation_proximity 0.00 |
 
 ### E1 | System event

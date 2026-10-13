@@ -25,7 +25,7 @@ Designed, illustrative conversation. It shows how the specified system must beha
 | Templates used | TPL-GEN-GREETING, TPL-CMP-EMPATHY-FIRST, TPL-CMP-GRIEVANCE-INFO, TPL-ACT-CONFIRM, TPL-ACT-DONE, TPL-ESC-HANDOFF-WARM, TPL-ESC-HUMAN-JOINED |
 | KB entries cited | KB-REG-002, KB-POL-003, KB-ESC-005, KB-POL-007, KB-ESC-019, KB-ESC-008 |
 | Tools called | create_complaint |
-| prompt_version | sp-1.0.0+518d5a1e.n000000 (template_version 1.0.0 for every template; model_version unbound) |
+| prompt_version | sp-1.1.0+1527a050.n000000 (template versions as listed in config/templates, shown with each Generation row; model_version unbound) |
 | What this conversation proves | The grievance route is given by the second agent turn, a question about the ombudsman does not fire the legal-threat escalation, and an ombudsman deadline the KB does not hold is never guessed: the customer is told what is known and a compliance colleague confirms the rest. |
 
 Setup: Priya, Mumbai, on the web chat, anonymous. Session time is 16:40 IST, inside the Compliance Helpdesk hours (08:00 to 22:00 IST).
@@ -59,7 +59,7 @@ Turn unit: one customer or agent message (D-119). System events (E) are not coun
 | Guardrails | checked: Output Safety Layer: GR-OUT-01, GR-OUT-02, GR-OUT-03, GR-OUT-04, GR-OUT-05, GR-OUT-06; triggered: GR-REG-16 (AI disclosure), GR-SEC-R2, GR-SEC-R5 (code only in the secure widget) |
 | KB / tools | KB: KB-REG-002@1.0.0 (0.84), KB-POL-003@1.0.0 (0.78); retrieval confidence 0.84; decision answer |
 | Action | transfer: to the authentication flow; acknowledgement comes before the request to verify (Empathy-First) |
-| Generation | llm-guided `TPL-GEN-GREETING/with_request@1.0.0` + `TPL-CMP-EMPATHY-FIRST/needs_verification_first@1.0.0` (language en); patterns: P1; anti-pattern check: none |
+| Generation | llm-guided `TPL-GEN-GREETING/with_request@1.1.0` + `TPL-CMP-EMPATHY-FIRST/needs_verification_first@1.0.0` (language en); patterns: P1; anti-pattern check: none |
 | State | phase AUTH_REQUIRED; auth anonymous; turn_count 2; topic_stack [CMP-001 (charges_and_fees): active]; slots {complaint_category=charges_and_fees (filled)}; pending_confirmation none; counters: grievance_info_due_turn 2; turns_since_resolution 2; escalation_proximity 0.00 |
 
 ### E1 | System event
@@ -110,7 +110,7 @@ Turn unit: one customer or agent message (D-119). System events (E) are not coun
 | Guardrails | checked: Output Safety Layer: GR-OUT-01, GR-OUT-02, GR-OUT-03, GR-OUT-04, GR-OUT-05, GR-OUT-06; triggered: GR-REG-19 |
 | KB / tools | KB: KB-REG-002@1.0.0 (0.84); retrieval confidence 0.84; decision answer |
 | Action | confirm: soft confirmation before create_complaint (CMP-001 confirmation is soft) |
-| Generation | template `TPL-ACT-CONFIRM/default@1.0.0` (language en); patterns: P3; anti-pattern check: none |
+| Generation | template `TPL-ACT-CONFIRM/default@1.1.0` (language en); patterns: P3; anti-pattern check: none |
 | State | phase EXECUTE > CONFIRM; auth otp_verified; turn_count 5; topic_stack [CMP-001 (charges_and_fees): active]; slots {complaint_category=charges_and_fees (filled)}; pending_confirmation create_complaint (soft), awaiting yes or no; counters: grievance_info_due_turn 2; turns_since_resolution 5; escalation_proximity 0.00 |
 
 ### T6 | Customer
@@ -190,7 +190,7 @@ Turn unit: one customer or agent message (D-119). System events (E) are not coun
 | Guardrails | checked: Output Safety Layer: GR-OUT-01, GR-OUT-02, GR-OUT-03, GR-OUT-04, GR-OUT-05, GR-OUT-06; triggered: none |
 | KB / tools | router: agent_first_name=Divya (synthetic); team_plain=compliance helpdesk team |
 | Action | escalate: handoff complete; the agent posts one line and stops replying |
-| Generation | template `TPL-ESC-HUMAN-JOINED/standard@1.0.0` (language en); patterns: P5; anti-pattern check: none |
+| Generation | template `TPL-ESC-HUMAN-JOINED/standard@1.1.0` (language en); patterns: P5; anti-pattern check: none |
 | State | phase HANDOFF; auth otp_verified; turn_count 10; topic_stack [CMP-003 (ombudsman_info): active, CMP-001: resolved]; slots {complaint_id=CMP-SYN-2201 (from history)}; pending_confirmation none; counters: grievance_info_due_turn 2; turns_since_resolution 3; escalation_proximity 0.85 |
 
 ## Closing
@@ -216,7 +216,7 @@ Turn unit: one customer or agent message (D-119). System events (E) are not coun
 | 7 | Actions already taken | create_complaint at T7: ok, reference CMP-SYN-2201 |
 | 8 | Escalation trigger and reason | trigger_id ESC-008; rule_id ESC-008.a; priority P1; source system; secondary []; reason_text: Regulatory question (ombudsman filing deadline) with no confirmed answer in the knowledge base.; evidence_turns [T8] |
 
-Envelope: priority P1; queue Compliance Helpdesk; handoff_mode warm; language en; channel chat; complete true; missing_fields []; versions.prompt_version sp-1.0.0+518d5a1e.n000000.  Never in the package: full card number, CVV, PIN, full Aadhaar, password, OTP.
+Envelope: priority P1; queue Compliance Helpdesk; handoff_mode warm; language en; channel chat; complete true; missing_fields []; versions.prompt_version sp-1.1.0+1527a050.n000000.  Never in the package: full card number, CVV, PIN, full Aadhaar, password, OTP.
 
 ## Self-audit
 

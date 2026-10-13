@@ -11,7 +11,7 @@ Designed, illustrative conversation. It shows how the specified system must beha
 | Channel | app |
 | Language | en |
 | Starting auth level | otp_verified |
-| Intents covered | TXN-006, PRD-005, GEN-006 |
+| Intents covered | TXN-006, PRD-005, CMP-005, GEN-006 |
 | Guardrails exercised | GR-ADV-02, GR-ADV-04, GR-ADV-05, GR-ADV-06, GR-ADV-08, GR-OUT-01, GR-OUT-05, GR-REG-16, GR-SEC-R3 |
 | Escalation outcome | ESC-013 accepted at T3 (P1, Wealth Advisory); the queue was closed, so the after-hours rule applied: callback only, case opened for the next opening; callback request placed at T6 |
 | Escalation IDs | ESC-013 |
@@ -25,7 +25,7 @@ Designed, illustrative conversation. It shows how the specified system must beha
 | Templates used | TPL-GEN-GREETING, TPL-ADV-FOREX, TPL-ADV-ADVISOR-OFFER, TPL-ADV-ADVISOR-UNAVAILABLE, TPL-ESC-CALLBACK-OFFER, TPL-ADV-TAX, TPL-GEN-CLOSING |
 | KB entries cited | KB-ESC-016, KB-POL-001, KB-POL-004, KB-ESC-003, KB-POL-007, KB-REG-011, KB-FAQ-008 |
 | Tools called | schedule_callback |
-| prompt_version | sp-1.0.0+518d5a1e.n000000 (template_version 1.0.0 for every template; model_version unbound) |
+| prompt_version | sp-1.1.0+1527a050.n000000 (template versions as listed in config/templates, shown with each Generation row; model_version unbound) |
 | What this conversation proves | Currency timing and tax-planning questions are declined with facts only, the charges and limits are stated as unknown with no figure, a transfer is not started, and an accepted advisor request outside hours becomes a callback request with an honest 'request, not a guarantee'. |
 
 Setup: Arjun, Dubai, in the app, signed in (otp_verified). Session time is 23:10 IST on 12 Oct 2026. Wealth Advisory runs 08:00 to 22:00 IST (config/escalation_rules.yaml queue_hours), so it is closed.
@@ -46,11 +46,11 @@ Turn unit: one customer or agent message (D-119). System events (E) are not coun
 | KB / tools | none on the customer message (retrieval and tools run for the reply) |
 | Action | n/a (customer message; the policy decision is on the next agent message) |
 | Generation | n/a (customer message) |
-| State | phase INIT > INTENT_DETECT > RESPOND; auth otp_verified; turn_count 1; topic_stack [PRD-005 (forex_timing_advice): active, TXN-006 (charges_and_limits_info): queued]; slots {currency=USD (filled)}; pending_confirmation none; counters: multi_intent 1, advice_deflections 1; turns_since_resolution 1; escalation_proximity 0.00 |
+| State | phase INIT > INTENT_DETECT > RESPOND; auth otp_verified; turn_count 1; topic_stack [PRD-005 (forex_timing_advice): active, TXN-006 (charges_and_limits_info): parked]; slots {currency=USD (filled)}; pending_confirmation none; counters: multi_intent 1, advice_deflections 1; turns_since_resolution 1; escalation_proximity 0.00 |
 
 ### T2 | Agent
 
-> Hello, I'm NexBank's AI assistant. I can't predict where a currency will go or suggest when to buy or sell. I don't have transfer charges or limits to quote, and I can't start a transfer for you. A team member can give you the details. I also can't start a transfer from this chat. For a personal recommendation, a SEBI-registered advisor at NexBank can help. Shall I arrange that for you?
+> Hello, I'm NexBank's AI assistant. I can't predict where a currency will go or suggest when to buy or sell. I don't have transfer charges or limits to quote. A team member can give you the details. I also can't start a transfer from this chat. Would you like more detail on what I can share? For a personal recommendation, a SEBI-registered advisor at NexBank can help. Shall I arrange that for you?
 
 | Field | Value |
 |---|---|
@@ -59,8 +59,8 @@ Turn unit: one customer or agent message (D-119). System events (E) are not coun
 | Guardrails | checked: Output Safety Layer: GR-OUT-01, GR-OUT-02, GR-OUT-03, GR-OUT-04, GR-OUT-05, GR-OUT-06; triggered: GR-REG-16 (AI disclosure), GR-ADV-04 (no direction or timing), GR-ADV-06, GR-ADV-08 (advisor offered once), GR-SEC-R3 (a transfer is not started), GR-OUT-01 (no charge, limit or rate stated) |
 | KB / tools | KB: KB-ESC-016@1.0.0 (0.88), KB-POL-001@1.0.0 (0.86), KB-POL-004@1.0.0 (0.70); retrieval confidence 0.88; decision gap |
 | Action | recommend: forex boundary reply with the knowledge-gap statement for charges and limits (nothing quoted), then the advisor offer |
-| Generation | template `TPL-GEN-GREETING/with_request@1.0.0` + `TPL-ADV-FOREX/default@1.0.0` + `TPL-ADV-ADVISOR-OFFER/default@1.0.0` (language en); patterns: P2, P4; anti-pattern check: none |
-| State | phase RESPOND; auth otp_verified; turn_count 2; topic_stack [PRD-005 (forex_timing_advice): active, TXN-006 (charges_and_limits_info): queued]; slots {currency=USD (filled)}; pending_confirmation none; counters: multi_intent 1, advice_deflections 1, advisor_offers 1; turns_since_resolution 2; escalation_proximity 0.00 |
+| Generation | template `TPL-GEN-GREETING/with_request@1.1.0` + `TPL-ADV-FOREX/default@1.1.0` + `TPL-ADV-ADVISOR-OFFER/default@1.0.0` (language en); patterns: P2, P4; anti-pattern check: none |
+| State | phase RESPOND; auth otp_verified; turn_count 2; topic_stack [PRD-005 (forex_timing_advice): active, TXN-006 (charges_and_limits_info): parked]; slots {currency=USD (filled)}; pending_confirmation none; counters: multi_intent 1, advice_deflections 1, advisor_offers 1; turns_since_resolution 2; escalation_proximity 0.00 |
 | Decision point | KB-POL-001, forex: the prohibited form is 'You should buy dollars now as rupee will depreciate'. KB-ESC-016 lists charges, limits, corridors, processing time and any rate as unknown, so none is given and no rate is read out from memory. |
 
 ### T3 | Customer
@@ -75,7 +75,7 @@ Turn unit: one customer or agent message (D-119). System events (E) are not coun
 | KB / tools | none on the customer message (retrieval and tools run for the reply) |
 | Action | n/a (customer message; the policy decision is on the next agent message) |
 | Generation | n/a (customer message) |
-| State | phase RESPOND > ESCALATING; auth otp_verified; turn_count 3; topic_stack [PRD-005 (forex_timing_advice): active, TXN-006 (charges_and_limits_info): queued]; slots {currency=USD (filled)}; pending_confirmation none; counters: multi_intent 1, advice_deflections 1, advisor_offers 1; turns_since_resolution 3; escalation_proximity 0.60 |
+| State | phase RESPOND > ESCALATING; auth otp_verified; turn_count 3; topic_stack [PRD-005 (forex_timing_advice): active, TXN-006 (charges_and_limits_info): parked]; slots {currency=USD (filled)}; pending_confirmation none; counters: multi_intent 1, advice_deflections 1, advisor_offers 1; turns_since_resolution 3; escalation_proximity 0.60 |
 | Decision point | ESC-013.a fires on acceptance. The router finds Wealth Advisory closed (08:00 to 22:00 IST; it is 23:10 IST). The after-hours rule for ESC-013 is callback only: no generalist answers an advice question (D-122). |
 
 ### T4 | Agent
@@ -90,7 +90,7 @@ Turn unit: one customer or agent message (D-119). System events (E) are not coun
 | KB / tools | KB: KB-ESC-003@1.0.0 (0.70), KB-POL-007@1.0.0 (0.78); retrieval confidence 0.78; decision answer<br>router: queue=Wealth Advisory (closed; hours 08:00-22:00 IST); after_hours rule=callback_only; callback_option=next slot after 08:00 IST on 13 Oct 2026 |
 | Action | escalate: ESC-013 record created, case opened for the next opening, callback offered; no advice given by anyone in the meantime |
 | Generation | template `TPL-ADV-ADVISOR-UNAVAILABLE/default@1.0.0` (language en); patterns: P4, P5; anti-pattern check: none |
-| State | phase ESCALATING; auth otp_verified; turn_count 4; topic_stack [PRD-005 (forex_timing_advice): active, TXN-006 (charges_and_limits_info): queued]; slots {currency=USD (filled)}; pending_confirmation none; counters: multi_intent 1, advice_deflections 1, advisor_offers 1; turns_since_resolution 4; escalation_proximity 0.60 |
+| State | phase ESCALATING; auth otp_verified; turn_count 4; topic_stack [PRD-005 (forex_timing_advice): active, TXN-006 (charges_and_limits_info): parked]; slots {currency=USD (filled)}; pending_confirmation none; counters: multi_intent 1, advice_deflections 1, advisor_offers 1; turns_since_resolution 4; escalation_proximity 0.60 |
 
 ### T5 | Customer
 
@@ -104,7 +104,7 @@ Turn unit: one customer or agent message (D-119). System events (E) are not coun
 | KB / tools | none on the customer message (retrieval and tools run for the reply) |
 | Action | n/a (customer message; the policy decision is on the next agent message) |
 | Generation | n/a (customer message) |
-| State | phase ESCALATING; auth otp_verified; turn_count 5; topic_stack [PRD-005 (forex_timing_advice): active, TXN-006 (charges_and_limits_info): queued]; slots {currency=USD (filled)}; pending_confirmation schedule_callback, confirmed; counters: multi_intent 1, advice_deflections 1, advisor_offers 1; turns_since_resolution 5; escalation_proximity 0.60 |
+| State | phase ESCALATING; auth otp_verified; turn_count 5; topic_stack [PRD-005 (forex_timing_advice): active, TXN-006 (charges_and_limits_info): parked]; slots {currency=USD (filled)}; pending_confirmation schedule_callback, confirmed; counters: multi_intent 1, advice_deflections 1, advisor_offers 1; turns_since_resolution 5; escalation_proximity 0.60 |
 
 ### T6 | Agent
 
@@ -118,7 +118,7 @@ Turn unit: one customer or agent message (D-119). System events (E) are not coun
 | KB / tools | KB: KB-ESC-003@1.0.0 (0.72), KB-POL-007@1.0.0 (0.80); retrieval confidence 0.80; decision answer<br>tool: `schedule_callback`(team=Wealth Advisory, channel=registered contact (masked), idempotency_key=set) -> ok: {callback_reference: CBK-SYN-1601, requested_window: 13 Oct 2026, 08:00 to 10:00 IST} |
 | Action | respond: callback request placed; the full conversation goes with it |
 | Generation | template `TPL-ESC-CALLBACK-OFFER/placed@1.0.0` (language en); patterns: P4, P5; anti-pattern check: none |
-| State | phase ESCALATING > RESPOND; auth otp_verified; turn_count 6; topic_stack [PRD-005 (forex_timing_advice): active, TXN-006 (charges_and_limits_info): queued]; slots {currency=USD (filled)}; pending_confirmation none; counters: multi_intent 1, advice_deflections 1, advisor_offers 1; turns_since_resolution 0; escalation_proximity 0.60 |
+| State | phase ESCALATING > RESPOND; auth otp_verified; turn_count 6; topic_stack [PRD-005 (forex_timing_advice): active, TXN-006 (charges_and_limits_info): parked]; slots {currency=USD (filled)}; pending_confirmation none; counters: multi_intent 1, advice_deflections 1, advisor_offers 1; turns_since_resolution 0; escalation_proximity 0.60 |
 
 ### T7 | Customer
 
@@ -136,7 +136,7 @@ Turn unit: one customer or agent message (D-119). System events (E) are not coun
 
 ### T8 | Agent
 
-> NexFD carries Section 80C benefits, which the product catalogue example puts at up to 1.5L, and TDS is applicable. These are general facts. I can't suggest how much to invest or how to plan your taxes.
+> NexFD carries Section 80C benefits up to 1.5L, and TDS is applicable. These are general facts. I can't suggest how much to invest or how to plan your taxes. Would you like more detail on any of these facts?
 
 | Field | Value |
 |---|---|
@@ -145,7 +145,7 @@ Turn unit: one customer or agent message (D-119). System events (E) are not coun
 | Guardrails | checked: Output Safety Layer: GR-OUT-01, GR-OUT-02, GR-OUT-03, GR-OUT-04, GR-OUT-05, GR-OUT-06; triggered: GR-ADV-05 (facts only; no amount, no plan), GR-ADV-08 (no second offer: a callback with the advisory team is already requested) |
 | KB / tools | KB: KB-REG-011@1.0.0 (0.88), KB-FAQ-008@1.0.0 (0.80), KB-POL-001@1.0.0 (0.78); retrieval confidence 0.88; decision answer |
 | Action | recommend: tax boundary reply; the permitted example fact (KB-POL-001, tax_planning) and no recommendation of how much to invest |
-| Generation | template `TPL-ADV-TAX/default@1.0.0` (language en); patterns: P2, P4; anti-pattern check: none |
+| Generation | template `TPL-ADV-TAX/default@1.1.0` (language en); patterns: P2, P4; anti-pattern check: none |
 | State | phase RESPOND; auth otp_verified; turn_count 8; topic_stack [PRD-005 (tax_planning_advice): active]; slots {currency=USD (filled)}; pending_confirmation none; counters: advice_deflections 2, advisor_offers 1 (accepted); turns_since_resolution 2; escalation_proximity 0.60 |
 | Decision point | The caller is an NRI, and tax treatment can differ by residency. No residency-based statement is made, because the KB holds none (KB-REG-011 lists TDS rate and thresholds as not in the brief). |
 
@@ -200,7 +200,7 @@ Turn unit: one customer or agent message (D-119). System events (E) are not coun
 | 7 | Actions already taken | schedule_callback at T6: ok, reference CBK-SYN-1601 |
 | 8 | Escalation trigger and reason | trigger_id ESC-013; rule_id ESC-013.a; priority P1; source customer_request; secondary []; reason_text: Customer accepted the offer of a SEBI-registered advisor for a currency-timing and tax-planning question.; evidence_turns [T3] |
 
-Envelope: priority P1; queue Wealth Advisory; handoff_mode warm; language en; channel app; complete true; missing_fields []; versions.prompt_version sp-1.0.0+518d5a1e.n000000. after-hours rule: case opened for the next opening, callback requested (D-122).  Never in the package: full card number, CVV, PIN, full Aadhaar, password, OTP.
+Envelope: priority P1; queue Wealth Advisory; handoff_mode warm; language en; channel app; complete true; missing_fields []; versions.prompt_version sp-1.1.0+1527a050.n000000. after-hours rule: case opened for the next opening, callback requested (D-122).  Never in the package: full card number, CVV, PIN, full Aadhaar, password, OTP.
 
 ## Self-audit
 
@@ -219,7 +219,7 @@ Envelope: priority P1; queue Wealth Advisory; handoff_mode warm; language en; ch
 | Code | Anti-pattern | Result | At-risk turns where the design prevents it |
 |---|---|---|---|
 | AP1 | Robotic Loop | absent: 5 agent messages, no two consecutive ones identical, no text sent three times | none at risk |
-| AP2 | Information Dump | absent: longest agent message is 71 words (cap `atk_output_max_words`); one concept per message | T2, T6 |
+| AP2 | Information Dump | absent: longest agent message is 73 words (cap `atk_output_max_words`); one concept per message | T2, T6 |
 | AP3 | False Confidence | absent: no timeline, wait or outcome is stated except values returned by a tool or the router on that turn, or a KB entry cited on it | T4, T6 |
 | AP4 | Premature Escalation | absent: ESC-013 was created only after the customer accepted the offer (offer-then-escalate, D-55) | none at risk |
 | AP5 | Empathy Bypass | not at risk: no customer message carried a problem or a negative emotion | none |

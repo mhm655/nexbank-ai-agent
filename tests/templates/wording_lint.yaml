@@ -1,0 +1,114 @@
+# Wording lint lists for tests/templates/validate_templates.py (Day 13 audit fixes, D-194). Regular expressions (Python re), one list per script.
+# They are data so that Hindi can be written in Devanagari without breaking the ASCII rule of the validator source.
+#   latin    : applied to English text, Hinglish text and to any Latin-script words inside Hindi text
+#   hinglish : applied to Hinglish text
+#   hi       : applied to Hindi text
+# The lint runs on fixed template text, slot fallbacks and label text. Slots are removed before matching.
+# These lists are a floor. A paraphrase passes; a native reviewer and the runtime checks (Output Safety Layer C1 to C7) cover it.
+# Each group states which mutation of the Day 13 audit it was added for (audit13 mutation table), so the proof can be repeated.
+
+# ------------------------------------------------------------------ the agent claims to be human, staff or a named person (audit mutations 1 to 4)
+human_claim:
+  latin:
+    - '(?i)\bi(?:''m| am) (?:a |an |just a |actually a |really a )?(?:real |actual |living |live |genuine )?(?:human|person|man|woman|agent|advisor|adviser|colleague|staff member|employee|banker)\b'
+    - '(?i)\bi(?:''m| am) (?:from|with) (?:the |our )?(?:nexbank )?(?:team|bank|branch|support|customer care)\b'
+    - '[Ii](?:''m| am) (?!a |an |the |not |just |here |glad |sorry |happy |still |also |bringing |connecting |staying |trying |treating |really |going |able |unable |afraid |sure |opening |routing |passing |noting |checking |looking |ready |available |with |NexBank)[A-Z][a-z]+ (?:from|here|at|speaking)\b'
+    - '(?i)\bmy name is\b'
+    - '(?i)\bcall me [A-Z]'
+    - '\bThis is [A-Z][a-z]+ (?:from|speaking|here)\b'
+    - '(?i)\b(?:am|is|are) not (?:a|an) (?:bot|robot|ai|machine|computer|program)\b'
+    - '(?i)\bnot (?:a|an) (?:bot|robot|ai|machine|computer|program)\b'
+    - '(?i)\breal (?:person|human)\b'
+    - '(?i)\bspeaking (?:with|to) (?:a )?(?:real )?(?:human|person)\b'
+    - '(?i)\b(?:human|person) (?:like you|just like you)\b'
+  hinglish:
+    - '(?i)\bmain (?:ek )?(?:real |asli |sachcha |sachchha )?(?:insaan|insan|human|person|banda|agent|employee|colleague|advisor|adviser) (?:hoon|hun|hu)\b'
+    - '\b[Mm]ain [A-Z][a-z]+ (?:hoon|hun|hu)\b'
+    - '(?i)\b(?:mera|meri) naam\b'
+    - '(?i)\bmain (?:bot|ai|machine) nahi\b'
+  hi:
+    - 'मैं (?:एक )?(?:असली |वास्तविक )?(?:इंसान|इनसान|व्यक्ति|मानव|एजेंट|कर्मचारी|सलाहकार) (?:हूँ|हूं)'
+    - 'मेरा नाम'
+    - 'मैं (?:कोई )?(?:बॉट|रोबोट|AI) नहीं'
+
+# ------------------------------------------------------------------ a credential is requested in chat (audit mutations 5 to 7 and 16)
+# A sentence is exempt when it holds a negation (the template tells the customer NOT to type it), points to a secure channel, or is
+# a question about something the customer already did ("Did you enter any code").
+credential_request:
+  latin:
+    - '(?i)\b(?:type|enter|send|share|give|tell|provide|read out|read|key in|text|write|submit|paste|reply with|upload|say|dictate|forward|put in)\b[^.!?;:]{0,40}?\b(?:otp|one[- ]time (?:code|password|pin)|verification code|pin|mpin|cvv|cvc|security code|password|passcode|card number|card details|aadhaar(?: number)?|pan(?: number)?|account number|code)\b'
+    - '(?i)\b(?:i need|i''ll need|i will need|i require|we need|may i have|can i have|could you give|can you give|what is|what''s|give me|tell me|send me|share with me)\b[^.!?;:]{0,30}?\b(?:otp|one[- ]time (?:code|password|pin)|verification code|pin|mpin|cvv|cvc|security code|password|passcode|card number|card details|aadhaar(?: number)?|pan(?: number)?|account number|code)\b'
+  hinglish:
+    - '(?i)\b(?:otp|pin|mpin|cvv|cvc|password|passcode|card number|aadhaar|aadhar|pan number|security code|one-time code|code)\b[^.!?;:]{0,40}?\b(?:bata(?:iye|iyega|yein|ein|o|na|dijiye)?|batao|bhej(?:iye|ein|o|na|dijiye)?|likh(?:iye|ein|o|na|dijiye)?|share kar(?:ein|iye|o)|de dijiye|dijiye|daal(?:iye|ein|o)|enter kar(?:ein|iye|o)|type kar(?:ein|iye|o)|send kar(?:ein|iye|o)|dena)\b'
+    - '(?i)\b(?:bata(?:iye|iyega|yein|ein|o|na|dijiye)?|batao|bhej(?:iye|ein|o|na|dijiye)?|likh(?:iye|ein|o|na|dijiye)?|share kar(?:ein|iye|o)|daal(?:iye|ein|o)|enter kar(?:ein|iye|o)|type kar(?:ein|iye|o)|send kar(?:ein|iye|o))\b[^.!?;:]{0,40}?\b(?:otp|pin|mpin|cvv|cvc|password|passcode|card number|aadhaar|aadhar|pan number|security code|one-time code|code)\b'
+  hi:
+    - '(?:ओटीपी|वन-टाइम कोड|पिन|सीवीवी|पासवर्ड|पासकोड|कार्ड नंबर|आधार (?:नंबर|कार्ड)|पैन|कोड)[^.!?।;:]{0,40}?(?:बताइए|बताएं|बताएँ|बताओ|बता दीजिए|बता दें|भेजिए|भेजें|भेजो|लिखिए|लिखें|लिखो|दीजिए|दर्ज करें|दर्ज कीजिए|साझा कीजिए|साझा करें|शेयर करें|शेयर कीजिए|बोलिए|डालिए|डालें)'
+    - '(?:बताइए|बताएं|बताएँ|बताओ|बता दीजिए|बता दें|भेजिए|भेजें|भेजो|लिखिए|लिखें|लिखो|दीजिए|दर्ज करें|दर्ज कीजिए|साझा कीजिए|साझा करें|शेयर करें|शेयर कीजिए|बोलिए|डालिए|डालें)[^.!?।;:]{0,40}?(?:ओटीपी|वन-टाइम कोड|पिन|सीवीवी|पासवर्ड|पासकोड|कार्ड नंबर|आधार (?:नंबर|कार्ड)|पैन|कोड)'
+  negation:
+    latin: '(?i)\b(?:don''t|do not|never|not|no one|nobody|can''t|cannot|won''t|without)\b'
+    hinglish: '(?i)\b(?:na|nahi|nahin|mat|kabhi|koi bhi nahi)\b'
+    hi: '(?<![ऀ-ॿ])(?:न|नहीं|कभी|मत)(?![ऀ-ॿ])'
+  secure_channel:
+    latin: '(?i)\b(?:secure|widget|app prompt|biometric)\b'
+    hinglish: '(?i)\b(?:secure|widget|app prompt|biometric)\b'
+    hi: 'सुरक्षित|बॉक्स|वेरिफ़िकेशन'
+  past_question:
+    latin: '(?i)^\s*(?:did|have|has|had|were|was) you\b'
+    hinglish: '(?i)^\s*kya aapne\b'
+    hi: '^\s*क्या आपने'
+
+# ------------------------------------------------------------------ a date, wait or outcome in fixed text without a system of record (audit mutations 10 to 13)
+# Digits are already refused by rule T11; these are the words that carry a time without a digit.
+timeline:
+  latin:
+    - '(?i)\b(?:tomorrow|tonight|shortly|momentarily|overnight)\b'
+    - '(?i)(?<!as )\bsoon\b'
+    - '(?i)\b(?:by|before|until|till) (?:the )?(?:end of (?:the )?(?:day|week|month)|monday|tuesday|wednesday|thursday|friday|saturday|sunday|morning|evening|noon|midnight)\b'
+    - '(?i)\b(?:one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|fifteen|twenty|thirty|forty|a few|a couple of|couple of|several|some|few) (?:more |working |business |calendar )?(?:day|days|hour|hours|minute|minutes|week|weeks|month|months)\b'
+    - '(?i)\bin (?:a|an) (?:moment|minute|hour|day|few|couple)\b'
+    - '(?i)\bwithin (?:the )?(?:hour|day|week|month|minutes|hours|days)\b'
+    - '(?i)\b(?:later today|this (?:week|evening|afternoon|morning)|next (?:day|week|month|working day|business day|hour))\b'
+    - '(?i)\bwill (?:arrive|come|reach|reflect|show up|be (?:back|there|credited|refunded|reversed|returned|resolved|sorted|fixed|done|ready|completed|processed|settled|received))\b'
+    - '(?i)\b(?:money|refund|amount|payment|funds|balance|reversal|credit)\b[^.!?]{0,40}\bwill\b[^.!?]{0,20}\b(?:back|arrive|credited|refunded|reversed|returned|reach|come|reflect|received|there|settled)\b'
+  hinglish:
+    - '(?i)\b(?:kal|parson|aaj hi|jald hi)\b'
+    - '(?i)(?<!jitni )\bjaldi?\b'
+    - '(?i)\b(?:thodi der mein|kuch hi der mein|kuch hi minute|do din|teen din|char din|paanch din|ek hafte|do hafte|agle (?:din|hafte|mahine)|kuch din|kuch ghante|ek ghante|do ghante)\b'
+    - '(?i)\b(?:aa|mil|pahunch|wapas aa) (?:jayega|jaayega|jayegi|jaaegi|jaenge)\b'
+  hi:
+    - '(?<![ऀ-ॿ])कल(?![ऀ-ॿ])'
+    - '(?<!जितनी )(?:जल्दी|जल्द|शीघ्र)'
+    - 'थोड़ी देर में|कुछ ही देर में|अगले (?:दिन|सप्ताह|हफ्ते|महीने)|(?:दो|तीन|चार|पाँच|कुछ) (?:दिन|घंटे|घंटों|हफ्ते|सप्ताह|महीने)|एक (?:दिन|घंटे|सप्ताह|हफ्ते)|आज ही|परसों'
+    - 'आ जाएगा|मिल जाएगा|वापस आ जाएँगे|वापस आ जाएंगे'
+
+# ------------------------------------------------------------------ advice verbs (audit mutations 8 and 9)
+# A hit is exempt when a negation or refusal word stands in the 60 characters before it ("I can't suggest ...", "सुझाव नहीं दे सकता").
+advice:
+  latin:
+    - '(?i)\b(?:suggest|recommend|advise)(?:s|ed|ing)?\b'
+    - '(?i)\byou (?:should|ought to|must|need to|have to|may want to|might want to) (?:invest|buy|sell|choose|take|put|opt|pick|go for|switch|apply for|open|get|consider)\b'
+    - '(?i)\bshould (?:invest|buy|sell|choose|pick|opt|go for|switch)\b'
+    - '(?i)\bbest (?:option|choice|bet|plan|product|scheme|fund|deal)\b'
+    - '(?i)\b(?:is|are) the best\b'
+    - '(?i)\bright (?:choice|option|product|plan|scheme|fund) for you\b'
+    - '(?i)\bi(?:''d| would) (?:go with|go for|pick|choose|take|put)\b'
+    - '(?i)(?:^|[,;]\s*)take (?:it|this|that|the (?:offer|plan|loan|policy|scheme|product))\s*[.!]?\s*$'
+    - '(?i)\b(?:go ahead and|just) (?:invest|buy|apply|take)\b'
+  hinglish:
+    - '(?i)\b(?:suggest|recommend|advise) (?:karta|karti|karunga|karungi|karte|kar raha|kar rahi)\b'
+    - '(?i)\binvest (?:karna chahiye|karein|kijiye|kariye)\b'
+    - '(?i)\b(?:kharidna|bechna|chunna|lena) chahiye\b'
+    - '(?i)\bsabse (?:accha|achha|best|behtar|badhiya|sahi) (?:option|vikalp|choice|plan|product|scheme)\b'
+    - '(?i)\baapke liye (?:sahi|best|behtar|suitable|upyukt)\b'
+    - '(?i)\b(?:le|kharid) (?:lijiye|lein|lo)\b'
+    - '(?i)\b(?:salah|sujhav)\b'
+  hi:
+    - 'सुझाव दे(?:ता|ती|ते)|सलाह दे(?:ता|ती|ते)|सिफ़ारिश कर(?:ता|ती|ते)|निवेश करना चाहिए|निवेश करें|खरीदना चाहिए|चुनना चाहिए|बेचना चाहिए'
+    - 'सबसे (?:अच्छा|बेहतर|बढ़िया|सही) (?:विकल्प|ऑप्शन|चुनाव|प्लान|उत्पाद|योजना)|बेहतरीन (?:विकल्प|ऑप्शन)|आपके लिए (?:सही|बेहतर|उपयुक्त|सबसे अच्छा)|इसे ले (?:लीजिए|लें|लो)'
+  negation:
+    latin: '(?i)\b(?:can''t|cannot|can not|unable to|not able to|won''t|don''t|do not|never|not|neither|nor|rather than)\b'
+    hinglish: '(?i)\b(?:nahi|nahin|na|mat|kabhi|can''t|cannot)\b'
+    hi: '(?<![ऀ-ॿ])(?:न|नहीं|कभी|मत)(?![ऀ-ॿ])'
+  # Templates and words that are allowed to use a banned advice word, with the reason (kept short on purpose).
+  exempt_templates:
+    TPL-SRV-NPS: "asks the customer whether they would recommend NexBank to a friend; not advice to the customer"

@@ -27,7 +27,7 @@ Non-English text in this file (customer lines, template wording, glosses) is not
 | Templates used | TPL-GEN-GREETING, TPL-AUTH-OTP-REQUEST, TPL-TXN-STATUS, TPL-ACC-BALANCE, TPL-GEN-CLOSING |
 | KB entries cited | KB-POL-003, KB-TRB-002, KB-TRB-001 |
 | Tools called | get_txn, get_balance |
-| prompt_version | sp-1.0.0+518d5a1e.n000000 (template_version 1.0.0 for every template; model_version unbound) |
+| prompt_version | sp-1.1.0+1527a050.n000000 (template versions as listed in config/templates, shown with each Generation row; model_version unbound) |
 | What this conversation proves | Two requests in one message are both recognised and served in rank order with one verification, a pending payment is reported without inventing a clearing time, a declined ticket is respected, and the parked topic is offered again at closing instead of being dropped. |
 
 Setup: Priya, Mumbai, on WhatsApp. Anonymous at the start. One savings account (masked ending 8842). A UPI payment to Zomato from yesterday shows as pending in the synthetic ledger.
@@ -50,7 +50,7 @@ _English gloss (annotation only, not customer-facing; not native-reviewed): Hi, 
 | KB / tools | none on the customer message (retrieval and tools run for the reply) |
 | Action | n/a (customer message; the policy decision is on the next agent message) |
 | Generation | n/a (customer message) |
-| State | phase INIT > INTENT_DETECT > AUTH_REQUIRED; auth anonymous; turn_count 1; topic_stack [TXN-003 (payment_pending): active, ACC-001: queued]; slots {merchant_name=Zomato (filled); date=11 Oct 2026 (resolved from 'kal')}; pending_confirmation none; counters: multi_intent 1; turns_since_resolution 1; escalation_proximity 0.00 |
+| State | phase INIT > INTENT_DETECT > AUTH_REQUIRED; auth anonymous; turn_count 1; topic_stack [TXN-003 (payment_pending): active, ACC-001: parked]; slots {merchant_name=Zomato (filled); date=11 Oct 2026 (resolved from 'kal')}; pending_confirmation none; counters: multi_intent 1; turns_since_resolution 1; escalation_proximity 0.00 |
 | Decision point | Multi-intent detection (nlu-pipeline-overview.md section 4): the second segment scores 0.91, so both intents are kept. Rank order serves the payment before the balance. |
 
 ### T2 | Agent
@@ -66,8 +66,8 @@ _English gloss (annotation only, not customer-facing; not native-reviewed): Hell
 | Guardrails | checked: Output Safety Layer: GR-OUT-01, GR-OUT-02, GR-OUT-03, GR-OUT-04, GR-OUT-05, GR-OUT-06; triggered: GR-REG-16 (AI disclosure in the first reply), GR-SEC-R2, GR-SEC-R5 (code only in the secure widget) |
 | KB / tools | KB: KB-POL-003@1.0.0 (0.82); retrieval confidence 0.82; decision answer |
 | Action | transfer: to the authentication flow once for both intents; the second request is acknowledged so the customer need not repeat it |
-| Generation | hybrid `TPL-GEN-GREETING/with_request@1.0.0` + `TPL-AUTH-OTP-REQUEST/default@1.0.0` + free text (grounded on the cited entries) (language hinglish); patterns: P2, P5; anti-pattern check: none |
-| State | phase AUTH_REQUIRED; auth anonymous; turn_count 2; topic_stack [TXN-003 (payment_pending): active, ACC-001: queued]; slots {merchant_name=Zomato (filled); date=11 Oct 2026 (resolved from 'kal')}; pending_confirmation none; counters: multi_intent 1; turns_since_resolution 2; escalation_proximity 0.00 |
+| Generation | hybrid `TPL-GEN-GREETING/with_request@1.1.0` + `TPL-AUTH-OTP-REQUEST/default@1.0.0` + free text (grounded on the cited entries) (language hinglish); patterns: P2, P5; anti-pattern check: none |
+| State | phase AUTH_REQUIRED; auth anonymous; turn_count 2; topic_stack [TXN-003 (payment_pending): active, ACC-001: parked]; slots {merchant_name=Zomato (filled); date=11 Oct 2026 (resolved from 'kal')}; pending_confirmation none; counters: multi_intent 1; turns_since_resolution 2; escalation_proximity 0.00 |
 | Decision point | No template covers a two-request acknowledgement, so the middle sentence is free text checked by the Output Safety Layer. TPL-ATK-SHORTEN-OR-SPLIT/many_requests is for messages with more requests than a turn can serve and is not used for two. |
 
 ### E1 | System event
@@ -76,7 +76,7 @@ _English gloss (annotation only, not customer-facing; not native-reviewed): Hell
 
 | Field | Value |
 |---|---|
-| State | phase AUTH_REQUIRED > RESPOND; auth otp_verified; turn_count 2; topic_stack [TXN-003 (payment_pending): active, ACC-001: queued]; slots {merchant_name=Zomato (filled); date=11 Oct 2026 (resolved from 'kal')}; pending_confirmation none; counters: multi_intent 1; turns_since_resolution 2; escalation_proximity 0.00 |
+| State | phase AUTH_REQUIRED > RESPOND; auth otp_verified; turn_count 2; topic_stack [TXN-003 (payment_pending): active, ACC-001: parked]; slots {merchant_name=Zomato (filled); date=11 Oct 2026 (resolved from 'kal')}; pending_confirmation none; counters: multi_intent 1; turns_since_resolution 2; escalation_proximity 0.00 |
 
 ### T3 | Agent
 
@@ -92,7 +92,7 @@ _English gloss (annotation only, not customer-facing; not native-reviewed): It i
 | KB / tools | KB: KB-TRB-002@1.0.0 (0.87), KB-TRB-001@1.0.0 (0.74); retrieval confidence 0.87; decision answer<br>tool: `get_txn`(merchant=Zomato, date=11 Oct 2026) -> ok: {txn_desc: INR 640 to Zomato on 11 Oct 2026, status: pending, expected_date: not returned, source_ts: 12-10-2026 10:12 IST} |
 | Action | respond: first-ranked intent served; the tool returned no expected date, so none is stated (KB-TRB-002); ticket offered with a soft confirmation |
 | Generation | hybrid `TPL-TXN-STATUS/status_only@1.0.0` (language hinglish); patterns: P1, P4; anti-pattern check: none |
-| State | phase AUTH_REQUIRED > EXECUTE > RESPOND; auth otp_verified; turn_count 3; topic_stack [TXN-003 (payment_pending): active, ACC-001: queued]; slots {merchant_name=Zomato (filled); amount=INR 640 (from the record); date=11 Oct 2026 (from the record)}; pending_confirmation open_ticket (soft), offered; counters: multi_intent 1; turns_since_resolution 3; escalation_proximity 0.00 |
+| State | phase AUTH_REQUIRED > EXECUTE > RESPOND; auth otp_verified; turn_count 3; topic_stack [TXN-003 (payment_pending): active, ACC-001: parked]; slots {merchant_name=Zomato (filled); amount=INR 640 (from the record); date=11 Oct 2026 (from the record)}; pending_confirmation open_ticket (soft), offered; counters: multi_intent 1; turns_since_resolution 3; escalation_proximity 0.00 |
 
 ### T4 | Customer
 

@@ -345,7 +345,7 @@ Honest and calm: "I am receiving a lot of messages at once, please wait a moment
 
 ### 8.6 Residual risk
 
-A distributed flood from many sources is a network-layer problem that the application controls only partly; it relies on the platform's capacity, CDN and DDoS services (Day 14 dependency). Application-layer limits protect cost and model capacity, not bandwidth. Rate limits also cannot tell a patient low-rate attacker from a heavy user; the session score and cost alarms cover the middle. Assessment: medium until the platform controls are specified.
+A distributed flood from many sources is a network-layer problem that the application controls only partly; it relies on the platform's capacity, CDN and DDoS services. Day 14 recorded this as RISK-T-18 in `docs/risk/risk-matrix.md`: no control exists in this specification, the platform owner is named there, and the residual stays red until one is specified. Application-layer limits protect cost and model capacity, not bandwidth. Rate limits also cannot tell a patient low-rate attacker from a heavy user; the session score and cost alarms cover the middle. Assessment: medium until the platform controls are specified.
 
 ## 9. Identity Spoofing (GR-ATK-10, GR-ATK-11)
 
@@ -491,6 +491,6 @@ Scheme `GR-ATK-<nn>-<NN>`. All 62 are written in `tests/adversarial/` (one file 
 - Native-speaker review of the Hindi, Hinglish and Devanagari lexicons and of all `TPL-ATK-*` wording (Day 13).
 - Risk Committee: the thresholds in section 13, the session score and safe mode (D-72), the DoS limits (D-74), the biometric shadow-mode decision (D-75) and the false-positive allocation (D-76) are proposals.
 - Day 12: whether a dedicated "adversarial session" escalation trigger is needed (D-72); the data-pipeline quality gates for LLM04.
-- Day 14: platform controls for LLM03 (supply chain), network-layer DDoS, store isolation for LLM08, and the encryption and authentication-strength statements (G-07).
+- Day 14: recorded in `docs/risk/risk-matrix.md` as network-layer DDoS (RISK-T-18), store isolation for LLM08 (RISK-T-19) and supply chain for LLM03 (RISK-T-15); the platform controls themselves, and the encryption and authentication-strength statements (G-07), remain open dependencies with the owners named there.
 - Day 15: verify the OWASP LLM 2025 category names and numbering against the OWASP publication.
 - Red-team feedback loop: attacks found after release are added as new cases and, where needed, as new lexicon entries through safety change control (D-79).

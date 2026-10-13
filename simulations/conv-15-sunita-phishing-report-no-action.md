@@ -25,7 +25,7 @@ Designed, illustrative conversation. It shows how the specified system must beha
 | Templates used | TPL-GEN-GREETING, TPL-ACT-CONFIRM, TPL-ACT-DONE, TPL-SRV-CSAT, TPL-GEN-CLOSING |
 | KB entries cited | KB-POL-011, KB-ESC-002, KB-TRB-007 |
 | Tools called | flag_fraud |
-| prompt_version | sp-1.0.0+518d5a1e.n000000 (template_version 1.0.0 for every template; model_version unbound) |
+| prompt_version | sp-1.1.0+1527a050.n000000 (template versions as listed in config/templates, shown with each Generation row; model_version unbound) |
 | What this conversation proves | A phishing report with no action taken is recorded as a ticket and not escalated as fraud, the one triage question is asked before anything else, the customer is told what the bank never asks for, and nothing is requested that could expose a credential. |
 
 Setup: Sunita, Indore, opens the app anonymously (not signed in). No earlier session. The synthetic SMS claims her KYC will expire and carries a link.
@@ -59,7 +59,7 @@ Turn unit: one customer or agent message (D-119). System events (E) are not coun
 | Guardrails | checked: Output Safety Layer: GR-OUT-01, GR-OUT-02, GR-OUT-03, GR-OUT-04, GR-OUT-05, GR-OUT-06; triggered: GR-REG-16 (AI disclosure), GR-SEC-R5 (the agent never asks the customer to forward or type a credential, link or code), GR-OUT-04 (no alarm beyond the need) |
 | KB / tools | KB: KB-POL-011@1.0.0 (0.84), KB-ESC-002@1.0.0 (0.76); retrieval confidence 0.84; decision answer |
 | Action | respond: the triage question that separates a ticket from SEC-001 scam_victim (ESC-001.e), asked once, in one message with the instruction not to forward anything |
-| Generation | hybrid `TPL-GEN-GREETING/with_request@1.0.0` + free text (grounded on the cited entries) (language en); patterns: P1, P2; anti-pattern check: none |
+| Generation | hybrid `TPL-GEN-GREETING/with_request@1.1.0` + free text (grounded on the cited entries) (language en); patterns: P1, P2; anti-pattern check: none |
 | State | phase RESPOND; auth anonymous; turn_count 2; topic_stack [SEC-002 (sms_or_email): active]; slots {scam_channel=SMS (filled)}; pending_confirmation none; counters: all 0; turns_since_resolution 2; escalation_proximity 0.00 |
 | Decision point | No template carries the triage question, so it is free text checked by the Output Safety Layer and grounded on KB-POL-011 and KB-ESC-002. The gap is reported in the handoff. |
 
@@ -89,7 +89,7 @@ Turn unit: one customer or agent message (D-119). System events (E) are not coun
 | Guardrails | checked: Output Safety Layer: GR-OUT-01, GR-OUT-02, GR-OUT-03, GR-OUT-04, GR-OUT-05, GR-OUT-06; triggered: GR-SEC-R5 (nothing to forward), GR-SEC-R6 (escalation protocol followed: the trigger was evaluated and is false) |
 | KB / tools | KB: KB-POL-011@1.0.0 (0.82), KB-ESC-002@1.0.0 (0.74); retrieval confidence 0.82; decision answer |
 | Action | confirm: explicit confirmation before the report is written (SEC-002 confirmation is explicit) |
-| Generation | template `TPL-ACT-CONFIRM/default@1.0.0` (language en); patterns: P3; anti-pattern check: none |
+| Generation | template `TPL-ACT-CONFIRM/default@1.1.0` (language en); patterns: P3; anti-pattern check: none |
 | State | phase CONFIRM; auth anonymous; turn_count 4; topic_stack [SEC-002 (sms_or_email): active]; slots {scam_channel=SMS (filled); action_taken=none (filled)}; pending_confirmation flag_fraud (phishing report), explicit, awaiting yes or no; counters: all 0; turns_since_resolution 4; escalation_proximity 0.00 |
 
 ### T5 | Customer

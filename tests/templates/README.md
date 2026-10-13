@@ -2,7 +2,7 @@
 
 Brief refs: A12.2 (p.33: "Testable Assertions: Every instruction convertible to a testable assertion. If it cannot be tested, it is too vague"; "Version Control"), A12.3 (p.34), A9.2 (pp.24-25), Part D Day 12-13 (p.60: "15+ prompt templates with trigger conditions and safety annotations").
 
-Files: `validate_templates.py` (this folder). It reads `config/templates/*.yaml`, `config/parameters.yaml`, `config/system-prompt/` and the reference registries (`config/intents.yaml`, `config/guardrails.yaml`, `config/escalation_rules.yaml`, `docs/knowledge-base/entries/`, `tests/**/*.yaml`).
+Files: `validate_templates.py` (the validator), `wording_lint.yaml` (the regular-expression lists of the extended wording lint, in three scripts so that Hindi stays in Devanagari), `prompt-assertions.yaml` (twelve test cases PA-T-01 to PA-T-12 for system-prompt assertions that had no proper test, D-194; not members of the safety-suite manifest, which they could join). The validator reads `config/templates/*.yaml`, `config/parameters.yaml`, `config/system-prompt/` and the reference registries (`config/intents.yaml`, `config/guardrails.yaml`, `config/escalation_rules.yaml`, `docs/knowledge-base/entries/`, `tests/**/*.yaml`).
 
 Status: the validator is a static check. It parses, cross-references and lints. It does not render a template with real data, call a model, or test a conversation. The behavioural cases for templates are the existing cases in `tests/` that each template and each prompt assertion links to; none of those has been executed, because no agent exists.
 
@@ -10,7 +10,9 @@ Status: the validator is a static check. It parses, cross-references and lints. 
 
 ```text
 python tests/templates/validate_templates.py            # exit code 0 = PASS
-python tests/templates/validate_templates.py --rehash   # after an approved change to a layer text: rewrite the manifest hashes
+python tests/templates/validate_templates.py --rehash   # after an approved change to a layer 3 to 5 text and a version bump: rewrite the manifest hashes
+python tests/templates/validate_templates.py --rehash --allow-immutable-change D-NNN   # also needed when layer 0, 1 or 2 changed; logs the decision
+python tests/templates/validate_templates.py --approved-immutable <sha256>   # also compare the immutable hash with a value kept outside the repository
 ```
 
 Needs Python 3 and PyYAML. On Windows set `PYTHONIOENCODING=utf-8` if an error message has to print Hindi text.
@@ -38,6 +40,10 @@ Needs Python 3 and PyYAML. On Windows set `PYTHONIOENCODING=utf-8` if an error m
 | T15 | No English variant shares `atk_prompt_overlap_words` (8) consecutive words with prompt layers 0 to 2 | the Output Safety Layer would block the template (GR-ATK-06) |
 | T16 | `labels.yaml`: all 15 queues have a label in three languages; label intents exist; every trigger intent of the two AUTH templates has a request label | missing label |
 | T17 | Every template ID is listed in `config/templates/README.md` and in the matrix of `docs/architecture/conversation-design.md` | index or matrix out of date |
+| T18 | Extended wording lint (D-194) on every variant, slot fallback and label text: no time or outcome word without a digit (tomorrow, shortly, soon, "two days", kal, jald, Hindi equivalents); no advice verb (suggest, recommend, "should invest", "best option", Hindi and Hinglish equivalents) unless the same sentence refuses it; no request for a credential in chat in English, Hindi or Hinglish unless the sentence forbids it or points to the secure channel; no claim to be human, staff, a named person or "not a bot" | a bad phrase in any of the three languages |
+| T19 | English, Hindi and Hinglish of a variant have the same number of sentences | a sentence was dropped or added in one language |
+| T20 | `safety.required_markers`: every named variant carries one declared phrase per language; `safety.ai_disclosure`: the named variants say "AI" in all three languages; `safety.variant_must_not_contain`: per-variant bans | a safety sentence present in English but dropped or reversed in Hindi or Hinglish; an AI disclosure removed |
+| T21 | `labels.yaml` tables added in D-198: keys are tools, intents or notice codes; three languages; scripts; no digit; one allowed token `{{card_last4}}`; the wording lint above also runs on label text | malformed or unsafe label |
 
 ### 2.2 Parameters
 
@@ -49,6 +55,8 @@ Needs Python 3 and PyYAML. On Windows set `PYTHONIOENCODING=utf-8` if an error m
 | P4 | Every `mirror` equals the value at the named path in `config/intents.yaml`, `config/guardrails.yaml` or `config/escalation_rules.yaml` | two copies of a value differ |
 | P5 | Every scalar in `config/guardrails.yaml` `parameters` and in `config/escalation_rules.yaml` `constants` and `proposals` is registered | an ungoverned threshold |
 | P6 | Project parameters: unique names; status is brief_fixed, decided, proposal or default; a brief_fixed value cites the brief; decision IDs well formed; `learning` is may_propose or no | malformed entry |
+| P7 | A parameter of an excluded group is never `may_propose`: a registry parameter of `config/guardrails.yaml`, a constant of `config/escalation_rules.yaml`, or any X-class parameter (D-171, D-194) | an unsafe learning flag |
+| P8 | The three A12.3 parameters that sit inside an ESC condition (`escalation_sentiment_threshold`, `max_conversation_turns`, `retrieval_confidence_threshold`) stay proposable only with `proposal_limits`: owner equal to the A12.3 owner, required approval, hard bounds inside the brief range that contain the default, a maximum step and the reason (D-197) | an unbounded proposal path |
 
 ### 2.3 System prompt
 
@@ -60,11 +68,13 @@ Needs Python 3 and PyYAML. On Windows set `PYTHONIOENCODING=utf-8` if an error m
 | S4 | Each layer has both SHOULD and MUST NOT instructions (A12.2 Positive and Negative Instruction) | one-sided layer |
 | S5 | Assertion IDs `PA-L<layer>-<nn>` are unique; each maps to existing guardrails and at least one existing test case | untestable or dangling assertion |
 | S6 | Estimated tokens (words x 1.35) do not exceed the layer's `token_budget` | layer too long |
-| S7 | `manifest.yaml` hashes equal the recomputed layer, bundle and immutable hashes; `prompt_version` follows the scheme; A12.2 metadata present | a layer changed without a version bump and rehash |
+| S7 | `manifest.yaml` hashes equal the recomputed layer, bundle and immutable hashes; layer versions equal the layer headers; `prompt_version` follows the scheme; A12.2 metadata present; the last entry of `immutable_change_log` ends at the current immutable hash | a layer changed without a version bump and rehash |
+| S8 | `--rehash` refuses when a layer text changed but its version did not, and refuses when layer 0, 1 or 2 changed without `--allow-immutable-change D-NNN` (D-194) | an immutable layer re-blessed silently |
+| S9 | Declared required instructions are present in each layer (for example "ask for any of them in chat" in S3, the rounding ban of K6, the no-human-claim of layer 0), and no layer says it may loosen or override a lower layer or that a notice may instruct (D-194) | a safety instruction deleted or weakened, even with a current hash |
 
 ### 2.4 Hygiene
 
-Owned files exist; no reference to the planning file; no non-ASCII character outside Hindi fields; no decision ID above D-155.
+Owned files exist; no reference to the planning file; no non-ASCII character outside Hindi fields; no decision ID above D-199; every repository path written in an owned file exists (D-194).
 
 ## 3. Banned-phrase list and why
 
@@ -83,4 +93,5 @@ Three templates carry `allowed_literals`, all survey scales: `TPL-SRV-CSAT` (1, 
 3. It checks that a linked test exists, not that the test would pass or that it asserts the template's exact words. `must_not_contain` strings in earlier cases were written before the wording existed; the Day 13 handoff lists the cases whose strings were compared with the final wording.
 4. It does not evaluate the `when` conditions or `trigger.state` text; those are prose.
 5. Token counts are word-based estimates.
-6. Mutation checks performed when the validator was written are recorded in the Day 13 handoff (each seeded defect was detected); they are not part of the script.
+6. The lists of required markers and required prompt instructions are written by a reviewer; a safety sentence nobody declared has no check. The hashes and the manifest live in the same repository as the layers, so a change that is rehashed with the flag and a decision id passes; the control that does not depend on the repository is `--approved-immutable` with a value stored elsewhere.
+7. Mutation checks: the Day 13 audit found 15 defects that the first version missed, and the Day 13 audit-fix handoff records the repeatable proof (each defect reproduced on a scratch copy and caught). The script itself does not run mutations.

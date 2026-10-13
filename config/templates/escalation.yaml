@@ -68,6 +68,8 @@ templates:
   safety:
     guardrails_enforced: [GR-SEC-R6, GR-OUT-05, GR-OUT-04, GR-REG-16, GR-REG-04]
     must_not_contain: ["within", "minutes", "will be refunded", "why do you want", "before I transfer you", "timeout", "exception", "technical issue", "special offer", "CSAT"]
+    required_markers:
+      - {id: no_repeat, variants: [standard, standard_with_wait, customer_asked], en: ["won't need to"], hi: ["नहीं करना पड़ेगा", "नहीं पड़ेगा"], hinglish: ["nahi karna padega"]}
     notes: "The `ack` slot is the only free text. Team name comes from the router, never from the model. The agent does not re-ask for an OTP because of the handoff (the package carries the auth level)."
   a9: {patterns: [P1, P4, P5], anti_patterns_avoided: [AP1, AP2, AP3, AP5, AP6, AP7]}
   kb_refs: [KB-ESC-001, KB-ESC-003, KB-ESC-005, KB-ESC-006, KB-ESC-008, KB-TRB-009]
@@ -94,6 +96,8 @@ templates:
   safety:
     guardrails_enforced: [GR-REG-11, GR-REG-09, GR-SEC-R6]
     must_not_contain: ["PEP", "politically exposed", "enhanced due diligence", "flag", "because", "compliance", "review of your account", "suspicious", "specialist team", "security team"]
+    required_markers:
+      - {id: no_repeat, variants: all, en: ["won't need to repeat"], hi: ["दोहराना नहीं पड़ेगा"], hinglish: ["repeat nahi karna padega"]}
     notes: "No reason slot exists, so no reason can be rendered. A plain 'colleague', not a team name, so the wording does not hint at the queue."
   a9: {patterns: [P5], anti_patterns_avoided: [AP3, AP6, AP8]}
   kb_refs: [KB-ESC-009]
@@ -141,6 +145,12 @@ templates:
   safety:
     guardrails_enforced: [GR-SEC-R6, GR-SEC-R5, GR-SEC-R2, GR-OUT-05, GR-REG-04, GR-REG-06]
     must_not_contain: ["refund", "you will get your money back", "are you sure you did not", "no one is available", "try later", "nothing to worry about", "card has been blocked", "offer"]
+    required_markers:
+      - {id: fraud_team_named, variants: [offer_block_verified, anonymous_fast_verify, after_protective_step], en: ["fraud team"], hi: ["फ्रॉड टीम"], hinglish: ["fraud team"]}
+      - {id: yes_or_no, variants: [offer_block_verified], en: ["yes or no"], hi: ["हाँ या नहीं"], hinglish: ["haan ya nahi"]}
+      - {id: no_credentials_in_chat, variants: [anonymous_fast_verify], en: ["don't type any card number"], hi: ["न लिखें"], hinglish: ["na likhein"]}
+      - {id: change_credentials, variants: [after_protective_step], en: ["change it straight away"], hi: ["तुरंत बदल"], hinglish: ["turant badal"]}
+      - {id: no_code_in_chat, variants: [access_report], en: ["don't share any code"], hi: ["साझा न करें"], hinglish: ["share na karein"]}
     notes: "No refund or outcome promise (SS-COM-03). The block is never claimed before the tool result; the after_protective_step text comes from the tool. No cross-sell, no survey. Offering the block after fast verification for an anonymous customer is the D-94 deviation from Case Study 2, still open with the Risk Committee and CEB."
   a9: {patterns: [P1, P3], anti_patterns_avoided: [AP3, AP5, AP6, AP7]}
   kb_refs: [KB-ESC-002, KB-POL-006, KB-POL-011]
@@ -186,6 +196,10 @@ templates:
   safety:
     guardrails_enforced: [GR-REG-16, GR-OUT-05, GR-REG-04, GR-OUT-06]
     must_not_contain: ["balance", "account", "card", "loan", "EMI", "offer", "CSAT", "rate your", "calm down", "minutes", "I understand how you feel", "restructuring"]
+    ai_disclosure: [self_harm, threat_or_emergency]
+    required_markers:
+      - {id: emergency_services, variants: [self_harm, threat_or_emergency], en: ["emergency services"], hi: ["आपातकालीन सेवाओं"], hinglish: ["emergency services"]}
+      - {id: person_from_team, variants: [self_harm, threat_or_emergency, follow_up_a, follow_up_b], en: ["from our team", "of our team"], hi: ["हमारी टीम"], hinglish: ["hamari team"]}
     notes: "REVIEW REQUIRED BEFORE USE: this wording is a specification draft and has not been reviewed by the Crisis Response team or a clinical adviser; routing-and-handoff.md section 6.2 requires reviewed text. No free slot, no banking content, no wait estimate, no survey. No helpline number is given because the brief and the KB hold none (D-146): numbers must be added as a KB entry by the Crisis Response team and would then arrive through a locked slot. ESC-011 is router-owned and has no guardrail in the registry (D-135)."
   a9: {patterns: [P1], anti_patterns_avoided: [AP1, AP2, AP3, AP5, AP7]}
   kb_refs: [KB-ESC-004]
@@ -241,12 +255,12 @@ templates:
 
 - id: TPL-ESC-HUMAN-JOINED
   title: "Introduction when the human joins (one line to both sides)"
-  version: "1.0.0"
+  version: "1.1.0"
   customer_facing: true
   trigger:
     intents: []
     guardrails: []
-    escalations: [ESC-001, ESC-002, ESC-003, ESC-004, ESC-005, ESC-006, ESC-007, ESC-008, ESC-009, ESC-010, ESC-013, ESC-014, ESC-015]
+    escalations: [ESC-001, ESC-002, ESC-003, ESC-004, ESC-005, ESC-006, ESC-007, ESC-008, ESC-009, ESC-010, ESC-011, ESC-013, ESC-014, ESC-015]
     state: "human accepted the conversation (dialogue_phase HANDOFF); the agent posts this once and stops replying"
   mode: template
   variant_selection: condition
@@ -266,7 +280,7 @@ templates:
       text:
         en: "{{agent_first_name}} from our team has joined and will help you from here."
         hi: "हमारी टीम से {{agent_first_name}} जुड़ गए हैं और आगे आपकी मदद करेंगे।"
-        hinglish: "Hamari team se {{agent_first_name}} jud gaye hain aur aage aapki madad karenge."
+        hinglish: "Hamari team se {{agent_first_name}} ab aapke saath hain aur aage aapki madad karenge."
   safety:
     guardrails_enforced: [GR-SEC-R1, GR-REG-11, GR-OUT-02]
     must_not_contain: ["please repeat", "can you repeat", "start again", "PEP", "flag"]
@@ -397,7 +411,7 @@ templates:
       when: "P1 or P2: next overflow step, then the wait-or-callback choice"
       text:
         en: "I'm sorry, I couldn't connect you on the first attempt. I'm trying another colleague now. If you'd rather not wait, I can request a callback instead; your details are saved either way."
-        hi: "क्षमा करें, पहली कोशिश में मैं आपको जोड़ नहीं सका। मैं अभी दूसरे सहयोगी से कोशिश कर रहा हूँ। अगर आप इंतज़ार नहीं करना चाहते, तो मैं इसकी जगह कॉलबैक का अनुरोध कर सकता हूँ; दोनों स्थितियों में आपकी जानकारी सुरक्षित है।"
+        hi: "क्षमा करें, पहली कोशिश में मैं आपको जोड़ नहीं सका। मैं अभी दूसरे सहयोगी से कोशिश कर रहा हूँ। अगर आप इंतज़ार नहीं करना चाहते, तो मैं इसकी जगह कॉलबैक का अनुरोध कर सकता हूँ; दोनों स्थितियों में आपकी जानकारी सहेजी हुई है।"
         hinglish: "Sorry, pehli attempt mein main aapko connect nahi kar saka. Main abhi doosre colleague se try kar raha hoon. Agar aap wait nahi karna chahte, to main iski jagah callback request kar sakta hoon; dono cases mein aapki details saved hain."
     - key: left_while_waiting
       when: "customer disconnected while waiting (P1): one notification on the same channel"
@@ -474,3 +488,117 @@ templates:
   a9: {patterns: [P4, P5], anti_patterns_avoided: [AP3, AP8]}
   kb_refs: [KB-POL-005, KB-POL-004]
   tests: [XTR-T-07-01, XTR-T-05-01, SS-AUTH-06]
+
+- id: TPL-ESC-ABANDONED-P2
+  title: "Customer left while waiting for a P2 handoff (close with a way to resume)"
+  version: "1.0.0"
+  customer_facing: true
+  trigger:
+    intents: []
+    guardrails: [GR-OUT-05]
+    escalations: [ESC-003, ESC-006, ESC-010, ESC-014]
+    state: "pending P2 escalation (also XTR-01, XTR-03, XTR-04, XTR-06), customer disconnected while waiting; the record is closed as abandoned (routing-and-handoff.md section 8). One notification on the same channel. P0 and P1 use TPL-ESC-HANDOFF-FAILED left_while_waiting instead (D-198)"
+  mode: template
+  variant_selection: single
+  slots:
+    - {name: context_window_text, source: {type: policy, ref: "context_carry_over_window_hours (config/parameters.yaml) rendered as a duration phrase", field: text}, locked: true}
+  variants:
+    - key: default
+      text:
+        en: "We were disconnected before my colleague could join, so I've closed this request for now. If you still need help, send a message here or start a new chat, and the details you gave me stay available for {{context_window_text}}."
+        hi: "मेरे सहयोगी के जुड़ने से पहले हमारा संपर्क टूट गया, इसलिए मैंने फ़िलहाल यह अनुरोध बंद कर दिया है। अगर आपको अब भी मदद चाहिए, तो यहाँ संदेश भेजें या नई चैट शुरू करें, और आपकी दी हुई जानकारी {{context_window_text}} तक उपलब्ध रहेगी।"
+        hinglish: "Mere colleague ke join karne se pehle hamara connection toot gaya, isliye maine filhaal yeh request band kar di hai. Agar aapko ab bhi madad chahiye, to yahan message bhejein ya nayi chat shuru karein, aur aapki di hui details {{context_window_text}} tak available rahengi."
+  safety:
+    guardrails_enforced: [GR-OUT-05, GR-SEC-R6]
+    must_not_contain: ["will follow up", "will call you", "you disconnected", "your fault", "within", "no one is available", "try later"]
+    required_markers:
+      - {id: way_to_resume, variants: all, en: ["send a message here or start a new chat"], hi: ["संदेश भेजें या नई चैट शुरू करें"], hinglish: ["message bhejein ya nayi chat shuru karein"]}
+    notes: "No promised follow-up and no time: a P2 record has no callback duty once the customer has left. The duration is the governed value context_carry_over_window_hours (24 hours, D-05) supplied by the Policy Engine, never typed in the text. Authentication is not carried over (D-05): a returning customer verifies again before account detail is shown (TPL-GEN-CARRYOVER)."
+  a9: {patterns: [P5, P4], anti_patterns_avoided: [AP3, AP7]}
+  kb_refs: [KB-ESC-001, KB-POL-003]
+  tests: [ESC-T-010-01, ESC-T-010-02, SS-COM-09]
+
+- id: TPL-ESC-HUMAN-REQUEST-FIRST
+  title: "First request for a person: honour it, with one optional offer to finish the task (XTR-01)"
+  version: "1.0.0"
+  customer_facing: true
+  trigger:
+    intents: [GEN-003, CMP-005]
+    guardrails: [GR-REG-16]
+    escalations: []
+    state: "XTR-01 request 1 (human_requests below esc006_human_requests) while a concrete step can be completed in this turn. Request 2 uses TPL-ESC-HANDOFF-WARM customer_asked with no counter-offer; request 3 is ESC-006 (D-117, D-198)"
+  mode: template
+  variant_selection: single
+  slots:
+    - {name: finish_offer, source: {type: policy, ref: "config/templates/labels.yaml finish_offer_sentences for the pending intent: one sentence naming one step the agent can complete now", field: sentence}, locked: true}
+  variants:
+    - key: default
+      text:
+        en: "Of course, I can bring in a colleague. {{finish_offer}} Shall I connect you straight away, or would you like me to do that first?"
+        hi: "ज़रूर, मैं एक सहयोगी को जोड़ सकता हूँ। {{finish_offer}} क्या मैं आपको तुरंत जोड़ दूँ, या आप चाहेंगे कि मैं पहले यह कर दूँ?"
+        hinglish: "Zaroor, main ek colleague ko jod sakta hoon. {{finish_offer}} Kya main aapko turant connect kar doon, ya aap chahenge ki main pehle yeh kar doon?"
+  safety:
+    guardrails_enforced: [GR-REG-16, GR-OUT-05, GR-REG-04]
+    must_not_contain: ["why do you want", "before I transfer you", "are you sure", "you don't need", "I can handle", "no need for a colleague"]
+    required_markers:
+      - {id: person_honoured, variants: all, en: ["bring in a colleague"], hi: ["सहयोगी को जोड़"], hinglish: ["colleague ko jod"]}
+    notes: "The request is honoured in the first sentence and the customer chooses; no justification is asked, no persuasion, and the handoff proceeds unless the customer takes the offer (XTR-01 behaviour). The offer sentence is a reviewed label, never model-written. Not used once the customer has asked twice."
+  a9: {patterns: [P5], anti_patterns_avoided: [AP4, AP1]}
+  kb_refs: [KB-ESC-003]
+  tests: [XTR-T-01-01, XTR-T-01-02]
+
+- id: TPL-ESC-CARE-OFFER
+  title: "Care offer after an explicit vulnerability disclosure (XTR-03)"
+  version: "1.0.0"
+  customer_facing: true
+  trigger:
+    intents: [PRD-002]
+    guardrails: [GR-REG-17]
+    escalations: []
+    state: "XTR-03 care_disclosure: the customer said so in their own words; nothing is inferred from age, language or balance. One offer, then simpler wording continues (D-129, D-198)"
+  mode: template
+  variant_selection: single
+  slots: []
+  variants:
+    - key: default
+      text:
+        en: "Thank you for telling me. I'll keep things short and simple, and we can go at whatever pace suits you. If you'd like, a colleague can help you directly. Would you like me to bring one in?"
+        hi: "मुझे बताने के लिए धन्यवाद। मैं बातें छोटी और सरल रखूँगा, और हम उसी रफ़्तार से चलेंगे जो आपके लिए ठीक हो। अगर आप चाहें, तो हमारे एक सहयोगी सीधे आपकी मदद कर सकते हैं। क्या मैं किसी को जोड़ूँ?"
+        hinglish: "Mujhe bataane ke liye thanks. Main baatein chhoti aur simple rakhunga, aur hum us pace se chalenge jo aapke liye theek ho. Agar aap chahein, to hamare ek colleague seedhe aapki madad kar sakte hain. Kya main kisi ko jodoon?"
+  safety:
+    guardrails_enforced: [GR-REG-17, GR-REG-04, GR-OUT-05, GR-REG-11]
+    must_not_contain: ["vulnerable", "special care", "care note", "flagged", "because of your age", "priority customer", "offer"]
+    required_markers:
+      - {id: human_offered, variants: all, en: ["a colleague can help you directly"], hi: ["सहयोगी सीधे आपकी मदद"], hinglish: ["colleague seedhe aapki madad"]}
+    notes: "An offer, not a forced handoff. The care note in the handoff package is in the customer's own words and is never mentioned here. No product is offered to this customer (GR-REG-04)."
+  a9: {patterns: [P1, P5], anti_patterns_avoided: [AP5, AP8]}
+  kb_refs: [KB-ESC-018]
+  tests: [XTR-T-03-01, XTR-T-03-02]
+
+- id: TPL-ESC-HANDOFF-CANCELLED
+  title: "Pending handoff stopped at the customer's wish (confirmation line)"
+  version: "1.0.0"
+  customer_facing: true
+  trigger:
+    intents: []
+    guardrails: [GR-REG-16]
+    escalations: [ESC-003, ESC-004, ESC-010, ESC-014]
+    state: "the customer answered TPL-ESC-DEESCALATION-CHECK or TPL-ESC-HUMAN-REQUEST-FIRST with a clear wish not to be connected, and the router has cancelled the pending record (cancellable by the customer only for these classes; never P0, ESC-002, ESC-005, ESC-015). D-198"
+  mode: template
+  variant_selection: single
+  slots: []
+  variants:
+    - key: default
+      text:
+        en: "No problem, I won't bring in a colleague now. If you change your mind at any time, just tell me and I'll arrange it. What else can I help you with?"
+        hi: "कोई बात नहीं, मैं अभी किसी सहयोगी को नहीं जोड़ूँगा। अगर आप कभी भी अपना मन बदलें, तो बस बता दीजिए, मैं व्यवस्था कर दूँगा। मैं आपकी और किस चीज़ में मदद कर सकता हूँ?"
+        hinglish: "Koi baat nahi, main abhi kisi colleague ko nahi jodunga. Agar aap kabhi bhi apna mind badlein, to bas bata dijiye, main arrange kar dunga. Main aapki aur kis cheez mein madad kar sakta hoon?"
+  safety:
+    guardrails_enforced: [GR-REG-16, GR-OUT-05]
+    must_not_contain: ["are you sure", "cancelled", "you don't need", "no need to", "legal action", "within"]
+    required_markers:
+      - {id: can_change_mind, variants: all, en: ["change your mind at any time"], hi: ["कभी भी अपना मन बदलें"], hinglish: ["kabhi bhi apna mind badlein"]}
+    notes: "Sent only after the router has stopped the pending record, so the line is true when it is sent. It does not argue, repeat the offer or say what the customer is giving up. The word 'cancelled' is avoided so the line cannot read as a ticket status."
+  a9: {patterns: [P5], anti_patterns_avoided: [AP4, AP1]}
+  kb_refs: []
+  tests: [ESC-T-004-02, ESC-T-014-02, ESC-BOSS-L6-07]

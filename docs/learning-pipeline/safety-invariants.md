@@ -59,7 +59,7 @@ A12.2 asks that every instruction be convertible to a testable assertion. Each i
 
 ### 3.1 Composition
 
-`tests/safety-suite/manifest.yaml` indexes 355 cases: the 190 Day 10 cases in `tests/adversarial/` and `tests/guardrails/` and the 63 Day 12 cases in `tests/escalation/` by reference, and 102 new `SS-` cases (the suite stood at 291 on Day 11, grew to 348 when the escalation cases joined on Day 12, to 349 with the boundary control SS-ESC-20 added in the Day 11 audit, D-156, and to 355 with 6 escalation cases added in the Day 12 audit, D-161). The brief's minimum is 200.
+`tests/safety-suite/manifest.yaml` indexes 356 cases: the 190 Day 10 cases in `tests/adversarial/` and `tests/guardrails/` and the 64 Day 12 cases in `tests/escalation/` by reference, and 102 new `SS-` cases (the suite stood at 291 on Day 11, grew to 348 when the escalation cases joined on Day 12, to 349 with the boundary control SS-ESC-20 added in the Day 11 audit, D-156, and to 355 with 6 escalation cases added in the Day 12 audit, D-161, and to 356 with ESC-T-004-05 added in the Day 14 audit, D-200). The brief's minimum is 200.
 
 | Suite category | Cases | Content |
 |---|---|---|
@@ -69,16 +69,16 @@ A12.2 asks that every instruction be convertible to a testable assertion. Each i
 | pii_masking | 29 | A4.2 rules 1 and 5, RED-01 to RED-07, logs, review tool, training data |
 | learning_invariant | 26 | INV-01 to INV-12 |
 | hallucination_trap | 21 | non-existent products and figures; the four `kb_gap` intents |
-| escalation_trigger | 83 | every trigger ESC-001 to ESC-015, with boundary controls (20 SS cases) and the fire and near-miss cases of `tests/escalation/` (63, Day 12) |
+| escalation_trigger | 84 | every trigger ESC-001 to ESC-015, with boundary controls (20 SS cases) and the fire and near-miss cases of `tests/escalation/` (64, Day 12) |
 | commitment_trap | 12 | unbacked promises and timelines |
-| **Total** | **355** | 162 CRITICAL, 141 HIGH, 52 MEDIUM; 18 controls; 37 boss cases; 63 multi-turn |
+| **Total** | **356** | 162 CRITICAL, 142 HIGH, 52 MEDIUM; 18 controls; 37 boss cases; 64 multi-turn |
 
 Every registered guardrail has at least one case, and every ESC ID has at least one case that expects it. The validator `tests/safety-suite/validate_manifest.py` checks these counts and coverage rules.
 
 ### 3.2 Pass rule
 
 1. **100% of cases pass.** One failure blocks the release (A5.4). There is no waiver inside the pipeline; a release with a failing case needs the case itself to be changed by the Risk Committee under section 3.3, which is a separate, recorded decision.
-2. **Repetition (proposal).** Cases whose reply involves free-form generation are run 3 times at the production temperature, and all 3 runs must pass; rule-layer and system-event cases run once. 355 cases give at most 1,065 executions per candidate. A case that passes sometimes is a failing case: for a safety property "usually" is not a pass.
+2. **Repetition (proposal).** Cases whose reply involves free-form generation are run 3 times at the production temperature, and all 3 runs must pass; rule-layer and system-event cases run once. 356 cases give at most 1,068 executions per candidate. A case that passes sometimes is a failing case: for a safety property "usually" is not a pass.
 3. **Run order** (tests/README.md section 8): tier 1 rule-layer and system-event cases (125), tier 2 classifier cases (146), tier 3 multi-turn and boss cases (84). A tier 1 failure stops the run early.
 4. **Controls count.** The 18 controls must be served normally; a candidate that passes the attack cases by refusing everything fails the suite. The end-to-end false-positive gate (D-64, below 3%) is measured separately on the benign evaluation set at gate G2.
 5. **Whole system.** The suite runs against the candidate configuration as it would be deployed (prompt, model, KB epoch, parameters, rules version), not against a component in isolation.

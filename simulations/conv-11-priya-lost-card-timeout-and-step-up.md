@@ -25,7 +25,7 @@ Designed, illustrative conversation. It shows how the specified system must beha
 | Templates used | TPL-GEN-GREETING, TPL-ACT-CONFIRM, TPL-AUTH-SESSION-TIMEOUT, TPL-ACT-DONE, TPL-AUTH-STEP-UP, TPL-SRV-CSAT, TPL-GEN-CLOSING |
 | KB entries cited | KB-POL-006, KB-POL-003, KB-POL-007 |
 | Tools called | get_card_status, block_card, request_replacement |
-| prompt_version | sp-1.0.0+518d5a1e.n000000 (template_version 1.0.0 for every template; model_version unbound) |
+| prompt_version | sp-1.1.0+1527a050.n000000 (template versions as listed in config/templates, shown with each Generation row; model_version unbound) |
 | What this conversation proves | A confirmation that arrives after the five-minute timeout is not executed, the customer re-verifies and confirms again, the card block runs only after an explicit yes, and the replacement waits for the stronger check its intent needs. |
 
 Setup: Priya, Mumbai, opens the app signed in (otp_verified). One debit card (masked ending 4521), status active. session_timeout_minutes is 5.
@@ -59,7 +59,7 @@ Turn unit: one customer or agent message (D-119). System events (E) are not coun
 | Guardrails | checked: Output Safety Layer: GR-OUT-01, GR-OUT-02, GR-OUT-03, GR-OUT-04, GR-OUT-05, GR-OUT-06; triggered: GR-REG-16 (AI disclosure), GR-SEC-R1 (card shown by last four digits), GR-REG-05 (masked card display) |
 | KB / tools | KB: KB-POL-006@1.0.0 (0.92); retrieval confidence 0.92; decision answer<br>tool: `get_card_status`() -> ok: {cards: [debit ending 4521, status active]} |
 | Action | confirm: explicit confirmation before block_card (CRD-001 is HIGH, protective write); the card is chosen from the only active card |
-| Generation | hybrid `TPL-GEN-GREETING/with_request@1.0.0` + `TPL-ACT-CONFIRM/default@1.0.0` + free text (grounded on the cited entries) (language en); patterns: P1, P3; anti-pattern check: none |
+| Generation | hybrid `TPL-GEN-GREETING/with_request@1.1.0` + `TPL-ACT-CONFIRM/default@1.1.0` + free text (grounded on the cited entries) (language en); patterns: P1, P3; anti-pattern check: none |
 | State | phase EXECUTE > CONFIRM; auth otp_verified; turn_count 2; topic_stack [CRD-001 (block_lost): active]; slots {card_last4=4521 (from the record); block_reason=lost (filled)}; pending_confirmation block_card, explicit, awaiting yes or no; counters: all 0; turns_since_resolution 2; escalation_proximity 0.00 |
 
 ### E1 | System event
@@ -119,7 +119,7 @@ Turn unit: one customer or agent message (D-119). System events (E) are not coun
 | Guardrails | checked: Output Safety Layer: GR-OUT-01, GR-OUT-02, GR-OUT-03, GR-OUT-04, GR-OUT-05, GR-OUT-06; triggered: GR-SEC-R2, GR-SEC-R1 |
 | KB / tools | KB: KB-POL-006@1.0.0 (0.91); retrieval confidence 0.91; decision answer |
 | Action | confirm: the same confirmation asked once more, as the timeout template promised |
-| Generation | template `TPL-ACT-CONFIRM/default@1.0.0` (language en); patterns: P3, P5; anti-pattern check: none |
+| Generation | template `TPL-ACT-CONFIRM/default@1.1.0` (language en); patterns: P3, P5; anti-pattern check: none |
 | State | phase CONFIRM; auth otp_verified; turn_count 5; topic_stack [CRD-001 (block_lost): active]; slots {card_last4=4521 (from the record); block_reason=lost (filled)}; pending_confirmation block_card, explicit, awaiting yes or no; counters: all 0; turns_since_resolution 5; escalation_proximity 0.00 |
 
 ### T6 | Customer
@@ -197,7 +197,7 @@ Turn unit: one customer or agent message (D-119). System events (E) are not coun
 | Guardrails | checked: Output Safety Layer: GR-OUT-01, GR-OUT-02, GR-OUT-03, GR-OUT-04, GR-OUT-05, GR-OUT-06; triggered: GR-SEC-R1, GR-OUT-05 |
 | KB / tools | KB: KB-POL-006@1.0.0 (0.84), KB-POL-007@1.0.0 (0.76); retrieval confidence 0.84; decision answer |
 | Action | confirm: explicit confirmation before request_replacement; no delivery time stated because none is held (KB-POL-007) |
-| Generation | template `TPL-ACT-CONFIRM/default@1.0.0` (language en); patterns: P3; anti-pattern check: none |
+| Generation | template `TPL-ACT-CONFIRM/default@1.1.0` (language en); patterns: P3; anti-pattern check: none |
 | State | phase CONFIRM; auth biometric_verified; turn_count 10; topic_stack [CRD-002 (lost_or_damaged): active]; slots {card_last4=4521 (from history); block_reason=lost (from history)}; pending_confirmation request_replacement, explicit, awaiting yes or no; counters: all 0; turns_since_resolution 3; escalation_proximity 0.00 |
 
 ### T11 | Customer

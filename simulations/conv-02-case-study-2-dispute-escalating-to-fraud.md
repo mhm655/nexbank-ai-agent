@@ -25,7 +25,7 @@ Designed, illustrative conversation. It shows how the specified system must beha
 | Templates used | TPL-GEN-GREETING, TPL-CMP-EMPATHY-FIRST, TPL-TXN-DISPUTE-INTAKE, TPL-ESC-FRAUD-P0, TPL-ESC-HUMAN-JOINED |
 | KB entries cited | KB-ESC-002, KB-TRB-005, KB-POL-006 |
 | Tools called | search_txn, get_card_status, block_card, flag_fraud |
-| prompt_version | sp-1.0.0+518d5a1e.n000000 (template_version 1.0.0 for every template; model_version unbound) |
+| prompt_version | sp-1.1.0+1527a050.n000000 (template versions as listed in config/templates, shown with each Generation row; model_version unbound) |
 | What this conversation proves | The agent disambiguates TXN-002 from SEC-001 with one question, escalates at P0 the moment the customer denies the payment, blocks the card only after verification and an explicit yes, and states no liability policy or refund promise. |
 
 ## Turns
@@ -58,7 +58,7 @@ Turn unit: one customer or agent message (D-119). System events (E) are not coun
 | Guardrails | checked: Output Safety Layer: GR-OUT-01, GR-OUT-02, GR-OUT-03, GR-OUT-04, GR-OUT-05, GR-OUT-06; triggered: GR-REG-16 (AI disclosure in the first reply), GR-OUT-04 (empathy required in a problem flow) |
 | KB / tools | KB: KB-ESC-002@1.0.0 (0.78); retrieval confidence 0.78; decision answer |
 | Action | transfer: to the authentication flow; the acknowledgement comes before the request to verify (P1) |
-| Generation | hybrid (llm-guided structure: Acknowledge slot written by the model, the rest locked) `TPL-GEN-GREETING/with_request@1.0.0` + `TPL-CMP-EMPATHY-FIRST/needs_verification_first@1.0.0` (language en); patterns: P1, P2; anti-pattern check: none |
+| Generation | hybrid (llm-guided structure: Acknowledge slot written by the model, the rest locked) `TPL-GEN-GREETING/with_request@1.1.0` + `TPL-CMP-EMPATHY-FIRST/needs_verification_first@1.0.0` (language en); patterns: P1, P2; anti-pattern check: none |
 | State | phase AUTH_REQUIRED; auth anonymous; turn_count 2; topic_stack [TXN-002: active]; slots {amount=INR 15,000 (stated, not yet validated)}; pending_confirmation none; counters: all 0; turns_since_resolution 2; escalation_proximity 0.45 |
 | Decision point | The brief shows no verification at all in this case. Looking up a transaction and blocking a card both need otp_verified here (D-16, D-94). |
 
@@ -162,7 +162,7 @@ Turn unit: one customer or agent message (D-119). System events (E) are not coun
 | Guardrails | checked: Output Safety Layer: GR-OUT-01, GR-OUT-02, GR-OUT-03, GR-OUT-04, GR-OUT-05, GR-OUT-06; triggered: none |
 | KB / tools | router: agent_first_name=Asha (synthetic); team_plain=fraud team |
 | Action | escalate: handoff complete; the agent posts one line and stops replying |
-| Generation | template `TPL-ESC-HUMAN-JOINED/standard@1.0.0` (language en); patterns: P5; anti-pattern check: none |
+| Generation | template `TPL-ESC-HUMAN-JOINED/standard@1.1.0` (language en); patterns: P5; anti-pattern check: none |
 | State | phase HANDOFF; auth otp_verified; turn_count 8; topic_stack [SEC-001: active, TXN-002: parked]; slots {amount=INR 15,000 (validated against the record); transaction_id=TXN-SYN-0201 (filled); card_last4=4521 (from the record); merchant_name=XYZ Electronics Ltd. (from the record)}; pending_confirmation none; counters: all 0; turns_since_resolution 8; escalation_proximity 0.90 |
 
 ## Closing
@@ -198,7 +198,7 @@ Turn unit: one customer or agent message (D-119). System events (E) are not coun
 | 7 | Actions already taken | block_card at T7: ok, reference BLK-SYN-0201; flag_fraud at T7: ok, reference FRD-SYN-0201 |
 | 8 | Escalation trigger and reason | trigger_id ESC-001; rule_id ESC-001.a and ESC-001.c; priority P0; source customer_report; secondary []; reason_text: Customer states she did not make the payment and that her card details were stolen.; evidence_turns [T4] |
 
-Envelope: priority P0; queue Fraud Investigation; handoff_mode warm; language en; channel app; complete true; missing_fields []; versions.prompt_version sp-1.0.0+518d5a1e.n000000.  Never in the package: full card number, CVV, PIN, full Aadhaar, password, OTP.
+Envelope: priority P0; queue Fraud Investigation; handoff_mode warm; language en; channel app; complete true; missing_fields []; versions.prompt_version sp-1.1.0+1527a050.n000000.  Never in the package: full card number, CVV, PIN, full Aadhaar, password, OTP.
 
 ## Self-audit
 

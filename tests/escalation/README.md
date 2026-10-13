@@ -9,14 +9,14 @@ Brief refs: A6 pp.16-17 (the 15 triggers), A9.2 p.25 (Premature Escalation, -10 
 | File | Cases | Purpose |
 |---|---|---|
 | `triggers-p0.yaml` | 11 | ESC-001, ESC-009, ESC-011, ESC-012: fire and near-miss cases |
-| `triggers-p1.yaml` | 17 | ESC-002, ESC-004, ESC-005, ESC-007, ESC-008, ESC-013, ESC-015 |
+| `triggers-p1.yaml` | 18 | ESC-002, ESC-004, ESC-005, ESC-007, ESC-008, ESC-013, ESC-015 |
 | `triggers-p2.yaml` | 11 | ESC-003, ESC-006, ESC-010, ESC-014 |
 | `extras.yaml` | 14 | The additions XTR-01 to XTR-07 (not brief triggers) |
 | `boss-level6.yaml` | 10 | Level 6 boss: ambiguous edge cases with expected owner, priority, queue and reasoning |
 | `validate_escalation.py` | | Structural validator for the rules file, these cases and the Day 12 documents |
 | `README.md` | | This file |
 
-Totals: 39 cases for the brief's 15 triggers (19 fire, 20 near-miss), 14 cases for the additions (7 fire, 7 near-miss), 10 boss cases; 63 in all.
+Totals: 40 cases for the brief's 15 triggers (20 fire, 20 near-miss), 14 cases for the additions (7 fire, 7 near-miss), 10 boss cases; 64 in all.
 
 ## 2. Schema
 
@@ -67,7 +67,7 @@ IDs are never reused. A new case for a trigger takes the next number; the rules 
 | ESC-001 | P0 | ESC-T-001-01, ESC-T-001-03 | ESC-T-001-02 | Escalating an unrecognised merchant name before the customer denies the payment |
 | ESC-002 | P1 | ESC-T-002-01 | ESC-T-002-02 | Treating a question about the ombudsman route as a threat |
 | ESC-003 | P2 | ESC-T-003-01 | ESC-T-003-02, ESC-T-003-03 | Escalating when the third turn is clear; a turn at exactly 0.40 |
-| ESC-004 | P1 | ESC-T-004-01, ESC-T-004-04 | ESC-T-004-02, ESC-T-004-03 | A single blunt message; a score exactly at the threshold; an uncertain score |
+| ESC-004 | P1 | ESC-T-004-01, ESC-T-004-04, ESC-T-004-05 | ESC-T-004-02, ESC-T-004-03 | A single blunt message; a score exactly at the threshold; an uncertain score |
 | ESC-005 | P1 | ESC-T-005-01 | ESC-T-005-02 | A dispute of exactly INR 50,000 |
 | ESC-006 | P2 | ESC-T-006-01 | ESC-T-006-02 | One request where the customer then accepts the agent's offer |
 | ESC-007 | P1 | ESC-T-007-01 | ESC-T-007-02 | A closure below the 5L line; unequal tone across the line |

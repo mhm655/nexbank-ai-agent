@@ -137,7 +137,7 @@ Tone by context (extends `response-generation.md` section 2 and `sentiment.md` s
 
 ## 5. Matrix: template by pattern and anti-pattern
 
-X means the template implements the pattern (P columns) or its wording is designed to avoid the anti-pattern (AP columns). The source of truth is the `a9` field of each template; the validator checks that every template is listed here. Totals over 63 templates: P1 12, P2 23, P3 7, P4 33, P5 13; AP1 25, AP2 25, AP3 33, AP4 6, AP5 13, AP6 13, AP7 10, AP8 30. Every pattern and every anti-pattern has at least one template.
+X means the template implements the pattern (P columns) or its wording is designed to avoid the anti-pattern (AP columns). The source of truth is the `a9` field of each template; the validator checks that every template is listed here. Totals over 73 templates: P1 14, P2 24, P3 7, P4 37, P5 20; AP1 29, AP2 27, AP3 39, AP4 9, AP5 16, AP6 13, AP7 11, AP8 33. Every pattern and every anti-pattern has at least one template.
 
 | Template | P1 | P2 | P3 | P4 | P5 | AP1 | AP2 | AP3 | AP4 | AP5 | AP6 | AP7 | AP8 | Guardrails (first three) |
 |---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
@@ -150,12 +150,16 @@ X means the template implements the pattern (P columns) or its wording is design
 | `TPL-GEN-CARRYOVER` | . | . | . | . | X | X | . | X | . | . | X | . | . | GR-SEC-R7, GR-SEC-R2, GR-SEC-R1 |
 | `TPL-GEN-DISCLOSE-MORE` | . | X | . | . | . | . | X | . | . | . | . | . | X | GR-REG-01, GR-OUT-01, GR-OUT-03 |
 | `TPL-GEN-CLOSING` | . | . | . | . | X | . | X | . | . | . | . | . | . | GR-REG-04 |
+| `TPL-GEN-TWO-REQUESTS` | . | . | . | . | X | X | X | . | . | . | . | . | . | GR-ATK-09, GR-SYS-01 |
+| `TPL-GEN-LIMIT-CLOSE` | . | . | . | X | X | . | X | X | X | . | . | . | . | GR-ATK-09, GR-OUT-05, GR-REG-04 |
 | `TPL-AUTH-OTP-REQUEST` | . | X | . | . | . | . | X | . | . | . | X | . | . | GR-SEC-R2, GR-SEC-R5, GR-REG-08 |
 | `TPL-AUTH-STEP-UP` | . | X | X | . | . | . | . | . | . | . | X | . | . | GR-SEC-R2, GR-SEC-R5, GR-ATK-10 |
 | `TPL-AUTH-OTP-FAILED` | . | . | . | X | . | X | . | . | . | X | . | . | . | GR-SEC-R2, GR-ATK-10, GR-SEC-R6 |
 | `TPL-AUTH-SESSION-TIMEOUT` | . | . | X | . | X | . | . | X | . | . | X | . | . | GR-SEC-R7, GR-SEC-R2, GR-OUT-05 |
 | `TPL-SEC-DO-NOT-SHARE` | . | . | . | X | . | X | . | . | . | X | . | . | . | GR-SEC-R1, GR-SEC-R5, GR-REG-05 |
+| `TPL-SEC-PHISHING-TRIAGE` | X | . | . | . | . | . | . | X | . | X | . | . | . | GR-SEC-R5, GR-SEC-R6, GR-OUT-05 |
 | `TPL-ACC-BALANCE` | . | X | . | . | . | . | X | . | X | . | X | . | X | GR-SEC-R1, GR-SEC-R2, GR-REG-08 |
+| `TPL-ACC-CLOSURE-REASON` | . | . | . | . | X | . | . | X | . | X | . | . | . | GR-REG-04, GR-SEC-R2, GR-OUT-05 |
 | `TPL-TXN-STATUS` | X | X | . | X | . | . | X | X | . | X | . | . | X | GR-OUT-01, GR-OUT-05, GR-SEC-R3 |
 | `TPL-TXN-DISPUTE-INTAKE` | X | . | . | . | X | X | . | X | . | X | X | . | . | GR-SEC-R2, GR-OUT-05, GR-SEC-R5 |
 | `TPL-ACT-CONFIRM` | . | . | X | . | . | . | X | X | . | . | X | . | . | GR-SEC-R2, GR-SEC-R7, GR-SEC-R1 |
@@ -164,8 +168,10 @@ X means the template implements the pattern (P columns) or its wording is design
 | `TPL-ACT-CANNOT-DO` | . | . | . | X | . | X | . | X | . | . | . | . | X | GR-SEC-R3, GR-REG-15, GR-OUT-05 |
 | `TPL-CMP-EMPATHY-FIRST` | X | . | . | . | . | . | X | X | . | X | . | X | . | GR-OUT-04, GR-OUT-05, GR-REG-03 |
 | `TPL-CMP-GRIEVANCE-INFO` | X | X | . | X | . | . | X | X | . | X | . | . | X | GR-REG-03, GR-REG-18, GR-REG-19 |
+| `TPL-CMP-STATUS` | . | X | . | X | . | . | . | X | . | . | . | . | X | GR-REG-03, GR-OUT-01, GR-OUT-05 |
 | `TPL-KB-DEGRADE` | . | . | . | X | . | X | . | X | . | . | . | . | X | GR-OUT-03, GR-OUT-01, GR-SYS-01 |
 | `TPL-KB-GAP` | . | X | . | X | . | . | X | X | . | . | . | . | X | GR-OUT-01, GR-OUT-03, GR-REG-01 |
+| `TPL-KB-TRANSLATION-UNAVAILABLE` | . | . | . | X | . | X | . | X | . | . | . | . | X | GR-OUT-03, GR-REG-17, GR-OUT-01 |
 | `TPL-SRV-CSAT` | . | X | . | . | . | . | X | . | . | . | . | X | . | GR-REG-04, GR-OUT-02 |
 | `TPL-SRV-CES` | . | X | . | . | . | . | X | . | . | . | . | . | . | GR-REG-04 |
 | `TPL-SRV-NPS` | . | X | . | . | . | . | X | . | . | . | . | . | . | GR-REG-04 |
@@ -204,18 +210,26 @@ X means the template implements the pattern (P columns) or its wording is design
 | `TPL-ESC-HANDOFF-FAILED` | X | . | . | X | . | X | . | X | . | . | . | X | . | GR-SEC-R6, GR-OUT-05, GR-SYS-01 |
 | `TPL-ESC-DEESCALATION-CHECK` | . | . | . | . | X | X | . | . | X | . | . | . | . | GR-REG-16 |
 | `TPL-ESC-REFERRAL` | . | . | . | X | X | . | . | X | . | . | . | . | X | GR-SEC-R2, GR-SEC-R3, GR-OUT-05 |
+| `TPL-ESC-ABANDONED-P2` | . | . | . | X | X | . | . | X | . | . | . | X | . | GR-OUT-05, GR-SEC-R6 |
+| `TPL-ESC-HUMAN-REQUEST-FIRST` | . | . | . | . | X | X | . | . | X | . | . | . | . | GR-REG-16, GR-OUT-05, GR-REG-04 |
+| `TPL-ESC-CARE-OFFER` | X | . | . | . | X | . | . | . | . | X | . | . | X | GR-REG-17, GR-REG-04, GR-OUT-05 |
+| `TPL-ESC-HANDOFF-CANCELLED` | . | . | . | . | X | X | . | . | X | . | . | . | . | GR-REG-16, GR-OUT-05 |
 
-Reading the matrix: an empty AP cell does not mean the template commits the anti-pattern; it means the template is not a control for it. All templates pass the global wording rules (no figure outside a slot, no commitment, banned phrases), so AP3 and AP8 are held for every template by the validator even where the cell is empty.
+Reading the matrix: an empty AP cell does not mean the template commits the anti-pattern; it means the template is not a control for it.
+
+What the validator guarantees and what it does not (D-194). An earlier version of this paragraph said that the validator holds AP3 and AP8 "for every template"; that was too strong, and 15 seeded defects passed it. For every template, variant, slot fallback and label text the validator now fails the build on: a digit outside a slot; the global banned phrases; a time or outcome word without a digit (tomorrow, shortly, soon, a number of days, kal, jald, and Hindi equivalents); advice wording (suggest, recommend, should invest, best option, and Hindi and Hinglish equivalents) unless the same sentence refuses it; a request for a credential in chat in English, Hindi or Hinglish, unless the sentence forbids it or points to the secure channel; a claim to be human, staff or a named person; a sentence count that differs between English, Hindi and Hinglish; and any declared required safety marker or AI disclosure that is missing from any language of any variant that declares it. It also fails a repository path that does not exist, a parameter of an excluded group (X4, X5) marked proposable, and a change to layer 0, 1 or 2 that is re-blessed with `--rehash` without `--allow-immutable-change` and a decision id. It does not guarantee that Hindi or Hinglish wording is correct or natural (native review does); that a paraphrase of banned wording is caught (the lists are a floor, and the Output Safety Layer and the linked cases are the other controls); that the declared safety markers are complete (a reviewer maintains them, and a template with no declared marker has no such check); or that a prompt layer is safe: the hashes and the required-instruction list detect change, not harm, and they sit in the same repository as the layers, so an approved immutable hash kept outside the repository (`--approved-immutable`) is the stronger control. The repeatable proof that each audited defect is now caught is in the Day 13 audit-fix handoff.
+
+Language of locked KB slots (known limitation and launch blocker, D-199). The words of a template around a locked KB slot are written in the reply language. The slot itself is filled by the renderer with the served-language body of the KB entry when the entry has a current reviewed one (today only KB-FAQ-001, KB-FAQ-002, KB-FAQ-008 and KB-FAQ-009), and otherwise with the English body, verbatim and untranslated, with the log flag `translation_unavailable` set. A Hindi or Hinglish reply to a question answered from any other entry therefore mixes languages: Hindi or Hinglish sentences around an English fact. Nothing is machine-translated, because a translated financial fact is a fabricated fact (A9.2). The templates affected are the ADV family, `TPL-KB-GAP`, `TPL-ACT-CONFIRM` (`effect`), `TPL-ACT-DONE` (`next_steps`), `TPL-ACT-CANNOT-DO`, `TPL-ESC-REFERRAL`, `TPL-CMP-GRIEVANCE-INFO`, `TPL-GEN-DISCLOSE-MORE`, `TPL-SYS-NOTICE` (`policy_text`) and `TPL-SYS-CORRECTION`. `TPL-KB-TRANSLATION-UNAVAILABLE` is the alternative reply (say so and offer English or a person, as `retrieval-pipeline.md` section 2 describes); whether it replaces the mixed reply for fact-bearing templates is an open decision for Product and Risk. The fix is reviewed `body_i18n` for the KB entries, after which the mixed rendering disappears with no template change.
 
 ## 6. Controls proposed here that do not exist in earlier documents
 
-These three are small additions needed to make the table in section 3 complete. They are proposals (D-150) and are not yet in `output-safety-layer.md` or the state schema; the handoff lists them as changes for the owners of those files.
+These three are small additions needed to make the table in section 3 complete. They are proposals (D-150). The first two are not yet in `output-safety-layer.md`; the third now exists in the state schema (it was added after this section was written); the handoff lists the changes for the owners of those files.
 
 | Proposal | Where it would live | Purpose |
 |---|---|---|
 | Repeat check: the Response Generator compares the normalised reply with the previous agent turn and, on a match, selects the next variant or the human offer | Response Generator, before the Output Safety Layer | AP1 Robotic Loop for free text (templates already rotate) |
 | Verification-request check: a draft that asks for verification while `auth_level` meets the intent's level and `auth_expiry` has not passed is replaced by the direct answer | Output Safety Layer, as a deterministic rule in stage S1 | AP6 Authentication Theatre |
-| `apology_given` per topic on the topic stack | `config/dialogue_state.schema.json` (proposed field) | AP7: one apology per issue across turns |
+| `apology_given` per topic on the topic stack | `config/dialogue_state.schema.json` (field exists, D-150) | AP7: one apology per issue across turns |
 
 ## 7. Using this in the Day 14 simulations
 
@@ -226,4 +240,5 @@ Each simulated conversation should annotate, per agent turn: the template id and
 1. Tone rules are untested with customers; the CEB owns the voice and has not reviewed it.
 2. The empathy trigger threshold and the check-in limits are proposals in `config/parameters.yaml`.
 3. Hindi and Hinglish register needs native review; cultural adaptation for the five secondary languages is not written.
-4. The three controls in section 6 need acceptance by the owners of the Output Safety Layer and the state schema.
+4. The first two controls in section 6 need acceptance by the owner of the Output Safety Layer; the third is in the state schema.
+5. Hindi and Hinglish replies built from locked KB slots mix languages until the KB entries carry reviewed `body_i18n` (section 5, D-199). Launch blocker.

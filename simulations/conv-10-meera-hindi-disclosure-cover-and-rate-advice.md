@@ -27,7 +27,7 @@ Non-English text in this file (customer lines, template wording, glosses) is not
 | Templates used | TPL-GEN-AI-DISCLOSURE, TPL-ADV-RATE, TPL-ADV-ADVISOR-OFFER, TPL-ADV-ADVISOR-DECLINED, TPL-GEN-CLOSING |
 | KB entries cited | KB-FAQ-009, KB-POL-009, KB-FAQ-001, KB-REG-010, KB-PRD-001, KB-POL-001, KB-FAQ-008, KB-PRD-002, KB-REG-005 |
 | Tools called | none |
-| prompt_version | sp-1.0.0+518d5a1e.n000000 (template_version 1.0.0 for every template; model_version unbound) |
+| prompt_version | sp-1.1.0+1527a050.n000000 (template versions as listed in config/templates, shown with each Generation row; model_version unbound) |
 | What this conversation proves | A Hindi-speaking customer gets the AI disclosure, the DICGC cover and the FD range from the reviewed Hindi KB bodies, the choice between a fixed deposit and savings is declined with the published range and one advisor offer, and the declined offer is acknowledged and not repeated. |
 
 Setup: Meera, Jaipur, writes in Devanagari Hindi on the public site. Anonymous. No earlier session. Only four KB entries have reviewed Hindi bodies (KB-FAQ-001, KB-FAQ-002, KB-FAQ-008, KB-FAQ-009); this conversation stays inside them.
@@ -130,7 +130,7 @@ _English gloss (annotation only, not customer-facing; not native-reviewed): NexF
 | Guardrails | checked: Output Safety Layer: GR-OUT-01, GR-OUT-02, GR-OUT-03, GR-OUT-04, GR-OUT-05, GR-OUT-06; triggered: GR-ADV-06 (facts only, no choice between the two products), GR-ADV-08 (advisor offered once), GR-REG-20, GR-OUT-01 (range from the KB) |
 | KB / tools | KB: KB-POL-001@1.0.0 (0.89), KB-FAQ-008@1.0.0 (0.86), KB-PRD-002@1.0.0 (0.80), KB-REG-005@1.0.0 (0.74); retrieval confidence 0.89; decision answer |
 | Action | recommend: boundary reply in the reviewed Hindi template; the published range as the fact, no comparison with savings, offer of a SEBI-registered advisor (ESC-013) |
-| Generation | template `TPL-ADV-RATE/range_only@1.0.0` + `TPL-ADV-ADVISOR-OFFER/default@1.0.0` (language hi); patterns: P2, P4; anti-pattern check: none |
+| Generation | template `TPL-ADV-RATE/range_only@1.1.0` + `TPL-ADV-ADVISOR-OFFER/default@1.0.0` (language hi); patterns: P2, P4; anti-pattern check: none |
 | State | phase RESPOND; auth anonymous; turn_count 6; topic_stack [PRD-005 (interest_rate_advice): active]; slots {}; pending_confirmation none; counters: advice_deflections 1, advisor_offers 1; turns_since_resolution 2; escalation_proximity 0.00 |
 | Decision point | KB-POL-001, interest_rates: the permitted form is a published rate; the prohibited form is 'You should invest in FD as it gives better returns'. The question compares a product with her savings account, so no rate for the savings product is quoted next to the FD range either. |
 

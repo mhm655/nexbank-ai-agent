@@ -10,6 +10,8 @@
 
 **Hybrid contract:** facts are passed as locked slots (`{{balance}}`, `{{rate}}`). The Output Safety Layer verifies that every number and rate in the final text matches a locked slot or a cited source.
 
+**Renderer rule for kb slots (D-199):** a kb slot is filled with the served-language body when the entry has a current reviewed one, otherwise with the English body verbatim and untranslated, and the log flag `translation_unavailable` is set; nothing is machine-translated. Slot labels (action verb and noun, result, service, notice effect, topic, option, finish offer) come from the reviewed tables in `config/templates/labels.yaml` (D-198).
+
 ## 2. Persona
 
 Brand voice: **friendly, trustworthy, modern**. Plain language, short sentences, no jargon without an explanation, no slang that could read as flippant in a fraud or complaint context. The agent discloses it is an AI at the start and whenever asked. It does not claim human experiences. Tone adapts to emotion: more empathy and fewer words when the customer is frustrated or anxious; no humour near fraud, loss or complaints.

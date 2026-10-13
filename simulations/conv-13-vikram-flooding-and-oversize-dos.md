@@ -25,7 +25,7 @@ Designed, illustrative conversation. It shows how the specified system must beha
 | Templates used | TPL-GEN-GREETING, TPL-ATK-SHORTEN-OR-SPLIT, TPL-ATK-THROTTLE, TPL-ESC-HANDOFF-WARM, TPL-ESC-HUMAN-JOINED |
 | KB entries cited | KB-ESC-020, KB-ESC-003 |
 | Tools called | none |
-| prompt_version | sp-1.0.0+518d5a1e.n000000 (template_version 1.0.0 for every template; model_version unbound) |
+| prompt_version | sp-1.1.0+1527a050.n000000 (template versions as listed in config/templates, shown with each Generation row; model_version unbound) |
 | What this conversation proves | Oversized and flooded input is bounded and answered in plain neutral templates without executing anything partially, and a request for a human is never blocked by the limiter. |
 
 Setup: Anonymous chat session from a test client. Limits in force: atk_input_max_chars 4000, atk_msgs_per_minute_per_session 20 (config/parameters.yaml).
@@ -60,7 +60,7 @@ Turn unit: one customer or agent message (D-119). System events (E) are not coun
 | Guardrails | checked: Output Safety Layer: GR-OUT-01, GR-OUT-02, GR-OUT-03, GR-OUT-04, GR-OUT-05, GR-OUT-06; triggered: GR-REG-16 (AI disclosure in the first reply), GR-ATK-09 (shorten-or-split reply) |
 | KB / tools | none |
 | Action | respond: the input was too long and no intent was recognised in the processed part; ask for a short statement of the need |
-| Generation | template `TPL-GEN-GREETING/with_request@1.0.0` + `TPL-ATK-SHORTEN-OR-SPLIT/too_long@1.0.0` (language en); patterns: P4; anti-pattern check: none |
+| Generation | template `TPL-GEN-GREETING/with_request@1.1.0` + `TPL-ATK-SHORTEN-OR-SPLIT/too_long@1.0.0` (language en); patterns: P4; anti-pattern check: none |
 | State | phase RESPOND; auth anonymous; turn_count 2; topic_stack []; slots {}; pending_confirmation none; counters: throttle_events 0, oversize_inputs 1; turns_since_resolution 2; escalation_proximity 0.00 |
 
 ### E1 | System event
@@ -147,7 +147,7 @@ Turn unit: one customer or agent message (D-119). System events (E) are not coun
 | Guardrails | checked: Output Safety Layer: GR-OUT-01, GR-OUT-02, GR-OUT-03, GR-OUT-04, GR-OUT-05, GR-OUT-06; triggered: none |
 | KB / tools | router: agent_first_name=Imran (synthetic); team_plain=support team |
 | Action | escalate: handoff complete; the agent posts one line and stops replying |
-| Generation | template `TPL-ESC-HUMAN-JOINED/standard@1.0.0` (language en); patterns: P5; anti-pattern check: none |
+| Generation | template `TPL-ESC-HUMAN-JOINED/standard@1.1.0` (language en); patterns: P5; anti-pattern check: none |
 | State | phase HANDOFF; auth anonymous; turn_count 7; topic_stack [GEN-003 (first_request): active]; slots {}; pending_confirmation none; counters: throttle_events 1, human_requests 1; turns_since_resolution 7; escalation_proximity 0.30 |
 
 ## Closing
@@ -173,7 +173,7 @@ Turn unit: one customer or agent message (D-119). System events (E) are not coun
 | 7 | Actions already taken | none |
 | 8 | Escalation trigger and reason | trigger_id XTR-01; rule_id XTR-01; priority P2; source customer_request; secondary []; reason_text: Customer asked for a human agent (request 1).; evidence_turns [T5] |
 
-Envelope: priority P2; queue Next Available Agent; handoff_mode warm; language en; channel chat; complete true; missing_fields []; versions.prompt_version sp-1.0.0+518d5a1e.n000000. restricted_notes carries the oversize and rate-limit signals (GR-ATK-08, GR-ATK-09), visible to the receiving team only.  Never in the package: full card number, CVV, PIN, full Aadhaar, password, OTP.
+Envelope: priority P2; queue Next Available Agent; handoff_mode warm; language en; channel chat; complete true; missing_fields []; versions.prompt_version sp-1.1.0+1527a050.n000000. restricted_notes carries the oversize and rate-limit signals (GR-ATK-08, GR-ATK-09), visible to the receiving team only.  Never in the package: full card number, CVV, PIN, full Aadhaar, password, OTP.
 
 ## Self-audit
 

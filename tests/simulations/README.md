@@ -23,7 +23,7 @@ Needs Python 3 and PyYAML. On Windows set `PYTHONIOENCODING=utf-8` if an error m
 | S2 | Required header fields are present and non-empty (21 fields: scenario, persona, channel, language, starting auth level, intents, guardrails, escalation outcome, escalation IDs, priority, adversarial vectors, security rules, patterns, anti-patterns, coverage tags, case study, templates, KB entries, tools, `prompt_version`, what it proves); `prompt_version` is the Day 13 string; the "designed, illustrative" statement and (from conv-07) the Setup line are present | missing field or statement |
 | S3 | Self-audit block: the pattern table has P1 to P5, the anti-pattern table has AP1 to AP8, and every anti-pattern result is `absent`, `not at risk` or `not applicable`; a Closing block exists | block missing, malformed or reporting a violation |
 | S4 | Turn structure: turns are `T1..Tn` in order; the first message is the customer's; every turn has the seven annotation rows; every customer turn shows an entity extraction; every conversation has at least one decision point; the `State` row carries phase, auth, topic stack, slots, pending confirmation, counters, turns since resolution and escalation proximity, and its `turn_count` equals the turn number; Closing "Messages" equals the number of turns; customer turns show the Input Guard check and agent turns the Output Safety Layer check | structure or state missing |
-| S5 | Identifiers exist: intent IDs, GR IDs, ESC IDs and sub-rules, XTR IDs, KB IDs (and the cited `@version` equals the entry's current version), TPL IDs (and the cited variant and version exist), queue names in router rows, tool names, decision IDs (D-172 to D-180 are reserved for Day 14) | dangling reference |
+| S5 | Identifiers exist: intent IDs, GR IDs, ESC IDs and sub-rules, XTR IDs, KB IDs (and the cited `@version` equals the entry's current version), TPL IDs (and the cited variant and version exist), queue names in router rows, tool names, decision IDs (D-172 to D-180 and D-200 to D-207 are reserved for Day 14 and its audit fixes) | dangling reference |
 | S6 | Header consistency: Templates used, KB entries cited, Tools called and Guardrails exercised each equal the set found in the turn annotations; every header intent appears in an NLU row | header says something the turns do not |
 | S7 | Characters: English text is ASCII (no em dash, smart quote, emoji); only Devanagari and Gujarati are allowed beyond ASCII; non-English turns have an English gloss and the file says the text is not native-reviewed; the word PLAN does not appear | forbidden character, missing gloss |
 | S8 | Sensitive digits: no card-like run of 13 to 19 digits, no 4-4-4 or 12-digit Aadhaar-like run, no phone-like number, no 9 to 18 digit account-like run, no OTP-like or CVV-like digits next to the word code, OTP or CVV, no PAN-like string. Masked forms ("ending 4521") and `{{SYN_...}}` placeholders pass | a value that could be real |
@@ -33,16 +33,20 @@ Needs Python 3 and PyYAML. On Windows set `PYTHONIOENCODING=utf-8` if an error m
 | S12 | `pattern-audit.md` has a pattern row and an anti-pattern row for every conversation, and every number in every AI turn appears in that conversation's AUTO-FAIL sweep rows, and the sweep states "Figures with no source: 0" | a figure with no source row |
 | S13 | Coverage floor: at least 22 conversations; at least 25 distinct intents and all seven families; all six personas; all six adversarial vectors; priorities P0, P1 and P2; at least 10 distinct ESC triggers fired and ESC-001, 004, 008, 011, 013 and 015 among them; XTR-01 and ESC-006; every account-security rule R1 to R8; the advice boundary in at least three categories; a Hindi (Devanagari) conversation, at least three Hinglish conversations, a secondary-language conversation with the fallback ladder; a session timeout, a step-up, a tool failure (ESC-014), a multi-session carry-over, a multi-intent turn, a near-miss, a sentiment recovery and a graceful degradation | a required scenario missing |
 | S14 | Exactly one Level 7 conversation, with 25 or more messages, at least 3 intents, an authentication transition, a guardrail activation, a raw sentiment below -0.70 followed by a score of -0.40 or better, and an escalation decision | the boss journey incomplete |
+| S15 | AI-turn rules in any language (added after the Day 14 audit): a credential or identity number asked for in chat (OTP, PIN, CVV, password, Aadhaar, PAN, card or account number with a request verb, in English, Hindi or Hinglish; a sentence that forbids sharing is not flagged); a claim to be human or not an AI; advice in other words ("it is a good idea to", "I would suggest", "you should invest"); a rate written in words; a duration or date promise ("by tomorrow", "in 2 working days", "kal tak", "2 din mein") that no tool, router or KB row of the same conversation backs with the same number and unit | a rule broken in a paraphrase that the older phrase list missed |
+| S16 | Topic statuses in every State row are one of `active`, `parked`, `resolved`, `abandoned` (`config/dialogue_state.schema.json`); every intent used in the turns (NLU primary intent, topic stack) is in the header `Intents covered` (GEN-006 excepted) | a status or an intent outside the contract |
+| S17 | Escalation claims: an ESC ID that the Escalation outcome says fired is listed in Escalation IDs; every listed ID names a sub-rule (`ESC-nnn.x`) in the turns and in the Escalation record; a fired escalation has a Handoff package table with exactly the 8 numbered elements (D-04) | a fire claimed without a cited condition, or a short package |
+| S18 | The self-audit numbers match the turns: the longest agent message in AP2, the agent-message count in AP1, the figure count in AP8 (conv-07 onward) against the AUTO-FAIL sweep rows, and the total sentence of `pattern-audit.md` against its table | a stale number after an edit |
 
 ## 3. Result of the run
 
 ```text
-conversation files: 30 in simulations
-messages: 291
-distinct intents: 30 | ESC fired: 14 ['ESC-001', 'ESC-002', 'ESC-003', 'ESC-004', 'ESC-005', 'ESC-006', 'ESC-007', 'ESC-008', 'ESC-009', 'ESC-011', 'ESC-012', 'ESC-013', 'ESC-014', 'ESC-015']
+conversation files: 32 in simulations
+messages: 318
+distinct intents: 34 | ESC fired: 15 ['ESC-001', 'ESC-002', 'ESC-003', 'ESC-004', 'ESC-005', 'ESC-006', 'ESC-007', 'ESC-008', 'ESC-009', 'ESC-010', 'ESC-011', 'ESC-012', 'ESC-013', 'ESC-014', 'ESC-015']
 personas: ['Arjun', 'Meera', 'Priya', 'Rajesh', 'Sunita', 'Vikram']
-languages: {'en': 22, 'hinglish': 5, 'hi': 1, 'gu (secondary), replies in hi': 1, 'en (one Hinglish message at T14)': 1}
-template ids used: 51 of 63
+languages: {'en': 24, 'hinglish': 5, 'hi': 1, 'gu (secondary), replies in hi': 1, 'en (one Hinglish message at T14)': 1}
+template ids used: 52 of 73
 RESULT: PASS
 ```
 
@@ -65,6 +69,27 @@ Nine defects were seeded, one at a time, into scratch copies of `simulations/` k
 | 9 | An OTP-like number next to the word "code" in a customer turn of conv-15 | S8 | OTP-like digits next to the word code or OTP |
 
 Defect 9 was first missed because the pattern refused a number followed by a full stop; the pattern was corrected and the run repeated.
+
+### 4.1 Second round of seeded defects (Day 14 audit fixes)
+
+The Day 14 audit seeded 21 defects into scratch copies; 9 were not caught. The checks S15 to S18 were added, and each missed defect was seeded again, one at a time, into a scratch copy kept outside the repository. The run compares the errors of the mutated copy with those of an unmutated copy of the same folder, so only a new error counts as a catch.
+
+| Seeded defect | Where | Caught by |
+|---|---|---|
+| "Please type your full Aadhaar number here." appended to an AI turn | conv-20 | S15 |
+| "I am a human agent." and "I'm a real person and not an AI." appended | conv-26 | S15 |
+| "It is a good idea to put more money into NexFD.", "You should take the 5 year loan.", "I would suggest the mutual fund for you." | conv-16, conv-08, conv-03 | S15 |
+| "You will have the refund by tomorrow.", "The money will come back in 2 working days." | conv-09 | S15 (the second only because the 2 in that conversation is a number of minutes) |
+| The same promises in Hindi ("कल तक") and Hinglish ("2 din mein") | conv-10, conv-12 | S15 |
+| "The rate is eight point nine percent." and "six percent" | conv-07 | S15 |
+| An OTP request in Hindi ("कृपया अपना ओटीपी बताइए।") and Hinglish ("apna PIN bhejiye") | conv-10, conv-12 | S15 |
+| Escalation outcome says ESC-004 fired, header says none; header lists ESC-004 with no sub-rule | conv-24 | S17 |
+| Handoff package row 6 or row 8 deleted | conv-09 | S17 |
+| A topic status `candidate` or `queued` | conv-26, conv-12 | S16 |
+| `CMP-005` removed from Intents covered although the turns use it | conv-29 | S16 |
+| "Please don't share your OTP with anyone." appended (must NOT be flagged) | conv-11 | not flagged, as intended |
+
+The real files, run through the stronger checks, showed 35 genuine defects, all fixed in the files: 26 topic-status rows (`queued`, `closed`, `candidate`), 5 headers that omitted an intent the turns use (conv-16, 21, 24, 27, 29), and 4 stale self-audit word counts. No credential request, human claim, paraphrased advice, unbacked duration or rate in words was found in any of the 32 conversations.
 
 ## 5. What it does not check
 

@@ -44,9 +44,11 @@ ESC_SUB = {s["id"] for t in ESCR["triggers"] for s in t.get("sub_rules", [])}
 XTR_IDS = {x["id"] for x in ESCR["extra_rules"]}
 QUEUES = {q["name"] for q in ESCR["queues"]}
 KB = {}
+KB_TEXT = {}
 for f in glob.glob(os.path.join(ROOT, "docs", "knowledge-base", "entries", "*.yaml")):
     for e in load(f)["entries"]:
         KB[e["id"]] = e["version"]
+        KB_TEXT[e["id"]] = yaml.safe_dump(e, allow_unicode=True).lower()
 TPL = {}
 for f in glob.glob(os.path.join(ROOT, "config", "templates", "*.yaml")):
     d = load(f)
@@ -57,8 +59,22 @@ TOOLS = {"get_balance", "get_statement", "get_profile_masked", "get_txn", "searc
          "block_card", "request_replacement", "create_complaint", "get_complaint_status", "schedule_callback", "flag_fraud",
          "send_credential_reset_link", "emi_calculator", "kb_search", "route_to_queue", "summarise_conversation"}
 DECISIONS = set(re.findall(r"^\| (D-\d+) ", read(os.path.join(ROOT, "docs", "assumptions-and-decisions.md")), re.M))
-DECISIONS |= {"D-%d" % n for n in range(172, 181)}  # reserved for Day 14
+DECISIONS |= {"D-%d" % n for n in range(172, 181)} | {"D-%d" % n for n in range(200, 208)}  # reserved for Day 14 and the Day 14 audit fixes
 SEC_RULES = ["R%d" % i for i in range(1, 9)]
+
+def _find(node, key):
+    if isinstance(node, dict):
+        if key in node and isinstance(node[key], str):
+            return node[key]
+        for v in node.values():
+            r = _find(v, key)
+            if r:
+                return r
+    return None
+
+
+PROMPT_VERSION = _find(load(os.path.join(ROOT, "config", "system-prompt", "manifest.yaml")), "prompt_version") or "sp-"
+
 PERSONAS = ["Priya", "Rajesh", "Meera", "Arjun", "Sunita", "Vikram"]
 VECTORS = ["prompt injection", "jailbreak", "social engineering", "data exfiltration", "denial of service", "identity spoofing"]
 FAMILIES = ["ACC", "TXN", "CRD", "PRD", "CMP", "SEC", "GEN"]
@@ -70,10 +86,58 @@ REQUIRED_HEADER = ["Scenario", "Persona", "Channel", "Language", "Starting auth 
 ROW_NAMES = ["NLU", "Sentiment", "Guardrails", "KB / tools", "Action", "Generation", "State"]
 BANNED = [r"within \d+ ?(hours|hrs|minutes|mins|days)", r"guarantee", r"I promise", r"100% safe", r"will be credited", r"will be refunded",
           r"you should invest", r"I recommend", r"best option for you", r"I am human", r"I'm a human", r"your fault", r"you should have",
-          r"deeply apologi", r"sincerely regret", r"didn't understand", r"(share|provide|send|tell me|type) your (OTP|PIN|CVV|password)",
-          r"provide your account number", r"zero.liability"]
+          r"deeply apologi", r"sincerely regret", r"didn't understand", r"zero.liability"]
 MAX_WORDS = 250
+NEGATION = (r"\b(?:not|never|don't|do not|doesn't|does not|won't|can't|cannot|can not|no need|nobody|neither|nor|unable|avoid|without)\b"
+            r"|nahi|nahin|mat\b|kabhi|na karein|na kijiye|नहीं|मत\b|कभी|न करें")
+CRED_TERMS = (r"\botp\b|one[- ]time (?:code|password|pin)|\bpin\b|\bcvv\b|\bpassword\b|passcode|\baadhaa?r\b|\baadhar\b|\bpan (?:number|card)\b"
+              r"|card number|account number|\bexpiry\b|\bupi pin\b|\bmpin\b|आधार|पासवर्ड|ओटीपी|पिन\b|सीवीवी")
+REQ_VERBS = (r"\b(?:type|share|enter|send|give|provide|tell me|read out|read me|dictate|key in|submit|upload|text me|mail me|bataiye|batao|batayein|bataein|bhejiye|bhejein|bhejo|dijiye|dena|daaliye|daalen|likhiye|likhein)\b"
+             r"|बताइए|बताएं|भेजें|दीजिए|डालें|लिखें|साझा करें")
+SECURE_PLACE = r"secure (?:box|widget|step|verification|screen|page|field)|verification box|in the app|app screen"
+ADVICE_PARAPHRASE = (r"(?:good idea|better to|best to|wise to|advisable|you ought to|i would suggest|i'd suggest|suggest (?:that )?you|i advise|my advice|"
+                     r"go for|opt for|you should (?:invest|put|buy|take|choose|pick|go|opt|consider|keep|move|switch|select|apply))")
+HUMAN_CLAIMS = [r"\bI(?:'m| am) (?:a |an |the )?(?:real |actual )?(?:human|person|man|woman|girl|boy|staff|employee|executive|officer|manager)\b",
+                r"\bI(?:'m| am) (?:not|no) (?:an? )?(?:AI|bot|robot|machine|chatbot)\b", r"\bnot an? (?:AI|bot|robot|chatbot)\b",
+                r"\bI(?:'m| am) (?:a )?member of (?:the |our )?(?:NexBank )?(?:support|customer|service|staff|team)\b",
+                r"\bmy name is\b", r"\bI(?:'m| am) \w+ from NexBank\b", r"मैं (?:एक )?(?:इंसान|मानव|इंसान हूँ)",
+                r"main (?:ek )?(?:insaan|insan|human|real person) hoon", r"\bas a human\b"]
+_NUMW = (r"(?:zero|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|thirteen|fourteen|fifteen|sixteen|seventeen|eighteen|nineteen|"
+         r"twenty|thirty|forty|fifty|sixty|seventy|eighty|ninety|hundred|point)")
+RATE_WORDS = re.compile(r"\b" + _NUMW + r"(?:[ -]" + _NUMW + r")*\s*(?:percent|per cent|%|pratishat|prathishat|प्रतिशत)", re.I)
+_UNIT = r"(?:minutes?|mins?|hours?|hrs?|working days?|business days?|calendar days?|days?|weeks?|months?|years?|ghante|ghanta|ghanton|minute|din|dinon|घंटे|मिनट|दिन)"
+_QTY = r"(?:\d+(?:\.\d+)?|a|an|one|two|three|four|five|six|seven|eight|nine|ten|twelve|fifteen|twenty|thirty|a couple of|a few|few|several|एक|दो|तीन|चार|पाँच)"
+DURATION = re.compile(r"\b(?:within|in|by|after|before|inside|lagbhag|about)\s+(?:the next\s+)?" + _QTY + r"\s*(?:to \d+\s*)?(?:working |business |calendar )?" + _UNIT + r"\b"
+                      r"|\b(?:by|before|until|till|on)\s+(?:tomorrow|today|tonight|next week|next month|end of (?:the )?day|end of (?:the )?week|monday|tuesday|wednesday|thursday|friday|saturday|sunday)\b"
+                      r"|\b(?:kal tak|aaj tak|parso tak|kal se|कल तक|आज तक)\b"
+                      r"|\b\d+\s*(?:minutes?|mins?|hours?|working days?|business days?|days?|din|dinon|ghante|ghanta|ghanton|मिनट|घंटे|दिन)\s*(?:mein|me|में)\b", re.I)
 TURN_CEILING = 25
+
+
+UNIT_FAMILY = [("minute", r"minutes?|mins?|मिनट"), ("hour", r"hours?|hrs?|ghante|ghanta|ghanton|घंटे"), ("day", r"(?:working |business |calendar )?days?|din|dinon|दिन"),
+               ("week", r"weeks?"), ("month", r"months?"), ("year", r"years?")]
+
+
+def duration_parts(phrase):
+    """(quantity, unit family) pairs found in a phrase, or the calendar word (tomorrow, today ...)."""
+    out = set()
+    for q, u in re.findall(r"(\d+(?:\.\d+)?|a couple of|a few|few|several|one|two|three|four|five|six|seven|ten|twelve|fifteen|twenty|thirty)\s*(?:to \d+\s*)?"
+                           r"((?:working |business |calendar )?(?:minutes?|mins?|hours?|hrs?|days?|weeks?|months?|years?|ghante|ghanta|ghanton|din|dinon)|मिनट|घंटे|दिन)", phrase):
+        words = {"one": "1", "two": "2", "three": "3", "four": "4", "five": "5", "six": "6", "seven": "7", "ten": "10", "twelve": "12", "fifteen": "15", "twenty": "20", "thirty": "30"}
+        for fam, rx in UNIT_FAMILY:
+            if re.fullmatch(rx, u):
+                out.add((words.get(q, q), fam))
+    for w in re.findall(r"tomorrow|today|tonight|next week|next month|end of (?:the )?day|end of (?:the )?week|monday|tuesday|wednesday|thursday|friday|saturday|sunday|kal tak|aaj tak|parso tak|कल तक|आज तक", phrase):
+        out.add((w, "date"))
+    return out
+
+
+def duration_backed(phrase, backing, cust_text):
+    parts = duration_parts(phrase)
+    if not parts:
+        return True
+    have = duration_parts(backing) | duration_parts(cust_text)
+    return parts <= have
 
 # ------------------------------------------------------------------------------------------------- parse
 files = sorted(glob.glob(os.path.join(SIM_DIR, "conv-*.md")))
@@ -123,8 +187,8 @@ for c in CONVS:
     for f in REQUIRED_HEADER:
         if not c["header"].get(f):
             err("%s: header field missing or empty: %s" % (n, f))
-    if not c["header"].get("prompt_version", "").startswith("sp-1.0.0+518d5a1e.n000000"):
-        err("%s: prompt_version is not the Day 13 string" % n)
+    if not c["header"].get("prompt_version", "").startswith(PROMPT_VERSION):
+        err("%s: prompt_version is not the current string %s (config/system-prompt/manifest.yaml)" % (n, PROMPT_VERSION))
     if "Designed, illustrative conversation." not in t:
         err("%s: missing the 'designed, illustrative' statement" % n)
     if "Setup:" not in t and int(n.split("-")[1]) > 6:
@@ -325,6 +389,95 @@ for c in CONVS:
     for tx, k in counts.items():
         if k >= 3:
             err("%s: the same agent message is sent %d times" % (n, k))
+    # S9b stronger AI-turn checks (Day 14 audit: credentials in any language, human claims, paraphrased advice,
+    # unbacked durations, rates in words)
+    backing = " ".join(x["rows"].get("KB / tools", "") for x in c["turns"]).lower()
+    for kid in set(re.findall(r"KB-[A-Z]{3}-\d{3}(?=@)", " ".join(x["rows"].get("KB / tools", "") for x in c["turns"]))):
+        backing += " " + KB_TEXT.get(kid, "")
+    cust_text = " ".join(x["text"] for x in c["turns"] if x["who"] == "Customer").lower()
+    for x in c["turns"]:
+        if x["who"] != "Agent":
+            continue
+        txt = x["text"]
+        for sent in re.split(r"(?<=[.!?।])\s+", txt):
+            low = sent.lower()
+            negated = re.search(NEGATION, low) is not None
+            if re.search(CRED_TERMS, low) and re.search(REQ_VERBS, low) and not negated and not re.search(SECURE_PLACE, low):
+                err("%s %s: AI turn asks for a credential or identity number in chat: %r" % (n, x["tn"], sent[:70]))
+            if not negated and re.search(ADVICE_PARAPHRASE, low):
+                err("%s %s: AI turn gives advice in other words: %r" % (n, x["tn"], sent[:70]))
+        for hc in HUMAN_CLAIMS:
+            if re.search(hc, txt, re.I):
+                err("%s %s: AI turn claims to be human or not an AI: /%s/" % (n, x["tn"], hc))
+        for m7 in DURATION.finditer(txt):
+            phrase = m7.group(0).lower()
+            if duration_backed(phrase, backing, cust_text):
+                continue
+            err("%s %s: AI turn states a duration or date promise that no tool, router or KB row in this conversation backs: %r" % (n, x["tn"], m7.group(0)))
+        for m8 in RATE_WORDS.finditer(txt):
+            err("%s %s: AI turn states a rate in words with no source: %r" % (n, x["tn"], m8.group(0)))
+    # S3b the self-audit numbers must match the turns they describe
+    agent_texts = [x["text"] for x in c["turns"] if x["who"] == "Agent"]
+    mw = re.search(r"longest agent message is (\d+) words", t)
+    if mw and agent_texts and int(mw.group(1)) != max(words(a) for a in agent_texts):
+        err("%s: AP2 says the longest agent message is %s words, the turns give %d" % (n, mw.group(1), max(words(a) for a in agent_texts)))
+    ma = re.search(r"\| AP1 \| Robotic Loop \| absent: (\d+) agent messages", t)
+    if ma and int(ma.group(1)) != len(agent_texts):
+        err("%s: AP1 says %s agent messages, the turns have %d" % (n, ma.group(1), len(agent_texts)))
+    # S6c topic statuses must be schema values; intents used in the turns must be in the header; ESC claims need a cited condition
+    states_ok = ("active", "parked", "resolved", "abandoned")
+    body_intents = set()
+    for x in c["turns"]:
+        mt = re.search(r"topic_stack \[(.*?)\]; slots", x["rows"].get("State", ""))
+        if not mt:
+            continue
+        depth, cur, ents = 0, "", []
+        for ch in mt.group(1):
+            if ch == "(":
+                depth += 1
+            elif ch == ")":
+                depth -= 1
+            if ch in ",;" and depth == 0:
+                ents.append(cur.strip())
+                cur = ""
+            else:
+                cur += ch
+        if cur.strip():
+            ents.append(cur.strip())
+        for ent in ents:
+            me = re.match(r"([A-Z]{3}-\d{3})(?: \([^)]*\))?:\s*([A-Za-z_]+)", ent)
+            if not me:
+                err("%s %s: topic_stack entry cannot be read: %r" % (n, x["tn"], ent[:50]))
+                continue
+            body_intents.add(me.group(1))
+            if me.group(2) not in states_ok:
+                err("%s %s: topic status %r is not one of %s (config/dialogue_state.schema.json): %r" % (n, x["tn"], me.group(2), "/".join(states_ok), ent[:50]))
+        for m9 in re.finditer(r"intent `([A-Z]{3}-\d{3})`", x["rows"].get("NLU", "").split("runner-up")[0]):
+            body_intents.add(m9.group(1))
+    missing = {i for i in body_intents if i not in hdr_intents and i != "GEN-006"}
+    if missing:
+        err("%s: intents used in the turns but missing from the header Intents covered: %s" % (n, sorted(missing)))
+    outcome = c["header"].get("Escalation outcome", "")
+    ids_h = c["header"].get("Escalation IDs", "")
+    claimed = set(re.findall(r"(ESC-\d{3})(?:\.[a-z])?\s+(?:fired|silent|owns|owner)|raised (ESC-\d{3})", outcome))
+    claimed = {a or b for a, b in claimed}
+    for e in sorted(claimed):
+        if e not in ids_h:
+            err("%s: the Escalation outcome says %s fired but the Escalation IDs header does not list it" % (n, e))
+    for e in re.findall(r"(ESC-\d{3})(?! \(offered)", ids_h):
+        body_rows = " ".join(v for x in c["turns"] for k, v in x["rows"].items() if k in ("Guardrails", "Decision point", "Action", "State"))
+        if not re.search(re.escape(e) + r"\.[a-z]", body_rows + " " + t[t.find("| Escalation record |"):t.find("| Escalation record |") + 1500]):
+            err("%s: %s is claimed as fired but no sub-rule (%s.x) or fire condition is cited in the turns or the Escalation record" % (n, e, e))
+        if "| Escalation record |" in t and "sub-rule" not in t[t.find("| Escalation record |"):t.find("| Escalation record |") + 400]:
+            err("%s: the Escalation record row does not name the sub-rule for %s" % (n, e))
+    pk = re.search(r"### Handoff package.*?\n\n\|[^\n]*\n\|---[^\n]*\n((?:\|[^\n]*\n)+)", t, re.S)
+    fired_ids = [e for e in re.findall(r"(ESC-\d{3})(?! \(offered)", ids_h)]
+    if fired_ids and not pk and not re.search(r"cancel|withdrawn|no record", outcome + t[t.find("| Escalation record |"):t.find("| Escalation record |") + 1800], re.I):
+        err("%s: an escalation fired but there is no Handoff package table" % n)
+    if pk:
+        nums = [r.split("|")[1].strip() for r in pk.group(1).splitlines()]
+        if nums != [str(i) for i in range(1, 9)]:
+            err("%s: the Handoff package must have the 8 elements numbered 1 to 8 (D-04); found %s" % (n, nums))
 
 # ----------------------------------------------------------------------------- INDEX.md and pattern-audit.md
 index_path = os.path.join(SIM_DIR, "INDEX.md")
@@ -364,6 +517,16 @@ else:
             for tok in set(re.findall(r"\d[\d,\.]*\d|\d", x["text"])):
                 if tok not in blob:
                     err("pattern-audit.md: figure %r in conv-%s %s is not in the AUTO-FAIL sweep" % (tok, num, x["tn"]))
+    sweep_rows = collections.Counter(re.findall(r"^\| (\d\d) \| T\d+ \|", sweep, re.M))
+    for c in CONVS:
+        num = c["name"].split("-")[1]
+        mf = re.search(r"absent: (\d+) figure\(s\)", c["text"])
+        if int(num) >= 7 and mf and int(mf.group(1)) != sweep_rows.get(num, 0):
+            err("%s: AP8 says %s figure(s), the AUTO-FAIL sweep has %d row(s) for it" % (c["name"], mf.group(1), sweep_rows.get(num, 0)))
+    n_rows = sum(sweep_rows.values())
+    mt = re.search(r"Total figures in AI turns: (\d+) across (\d+) conversations", au)
+    if not mt or int(mt.group(1)) != n_rows or int(mt.group(2)) != len(sweep_rows):
+        err("pattern-audit.md: the total sentence says %s, the table has %d rows across %d conversations" % (mt.group(0) if mt else None, n_rows, len(sweep_rows)))
     for l in sweep.splitlines():
         if re.match(r"\| \d\d \|", l) and not l.rstrip().endswith("|"):
             err("pattern-audit.md: malformed sweep row")

@@ -25,7 +25,7 @@ Designed, illustrative conversation. It shows how the specified system must beha
 | Templates used | TPL-GEN-GREETING, TPL-ACT-FAILED, TPL-ESC-HANDOFF-WARM, TPL-ESC-HUMAN-JOINED |
 | KB entries cited | KB-TRB-009, KB-TRB-004, KB-ESC-010 |
 | Tools called | get_txn |
-| prompt_version | sp-1.0.0+518d5a1e.n000000 (template_version 1.0.0 for every template; model_version unbound) |
+| prompt_version | sp-1.1.0+1527a050.n000000 (template versions as listed in config/templates, shown with each Generation row; model_version unbound) |
 | What this conversation proves | A read that fails twice produces an honest 'I cannot see it', no status, date or amount is invented, and the handoff goes to the right queue with the details already gathered. |
 
 Setup: Priya is signed in (otp_verified). Session time is 14:10 IST; Technical Support runs 08:00 to 22:00 IST. The synthetic NEFT status service times out on both attempts.
@@ -50,7 +50,7 @@ Turn unit: one customer or agent message (D-119). System events (E) are not coun
 
 ### T2 | Agent
 
-> Hello, I'm NexBank's AI assistant. I'm not able to see the status of that NEFT transfer right now, and I don't want to guess. A colleague who can check another way is being brought in.
+> Hello, I'm NexBank's AI assistant. I'm not able to see the status of that payment right now, and I don't want to guess. I can bring in a colleague who can check another way. Shall I?
 
 | Field | Value |
 |---|---|
@@ -58,10 +58,10 @@ Turn unit: one customer or agent message (D-119). System events (E) are not coun
 | Sentiment | n/a (agent messages are not scored); smoothed stays -0.10 |
 | Guardrails | checked: Output Safety Layer: GR-OUT-01, GR-OUT-02, GR-OUT-03, GR-OUT-04, GR-OUT-05, GR-OUT-06; triggered: GR-REG-16 (AI disclosure), GR-OUT-03 (no guessed status), GR-OUT-05 (no timeline), GR-SYS-01 (fail-closed ladder: safe wording, then escalate) |
 | KB / tools | KB: KB-TRB-009@1.0.0 (0.90), KB-TRB-004@1.0.0 (0.80); retrieval confidence 0.90; decision answer<br>tool: `get_txn`(neft_ref=ending 5532, beneficiary_bank=Synthetic Bank) -> error: timeout (attempt 1)<br>tool: `get_txn`(neft_ref=ending 5532, beneficiary_bank=Synthetic Bank) -> error: timeout (attempt 2, the single allowed retry) |
-| Action | escalate: ESC-014.a after the single retry; the failure is stated plainly and no value is guessed or taken from a cache |
-| Generation | hybrid `TPL-GEN-GREETING/with_request@1.0.0` + `TPL-ACT-FAILED/read_failed@1.0.0` + free text (grounded on the cited entries) (language en); patterns: P4; anti-pattern check: none |
+| Action | escalate: ESC-014.a after the single retry; the failure is stated plainly, a colleague is offered, and no value is guessed or taken from a cache |
+| Generation | template `TPL-GEN-GREETING/with_request@1.1.0` + `TPL-ACT-FAILED/read_failed@1.1.0` (language en); patterns: P4; anti-pattern check: none |
 | State | phase EXECUTE > ESCALATING; auth otp_verified; turn_count 2; topic_stack [TXN-004 (neft): active]; slots {neft_ref=ending 5532 (filled); beneficiary_bank=Synthetic Bank (filled)}; pending_confirmation none; counters: all 0; turns_since_resolution 2; escalation_proximity 0.50 |
-| Decision point | TPL-ACT-FAILED/read_failed ends at 'I don't want to guess'. TPL-ESC-HANDOFF-WARM/system_error repeats that thought, so the one-sentence bridge is free text and the second template is held for T4, where the router estimate arrives. |
+| Decision point | TPL-ACT-FAILED/read_failed states the failure and offers a colleague. ESC-014.a has already fired, so the handoff is prepared in parallel and the customer can still decline it (cancellable customer_or_recovery). The 'Ok' at T3 accepts the offer; its question about the wait is answered at T4 by TPL-ESC-HANDOFF-WARM/system_error. |
 
 ### T3 | Customer
 
@@ -111,7 +111,7 @@ Turn unit: one customer or agent message (D-119). System events (E) are not coun
 | Guardrails | checked: Output Safety Layer: GR-OUT-01, GR-OUT-02, GR-OUT-03, GR-OUT-04, GR-OUT-05, GR-OUT-06; triggered: none |
 | KB / tools | router: agent_first_name=Lata (synthetic); team_plain=support team |
 | Action | escalate: handoff complete; the agent posts one line and stops replying |
-| Generation | template `TPL-ESC-HUMAN-JOINED/standard@1.0.0` (language en); patterns: P5; anti-pattern check: none |
+| Generation | template `TPL-ESC-HUMAN-JOINED/standard@1.1.0` (language en); patterns: P5; anti-pattern check: none |
 | State | phase HANDOFF; auth otp_verified; turn_count 5; topic_stack [TXN-004 (neft): active]; slots {neft_ref=ending 5532 (filled); beneficiary_bank=Synthetic Bank (filled)}; pending_confirmation none; counters: all 0; turns_since_resolution 5; escalation_proximity 0.50 |
 
 ## Closing
@@ -137,7 +137,7 @@ Turn unit: one customer or agent message (D-119). System events (E) are not coun
 | 7 | Actions already taken | get_txn at T2: error timeout (2 attempts); no write attempted |
 | 8 | Escalation trigger and reason | trigger_id ESC-014; rule_id ESC-014.a; priority P2; source system; secondary []; reason_text: Read tool failed after the single retry.; evidence_turns [T2] |
 
-Envelope: priority P2; queue Technical Support; handoff_mode warm; language en; channel app; complete true; missing_fields []; versions.prompt_version sp-1.0.0+518d5a1e.n000000.  Never in the package: full card number, CVV, PIN, full Aadhaar, password, OTP.
+Envelope: priority P2; queue Technical Support; handoff_mode warm; language en; channel app; complete true; missing_fields []; versions.prompt_version sp-1.1.0+1527a050.n000000.  Never in the package: full card number, CVV, PIN, full Aadhaar, password, OTP.
 
 ## Self-audit
 
@@ -156,7 +156,7 @@ Envelope: priority P2; queue Technical Support; handoff_mode warm; language en; 
 | Code | Anti-pattern | Result | At-risk turns where the design prevents it |
 |---|---|---|---|
 | AP1 | Robotic Loop | absent: 3 agent messages, no two consecutive ones identical, no text sent three times | none at risk |
-| AP2 | Information Dump | absent: longest agent message is 35 words (cap `atk_output_max_words`); one concept per message | T2 |
+| AP2 | Information Dump | absent: longest agent message is 36 words (cap `atk_output_max_words`); one concept per message | T2 |
 | AP3 | False Confidence | absent: no timeline, wait or outcome is stated except values returned by a tool or the router on that turn, or a KB entry cited on it | T2, T4 |
 | AP4 | Premature Escalation | absent: escalation only after the one allowed retry also failed (component-interfaces.md row 7); a slow but successful read would not have fired | none at risk |
 | AP5 | Empathy Bypass | not at risk: no customer message carried a problem or a negative emotion | T2 |

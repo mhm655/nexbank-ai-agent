@@ -32,6 +32,8 @@ templates:
   safety:
     guardrails_enforced: [GR-ADV-01, GR-ADV-06, GR-ADV-07, GR-REG-20, GR-OUT-01]
     must_not_contain: ["you should", "I recommend", "best", "better for you", "suitable for you", "your income", "your age"]
+    required_markers:
+      - {id: cannot_advise, variants: all, en: ["can't tell you which option"], hi: ["नहीं बता सकता कि आपको कौन सा विकल्प"], hinglish: ["nahi bata sakta ki aapko kaunsa option"]}
     notes: "kb_version of the fact travels in citations[], not in customer text (layer 4 K3)."
   a9: {patterns: [P2, P4], anti_patterns_avoided: [AP2, AP8]}
   kb_refs: [KB-POL-001, KB-REG-005]
@@ -39,7 +41,7 @@ templates:
 
 - id: TPL-ADV-RATE
   title: "Rates and tenures as facts (category 1)"
-  version: "1.0.0"
+  version: "1.1.0"
   customer_facing: true
   trigger:
     intents: [PRD-003, PRD-005]
@@ -62,12 +64,14 @@ templates:
     - key: tenure_gap
       when: "the customer asked for a rate at a tenure the KB does not hold"
       text:
-        en: "{{rate_range}} {{gap_statement}} I can share the facts, but I can't tell you whether or where to invest."
-        hi: "{{rate_range}} {{gap_statement}} मैं तथ्य बता सकता हूँ, पर यह नहीं बता सकता कि आपको निवेश करना चाहिए या कहाँ।"
-        hinglish: "{{rate_range}} {{gap_statement}} Main facts bata sakta hoon, par yeh nahi bata sakta ki aapko invest karna chahiye ya kahan."
+        en: "{{rate_range}} {{gap_statement}} I can share the facts, but I can't tell you whether or where to invest. Would you like more detail on any of these facts?"
+        hi: "{{rate_range}} {{gap_statement}} मैं तथ्य बता सकता हूँ, पर यह नहीं बता सकता कि आपको निवेश करना चाहिए या कहाँ। क्या आप इन तथ्यों में से किसी के बारे में और जानना चाहेंगे?"
+        hinglish: "{{rate_range}} {{gap_statement}} Main facts bata sakta hoon, par yeh nahi bata sakta ki aapko invest karna chahiye ya kahan. Kya aap in facts mein se kisi ke baare mein aur jaanna chahenge?"
   safety:
     guardrails_enforced: [GR-ADV-01, GR-ADV-06, GR-OUT-01, GR-OUT-03, GR-REG-01]
     must_not_contain: ["better returns", "you should", "will rise", "will fall", "guaranteed"]
+    required_markers:
+      - {id: cannot_advise, variants: all, en: ["can't tell you whether or where to invest"], hi: ["नहीं बता सकता कि आपको निवेश करना चाहिए"], hinglish: ["nahi bata sakta ki aapko invest karna chahiye"]}
     notes: "gap_statement is rendered in English until KB-ESC-014 carries reviewed translations (kb-schema.md language parity)."
   a9: {patterns: [P2, P4], anti_patterns_avoided: [AP2, AP3, AP8]}
   kb_refs: [KB-PRD-002, KB-ESC-014, KB-POL-001]
@@ -104,6 +108,8 @@ templates:
   safety:
     guardrails_enforced: [GR-ADV-03, GR-ADV-07, GR-REG-15, GR-OUT-01, GR-OUT-05]
     must_not_contain: ["you can afford", "you will be approved", "your salary", "based on your"]
+    required_markers:
+      - {id: cannot_judge, variants: all, en: ["can't judge affordability"], hi: ["तय नहीं कर सकता"], hinglish: ["tay nahi kar sakta"]}
     notes: "A stated salary is never echoed (D-55)."
   a9: {patterns: [P2], anti_patterns_avoided: [AP3, AP8]}
   kb_refs: [KB-PRD-005, KB-PRD-006, KB-PRD-012, KB-FAQ-005]
@@ -133,6 +139,8 @@ templates:
   safety:
     guardrails_enforced: [GR-ADV-01, GR-ADV-04, GR-ADV-06, GR-REG-01, GR-REG-20, GR-OUT-03]
     must_not_contain: ["long-term wealth", "returns of", "will give you", "safe investment", "you should"]
+    required_markers:
+      - {id: cannot_pick, variants: all, en: ["can't pick an investment"], hi: ["कोई निवेश नहीं चुन सकता"], hinglish: ["investment choose nahi kar sakta"]}
     notes: "No return figure exists in the KB for NexInvest or NexGold; none may appear."
   a9: {patterns: [P2, P4], anti_patterns_avoided: [AP2, AP3, AP8]}
   kb_refs: [KB-PRD-008, KB-PRD-009, KB-REG-005]
@@ -161,6 +169,8 @@ templates:
   safety:
     guardrails_enforced: [GR-ADV-03, GR-ADV-07, GR-REG-12, GR-OUT-01]
     must_not_contain: ["given your age", "you need", "best option", "how old are you"]
+    required_markers:
+      - {id: cannot_recommend, variants: all, en: ["can't recommend a policy"], hi: ["सुझा नहीं सकता"], hinglish: ["suggest nahi kar sakta"]}
     notes: "Premiums and claims are a gap (KB-ESC-021): TPL-KB-GAP is used for those questions."
   a9: {patterns: [P2], anti_patterns_avoided: [AP2, AP8]}
   kb_refs: [KB-PRD-007, KB-FAQ-004, KB-REG-006, KB-ESC-021]
@@ -168,7 +178,7 @@ templates:
 
 - id: TPL-ADV-TAX
   title: "Section 80C and TDS as facts (category 5)"
-  version: "1.0.0"
+  version: "1.1.0"
   customer_facing: true
   trigger:
     intents: [PRD-003, PRD-005]
@@ -183,12 +193,14 @@ templates:
   variants:
     - key: default
       text:
-        en: "{{tax_facts}} These are general facts. I can't suggest how much to invest or how to plan your taxes."
-        hi: "{{tax_facts}} ये सामान्य तथ्य हैं। मैं यह सुझाव नहीं दे सकता कि कितना निवेश करें या टैक्स की योजना कैसे बनाएँ।"
-        hinglish: "{{tax_facts}} Yeh general facts hain. Main yeh suggest nahi kar sakta ki kitna invest karein ya tax planning kaise karein."
+        en: "{{tax_facts}} These are general facts. I can't suggest how much to invest or how to plan your taxes. Would you like more detail on any of these facts?"
+        hi: "{{tax_facts}} ये सामान्य तथ्य हैं। मैं यह सुझाव नहीं दे सकता कि कितना निवेश करें या टैक्स की योजना कैसे बनाएँ। क्या आप इन तथ्यों में से किसी के बारे में और जानना चाहेंगे?"
+        hinglish: "{{tax_facts}} Yeh general facts hain. Main yeh suggest nahi kar sakta ki kitna invest karein ya tax planning kaise karein. Kya aap in facts mein se kisi ke baare mein aur jaanna chahenge?"
   safety:
     guardrails_enforced: [GR-ADV-05, GR-ADV-06, GR-OUT-01]
     must_not_contain: ["to reduce your tax", "to save the most", "you should invest", "put at least"]
+    required_markers:
+      - {id: cannot_suggest, variants: all, en: ["can't suggest how much to invest"], hi: ["सुझाव नहीं दे सकता"], hinglish: ["suggest nahi kar sakta"]}
     notes: ""
   a9: {patterns: [P2], anti_patterns_avoided: [AP2, AP8]}
   kb_refs: [KB-REG-011, KB-FAQ-008]
@@ -196,7 +208,7 @@ templates:
 
 - id: TPL-ADV-FOREX
   title: "No direction or timing on currency (category 6)"
-  version: "1.0.0"
+  version: "1.1.0"
   customer_facing: true
   trigger:
     intents: [TXN-006, PRD-005]
@@ -211,12 +223,14 @@ templates:
   variants:
     - key: default
       text:
-        en: "I can't predict where a currency will go or suggest when to buy or sell. {{rate_source}} I also can't start a transfer from this chat."
-        hi: "मैं यह अनुमान नहीं लगा सकता कि कोई मुद्रा किस दिशा में जाएगी, और न यह सुझा सकता हूँ कि कब खरीदें या बेचें। {{rate_source}} मैं इस चैट से कोई ट्रांसफ़र भी शुरू नहीं कर सकता।"
-        hinglish: "Main yeh predict nahi kar sakta ki koi currency kis taraf jayegi, aur na yeh suggest kar sakta hoon ki kab kharidein ya bechein. {{rate_source}} Main is chat se koi transfer bhi shuru nahi kar sakta."
+        en: "I can't predict where a currency will go or suggest when to buy or sell. {{rate_source}} I also can't start a transfer from this chat. Would you like more detail on what I can share?"
+        hi: "मैं यह अनुमान नहीं लगा सकता कि कोई मुद्रा किस दिशा में जाएगी, और न यह सुझा सकता हूँ कि कब खरीदें या बेचें। {{rate_source}} मैं इस चैट से कोई ट्रांसफ़र भी शुरू नहीं कर सकता। जो जानकारी मैं दे सकता हूँ, क्या आप उसके बारे में और जानना चाहेंगे?"
+        hinglish: "Main yeh predict nahi kar sakta ki koi currency kis taraf jayegi, aur na yeh suggest kar sakta hoon ki kab kharidein ya bechein. {{rate_source}} Main is chat se koi transfer bhi shuru nahi kar sakta. Jo jaankari main de sakta hoon, kya aap uske baare mein aur jaanna chahenge?"
   safety:
     guardrails_enforced: [GR-ADV-04, GR-SEC-R3, GR-OUT-03]
     must_not_contain: ["will fall", "will rise", "buy now", "wait until", "will depreciate"]
+    required_markers:
+      - {id: cannot_predict, variants: all, en: ["can't predict where a currency will go"], hi: ["अनुमान नहीं लगा सकता"], hinglish: ["predict nahi kar sakta"]}
     notes: "Transfer charges and forex rates are a gap (KB-ESC-016)."
   a9: {patterns: [P4], anti_patterns_avoided: [AP3, AP8]}
   kb_refs: [KB-ESC-016, KB-POL-001]
@@ -245,6 +259,8 @@ templates:
   safety:
     guardrails_enforced: [GR-ADV-09, GR-ADV-06, GR-OUT-01]
     must_not_contain: ["is better", "wins", "ranked", "number one", "I would choose"]
+    required_markers:
+      - {id: cannot_choose, variants: all, en: ["can't say which one to choose"], hi: ["नहीं बता सकता कि कौन सा चुनें"], hinglish: ["nahi bata sakta ki kaunsa chunein"]}
     notes: "Rows keep the KB order; no sorting by attractiveness. On voice and messaging channels rows render as short lines, not a table."
   a9: {patterns: [P2], anti_patterns_avoided: [AP2, AP8]}
   kb_refs: [KB-PRD-011, KB-PRD-003, KB-PRD-004]
@@ -271,6 +287,8 @@ templates:
   safety:
     guardrails_enforced: [GR-ADV-08, GR-REG-20, GR-REG-04]
     must_not_contain: ["free", "30-minute", "minutes", "I am an advisor"]
+    required_markers:
+      - {id: advisor_named, variants: all, en: ["SEBI-registered advisor"], hi: ["SEBI-पंजीकृत सलाहकार"], hinglish: ["SEBI-registered advisor"]}
     notes: "The consultation length and price in Case Study 3 are not in the KB and are not stated (financial-advice.md section 6). An offer, never an automatic transfer."
   a9: {patterns: [P4], anti_patterns_avoided: [AP4, AP3]}
   kb_refs: [KB-ESC-008, KB-REG-005]
@@ -359,6 +377,8 @@ templates:
   safety:
     guardrails_enforced: [GR-ADV-08, GR-OUT-05]
     must_not_contain: ["will call you at", "in the meantime I suggest"]
+    required_markers:
+      - {id: no_advice_substitute, variants: all, en: ["don't want to give you advice"], hi: ["सलाह नहीं देना चाहता"], hinglish: ["advice nahi dena chahta"]}
     notes: "No advice as a substitute."
   a9: {patterns: [P4], anti_patterns_avoided: [AP3, AP8]}
   kb_refs: [KB-POL-007, KB-ESC-008]
@@ -386,6 +406,8 @@ templates:
   safety:
     guardrails_enforced: [GR-ADV-06, GR-SYS-01, GR-OUT-06]
     must_not_contain: ["error", "I was unable to process"]
+    required_markers:
+      - {id: cannot_advise, variants: all, en: ["can't advise you"], hi: ["सलाह नहीं दे सकता"], hinglish: ["advice nahi de sakta"]}
     notes: "Holds no slot, so it cannot fail a grounding check."
   a9: {patterns: [P4], anti_patterns_avoided: [AP8, AP1]}
   kb_refs: [KB-POL-001]

@@ -117,7 +117,7 @@ Each block gives the detection signal, the owning component, the dialogue-state 
 | Guardrails | GR-REG-03 |
 | KB | KB-ESC-005, KB-ESC-010 |
 | Does not fire | One blunt message followed by a calmer one (a spike, not a streak); mild annoyance (A9.2 Premature Escalation example, ESC-BOSS-L6-04) |
-| Tests | ESC-T-004-01, ESC-T-004-02, ESC-T-004-03, ESC-T-004-04; boss ESC-BOSS-L6-03, ESC-BOSS-L6-04 |
+| Tests | ESC-T-004-01, ESC-T-004-02, ESC-T-004-03, ESC-T-004-04, ESC-T-004-05; boss ESC-BOSS-L6-03, ESC-BOSS-L6-04 |
 
 Note on Case Study 5. The brief's own example has customer scores of -0.9 (turn 1) and -0.85 (turn 3), which meets the ESC-004 condition at turn 3, yet the agent continues, resolves the issue and the score recovers to -0.4. This specification reads the case study as: the escalation is prepared (the case study's own annotation at turn 4 is "Escalation prepared"), the agent keeps acting while the customer is inside the 5-minute window, and the outcome is settled by the cancellation rule. It is the brief's evidence that de-escalation is expected (`routing-and-handoff.md` section 9).
 
@@ -360,7 +360,7 @@ The brief allows more than 15 triggers ("at least 10"). Seven additions are spec
 
 | ID | Name | Fires when | Result | Basis |
 |---|---|---|---|---|
-| XTR-01 | Customer-requested human handoff before the third request | An explicit human request and fewer than 3 requests so far | P2, Next Available Agent, under 10 min (the ESC-006 route). Request 1: preparation starts and the reply may carry one concrete offer. Request 2: handoff with no counter-offer. An implicit request is counted and answered with the human option | A11.3 p.31 (right to a human at any point); KB-ESC-003; D-117 |
+| XTR-01 | Customer-requested human handoff before the third request | An explicit human request and fewer than 3 requests so far | P2, Next Available Agent, under 10 min (the ESC-006 route). Request 1: preparation starts and the reply (`TPL-ESC-HUMAN-REQUEST-FIRST`) may carry one concrete offer. Request 2: handoff with no counter-offer. An implicit request is counted and answered with the human option | A11.3 p.31 (right to a human at any point); KB-ESC-003; D-117 |
 | XTR-02 | Repeated authentication failure | Three failed OTP entries in the secure widget | Raises ESC-009 (sub-rule c) | D-65, confirmed by D-115 |
 | XTR-03 | Care flag on an explicit vulnerability disclosure | The customer states a bereavement, a serious illness or disability affecting use of the service, or financial hardship | An offer, not a forced handoff: plainer wording and one offer of a human (Next Available Agent route). The care note is in the customer's words and is not stored on the profile | A1.3 p.4 (accessibility); persona Meera; A11.3 (no inference or storage of sensitive attributes) |
 | XTR-04 | Clarification budget exhausted | Two failed clarifications on the same ambiguity in the clarify band (the counter rises only in the CLARIFY state; turns below 0.40 do not count, so XTR-04 cannot pre-empt ESC-003) | The pair's safe default if it has one; otherwise a human offer on the General Support route (the ESC-003 route) | `dialogue-management.md` sections 2 and 4.4; A9.2 Robotic Loop |
@@ -436,7 +436,7 @@ Cases are in `tests/escalation/` and are specified, not run. Each brief trigger 
 | ESC-001 | ESC-T-001-01, ESC-T-001-03 | ESC-T-001-02 | ESC-BOSS-L6-01 |
 | ESC-002 | ESC-T-002-01 | ESC-T-002-02 | ESC-BOSS-L6-07 |
 | ESC-003 | ESC-T-003-01 | ESC-T-003-02, ESC-T-003-03 | |
-| ESC-004 | ESC-T-004-01, ESC-T-004-04 | ESC-T-004-02, ESC-T-004-03 | ESC-BOSS-L6-03, ESC-BOSS-L6-04 |
+| ESC-004 | ESC-T-004-01, ESC-T-004-04, ESC-T-004-05 | ESC-T-004-02, ESC-T-004-03 | ESC-BOSS-L6-03, ESC-BOSS-L6-04 |
 | ESC-005 | ESC-T-005-01 | ESC-T-005-02 | ESC-BOSS-L6-01 |
 | ESC-006 | ESC-T-006-01 | ESC-T-006-02 | ESC-BOSS-L6-09 |
 | ESC-007 | ESC-T-007-01 | ESC-T-007-02 | ESC-BOSS-L6-08 |

@@ -13,7 +13,7 @@ Non-English text in this file (customer lines, template wording, glosses) is not
 | Channel | app |
 | Language | gu (secondary), replies in hi |
 | Starting auth level | otp_verified |
-| Intents covered | ACC-001, TXN-003, GEN-003, GEN-006 |
+| Intents covered | ACC-001, TXN-003, CMP-005, GEN-003, GEN-006 |
 | Guardrails exercised | GR-OUT-03, GR-OUT-05, GR-REG-16, GR-SEC-R1, GR-SYS-01 |
 | Escalation outcome | XTR-01 request 1 at T7 (language gu): no Gujarati-speaking colleague free, so the customer chose a callback in Gujarati at T9; callback request placed at T12; no live handoff |
 | Escalation IDs | XTR-01 |
@@ -27,7 +27,7 @@ Non-English text in this file (customer lines, template wording, glosses) is not
 | Templates used | TPL-GEN-GREETING, TPL-GEN-LANGUAGE-SWITCH, TPL-GEN-CLARIFY, TPL-ESC-LANGUAGE-CHOICE, TPL-ESC-CALLBACK-OFFER, TPL-GEN-CLOSING |
 | KB entries cited | KB-ESC-020, KB-ESC-003, KB-POL-007 |
 | Tools called | get_profile_masked, schedule_callback |
-| prompt_version | sp-1.0.0+518d5a1e.n000000 (template_version 1.0.0 for every template; model_version unbound) |
+| prompt_version | sp-1.1.0+1527a050.n000000 (template versions as listed in config/templates, shown with each Generation row; model_version unbound) |
 | What this conversation proves | Reviewed wording is used for everything the assistant says, the switch to Hindi is the customer's choice and never automatic, the budget of two clarifications is respected with a different reply each time, and when no colleague who speaks Gujarati is free the customer chooses between Hindi or English now and a Gujarati callback. |
 
 Setup: Rajesh is signed in (otp_verified). Reviewed templates exist for English, Hindi and Hinglish only; Gujarati is a secondary language (language-detection.md section 7). The router has no Gujarati-speaking colleague free. Gujarati text in this file is not native-reviewed. A balance question and a payment question are in his first message.
@@ -45,13 +45,13 @@ _English gloss (annotation only, not customer-facing; not native-reviewed): What
 | Field | Value |
 |---|---|
 | NLU | intent `ACC-001` 0.49 (tertiary current_balance); runner-up `TXN-003` 0.46; entities: date=yesterday; language: gu 0.44 (script latin; hinglish 0.38; below lang_id_floor 0.50; Roman-script secondary below 0.80) |
-| Sentiment | raw -0.10, smoothed -0.10, confidence 0.85; emotions: worry 0.20 |
+| Sentiment | raw -0.10, smoothed -0.10, confidence 0.55; emotions: worry 0.20 |
 | Guardrails | checked: Input Guard: GR-ATK-01, GR-ATK-03, GR-ATK-08, GR-SEC-R5 redaction, crisis screen; triggered: ladder rung 1: language ID below lang_id_floor, so the language-choice reply is used |
 | KB / tools | none on the customer message (retrieval and tools run for the reply) |
 | Action | n/a (customer message; the policy decision is on the next agent message) |
 | Generation | n/a (customer message) |
-| State | phase INIT > INTENT_DETECT > CLARIFY; auth otp_verified; turn_count 1; topic_stack [ACC-001 (current_balance): candidate, TXN-003 (payment): candidate]; slots {date=11 Oct 2026 (resolved from 'kal')}; pending_confirmation none; counters: clarify_attempts 0, lang_choice_offered 1; turns_since_resolution 1; escalation_proximity 0.00 |
-| Decision point | Neither the language nor the intent is certain enough to act. The Input Guard still screens native text and the English pivot, and the flow-entry gates for fraud, distress and human requests stay at 0.50. |
+| State | phase INIT > INTENT_DETECT > CLARIFY; auth otp_verified; turn_count 1; topic_stack [ACC-001 (current_balance): active (candidate, not yet confirmed), TXN-003 (payment): parked (candidate)]; slots {date=11 Oct 2026 (resolved from 'kal')}; pending_confirmation none; counters: clarify_attempts 0, lang_choice_offered 1; turns_since_resolution 1; escalation_proximity 0.00 |
+| Decision point | Neither the language nor the intent is certain enough to act. The Input Guard still screens native text and the English pivot, and the flow-entry gates for fraud, distress and human requests stay at 0.50. Sentiment confidence is 0.55, below sentiment_turn_confidence_min (0.70), because the Roman-script Gujarati language ID is uncertain (D-18: in a secondary language the confidence is the gap, so ESC-004.b, not .a, is the route that applies if the scores fall). |
 
 ### T2 | Agent
 
@@ -66,8 +66,8 @@ _English gloss (annotation only, not customer-facing; not native-reviewed): Hell
 | Guardrails | checked: Output Safety Layer: GR-OUT-01, GR-OUT-02, GR-OUT-03, GR-OUT-04, GR-OUT-05, GR-OUT-06; triggered: GR-REG-16 (AI disclosure), GR-OUT-03 |
 | KB / tools | none |
 | Action | clarify: language-choice reply in Hindi and English together; the switch is the customer's choice and never automatic |
-| Generation | template `TPL-GEN-GREETING/with_request@1.0.0` + `TPL-GEN-LANGUAGE-SWITCH/offer_choice@1.0.0` + `TPL-GEN-LANGUAGE-SWITCH/offer_choice@1.0.0` [en] (language hi); patterns: P4; anti-pattern check: none |
-| State | phase CLARIFY; auth otp_verified; turn_count 2; topic_stack [ACC-001 (current_balance): candidate, TXN-003 (payment): candidate]; slots {date=11 Oct 2026 (resolved from 'kal')}; pending_confirmation none; counters: clarify_attempts 0, lang_choice_offered 1; turns_since_resolution 2; escalation_proximity 0.00 |
+| Generation | template `TPL-GEN-GREETING/with_request@1.1.0` + `TPL-GEN-LANGUAGE-SWITCH/offer_choice@1.0.0` + `TPL-GEN-LANGUAGE-SWITCH/offer_choice@1.0.0` [en] (language hi); patterns: P4; anti-pattern check: none |
+| State | phase CLARIFY; auth otp_verified; turn_count 2; topic_stack [ACC-001 (current_balance): active (candidate, not yet confirmed), TXN-003 (payment): parked (candidate)]; slots {date=11 Oct 2026 (resolved from 'kal')}; pending_confirmation none; counters: clarify_attempts 0, lang_choice_offered 1; turns_since_resolution 2; escalation_proximity 0.00 |
 
 ### T3 | Customer
 
@@ -78,17 +78,17 @@ _English gloss (annotation only, not customer-facing; not native-reviewed): Hind
 | Field | Value |
 |---|---|
 | NLU | intent `ACC-001` 0.62 (tertiary current_balance); runner-up `TXN-003` 0.35; entities: none; language: gu 0.52 (script latin, code_switching true); customer chose Hindi for replies |
-| Sentiment | raw 0.00, smoothed -0.05, confidence 0.85; emotions: none |
+| Sentiment | raw 0.00, smoothed -0.05, confidence 0.60; emotions: none |
 | Guardrails | checked: Input Guard: GR-ATK-01, GR-ATK-03, GR-ATK-08, GR-SEC-R5 redaction, crisis screen; triggered: none |
 | KB / tools | none on the customer message (retrieval and tools run for the reply) |
 | Action | n/a (customer message; the policy decision is on the next agent message) |
 | Generation | n/a (customer message) |
-| State | phase CLARIFY; auth otp_verified; turn_count 3; topic_stack [ACC-001 (current_balance): candidate]; slots {reply_language=hi (customer choice)}; pending_confirmation none; counters: clarify_attempts 0, lang_choice_offered 1; turns_since_resolution 3; escalation_proximity 0.00 |
+| State | phase CLARIFY; auth otp_verified; turn_count 3; topic_stack [ACC-001 (current_balance): active (candidate, not yet confirmed)]; slots {reply_language=hi (customer choice)}; pending_confirmation none; counters: clarify_attempts 0, lang_choice_offered 1; turns_since_resolution 3; escalation_proximity 0.00 |
 | Decision point | reply_language is stored as hi by the customer's choice. The NLU keeps reading what he types, which is still Roman-script Gujarati. |
 
 ### T4 | Agent
 
-> ज़रूर, अब हम हिंदी में बात करेंगे। ज़रूर, मैं मदद करूँगा। सही समझने के लिए पूछ रहा हूँ: क्या यह बैलेंस देखने के बारे में है, या किसी भुगतान की स्थिति देखने के बारे में?
+> ज़रूर, अब हम हिंदी में बात करेंगे। मैं मदद करूँगा। सही समझने के लिए पूछ रहा हूँ: क्या यह बैलेंस देखने के बारे में है, या किसी भुगतान की स्थिति देखने के बारे में?
 
 _English gloss (annotation only, not customer-facing; not native-reviewed): Sure, from now we will talk in Hindi. To be sure I understand: is this about checking the balance, or about checking the status of a payment?_
 
@@ -99,8 +99,8 @@ _English gloss (annotation only, not customer-facing; not native-reviewed): Sure
 | Guardrails | checked: Output Safety Layer: GR-OUT-01, GR-OUT-02, GR-OUT-03, GR-OUT-04, GR-OUT-05, GR-OUT-06; triggered: GR-SYS-01 (ladder rung 2: ordinary clarification from a reviewed template) |
 | KB / tools | KB: KB-ESC-020@1.0.0 (0.60); retrieval confidence 0.60; decision answer |
 | Action | clarify: first clarification, in the chosen language, from a reviewed Hindi template |
-| Generation | template `TPL-GEN-LANGUAGE-SWITCH/confirm_switch@1.0.0` + `TPL-GEN-CLARIFY/two_options@1.0.0` (language hi); patterns: P2, P4; anti-pattern check: none |
-| State | phase CLARIFY; auth otp_verified; turn_count 4; topic_stack [ACC-001 (current_balance): candidate]; slots {reply_language=hi (customer choice)}; pending_confirmation none; counters: clarify_attempts 1; turns_since_resolution 4; escalation_proximity 0.00 |
+| Generation | template `TPL-GEN-LANGUAGE-SWITCH/confirm_switch@1.0.0` + `TPL-GEN-CLARIFY/two_options@1.1.0` (language hi); patterns: P2, P4; anti-pattern check: none |
+| State | phase CLARIFY; auth otp_verified; turn_count 4; topic_stack [ACC-001 (current_balance): active (candidate, not yet confirmed)]; slots {reply_language=hi (customer choice)}; pending_confirmation none; counters: clarify_attempts 1; turns_since_resolution 4; escalation_proximity 0.00 |
 
 ### T5 | Customer
 
@@ -111,12 +111,12 @@ _English gloss (annotation only, not customer-facing; not native-reviewed): Just
 | Field | Value |
 |---|---|
 | NLU | intent `ACC-001` 0.61 (tertiary current_balance); runner-up none above 0.20; entities: none; language: gu 0.55 (script latin, code_switching true) |
-| Sentiment | raw -0.05, smoothed -0.05, confidence 0.85; emotions: none |
+| Sentiment | raw -0.05, smoothed -0.05, confidence 0.60; emotions: none |
 | Guardrails | checked: Input Guard: GR-ATK-01, GR-ATK-03, GR-ATK-08, GR-SEC-R5 redaction, crisis screen; triggered: none |
 | KB / tools | none on the customer message (retrieval and tools run for the reply) |
 | Action | n/a (customer message; the policy decision is on the next agent message) |
 | Generation | n/a (customer message) |
-| State | phase CLARIFY; auth otp_verified; turn_count 5; topic_stack [ACC-001 (current_balance): candidate]; slots {reply_language=hi (customer choice)}; pending_confirmation none; counters: clarify_attempts 1; turns_since_resolution 5; escalation_proximity 0.10 |
+| State | phase CLARIFY; auth otp_verified; turn_count 5; topic_stack [ACC-001 (current_balance): active (candidate, not yet confirmed)]; slots {reply_language=hi (customer choice)}; pending_confirmation none; counters: clarify_attempts 1; turns_since_resolution 5; escalation_proximity 0.10 |
 | Decision point | Still below intent_confidence_threshold (0.70) after one clarification. Secondary-language accuracy is lower, so the fallback does not act on 0.61. |
 
 ### T6 | Agent
@@ -132,8 +132,8 @@ _English gloss (annotation only, not customer-facing; not native-reviewed): Than
 | Guardrails | checked: Output Safety Layer: GR-OUT-01, GR-OUT-02, GR-OUT-03, GR-OUT-04, GR-OUT-05, GR-OUT-06; triggered: GR-SYS-01 (ladder rung 3: second clarification, with the offer of a person who speaks the language) |
 | KB / tools | KB: KB-ESC-020@1.0.0 (0.60); retrieval confidence 0.60; decision answer |
 | Action | clarify: second and last clarification (max_clarification_turns 2), different wording from T4, with the human offer |
-| Generation | template `TPL-GEN-CLARIFY/second_attempt@1.0.0` (language hi); patterns: P4; anti-pattern check: none |
-| State | phase CLARIFY; auth otp_verified; turn_count 6; topic_stack [ACC-001 (current_balance): candidate]; slots {reply_language=hi (customer choice)}; pending_confirmation none; counters: clarify_attempts 2; turns_since_resolution 6; escalation_proximity 0.10 |
+| Generation | template `TPL-GEN-CLARIFY/second_attempt@1.1.0` (language hi); patterns: P4; anti-pattern check: none |
+| State | phase CLARIFY; auth otp_verified; turn_count 6; topic_stack [ACC-001 (current_balance): active (candidate, not yet confirmed)]; slots {reply_language=hi (customer choice)}; pending_confirmation none; counters: clarify_attempts 2; turns_since_resolution 6; escalation_proximity 0.10 |
 
 ### T7 | Customer
 

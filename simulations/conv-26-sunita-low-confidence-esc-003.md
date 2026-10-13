@@ -25,7 +25,7 @@ Designed, illustrative conversation. It shows how the specified system must beha
 | Templates used | TPL-GEN-GREETING, TPL-GEN-CLARIFY, TPL-ESC-HANDOFF-WARM, TPL-ESC-HUMAN-JOINED |
 | KB entries cited | KB-ESC-020 |
 | Tools called | none |
-| prompt_version | sp-1.0.0+518d5a1e.n000000 (template_version 1.0.0 for every template; model_version unbound) |
+| prompt_version | sp-1.1.0+1527a050.n000000 (template versions as listed in config/templates, shown with each Generation row; model_version unbound) |
 | What this conversation proves | Two different clarification replies are used, never the same one twice, no guess is made at what the customer wants, and on the third consecutive low-confidence turn the conversation goes to a person with an honest sentence and the context gathered. |
 
 Setup: Anonymous web chat. No earlier session. The app problem she has in mind is never identified; the assistant does not guess.
@@ -46,7 +46,7 @@ Turn unit: one customer or agent message (D-119). System events (E) are not coun
 | KB / tools | none on the customer message (retrieval and tools run for the reply) |
 | Action | n/a (customer message; the policy decision is on the next agent message) |
 | Generation | n/a (customer message) |
-| State | phase INIT > INTENT_DETECT > CLARIFY; auth anonymous; turn_count 1; topic_stack [GEN-008 (app_how_to): candidate]; slots {}; pending_confirmation none; counters: low_conf_streak 1, clarify_attempts 0; turns_since_resolution 1; escalation_proximity 0.00 |
+| State | phase INIT > INTENT_DETECT > CLARIFY; auth anonymous; turn_count 1; topic_stack [GEN-008 (app_how_to): active (candidate, not yet confirmed)]; slots {}; pending_confirmation none; counters: low_conf_streak 1, clarify_attempts 0; turns_since_resolution 1; escalation_proximity 0.00 |
 
 ### T2 | Agent
 
@@ -59,8 +59,8 @@ Turn unit: one customer or agent message (D-119). System events (E) are not coun
 | Guardrails | checked: Output Safety Layer: GR-OUT-01, GR-OUT-02, GR-OUT-03, GR-OUT-04, GR-OUT-05, GR-OUT-06; triggered: GR-REG-16 (AI disclosure), GR-SYS-01 (fail-closed ladder: clarify first) |
 | KB / tools | KB: KB-ESC-020@1.0.0 (0.62); retrieval confidence 0.62; decision answer |
 | Action | clarify: open question with the most common topics as options (primary confidence below primary_clarify_floor) |
-| Generation | template `TPL-GEN-GREETING/with_request@1.0.0` + `TPL-GEN-CLARIFY/open_menu@1.0.0` (language en); patterns: P2; anti-pattern check: none |
-| State | phase CLARIFY; auth anonymous; turn_count 2; topic_stack [GEN-008 (app_how_to): candidate]; slots {}; pending_confirmation none; counters: low_conf_streak 1, clarify_attempts 1; turns_since_resolution 2; escalation_proximity 0.00 |
+| Generation | template `TPL-GEN-GREETING/with_request@1.1.0` + `TPL-GEN-CLARIFY/open_menu@1.1.0` (language en); patterns: P2; anti-pattern check: none |
+| State | phase CLARIFY; auth anonymous; turn_count 2; topic_stack [GEN-008 (app_how_to): active (candidate, not yet confirmed)]; slots {}; pending_confirmation none; counters: low_conf_streak 1, clarify_attempts 1; turns_since_resolution 2; escalation_proximity 0.00 |
 
 ### T3 | Customer
 
@@ -74,7 +74,7 @@ Turn unit: one customer or agent message (D-119). System events (E) are not coun
 | KB / tools | none on the customer message (retrieval and tools run for the reply) |
 | Action | n/a (customer message; the policy decision is on the next agent message) |
 | Generation | n/a (customer message) |
-| State | phase CLARIFY; auth anonymous; turn_count 3; topic_stack [GEN-008 (app_how_to): candidate]; slots {}; pending_confirmation none; counters: low_conf_streak 2, clarify_attempts 1; turns_since_resolution 3; escalation_proximity 0.00 |
+| State | phase CLARIFY; auth anonymous; turn_count 3; topic_stack [GEN-008 (app_how_to): active (candidate, not yet confirmed)]; slots {}; pending_confirmation none; counters: low_conf_streak 2, clarify_attempts 1; turns_since_resolution 3; escalation_proximity 0.00 |
 
 ### T4 | Agent
 
@@ -87,8 +87,8 @@ Turn unit: one customer or agent message (D-119). System events (E) are not coun
 | Guardrails | checked: Output Safety Layer: GR-OUT-01, GR-OUT-02, GR-OUT-03, GR-OUT-04, GR-OUT-05, GR-OUT-06; triggered: GR-SYS-01, GR-OUT-04 (different wording from T2; offers a person) |
 | KB / tools | KB: KB-ESC-020@1.0.0 (0.60); retrieval confidence 0.60; decision answer |
 | Action | clarify: second attempt on the same point with different wording, what was understood, and the offer of a colleague |
-| Generation | template `TPL-GEN-CLARIFY/second_attempt@1.0.0` (language en); patterns: P4; anti-pattern check: none |
-| State | phase CLARIFY; auth anonymous; turn_count 4; topic_stack [GEN-008 (app_how_to): candidate]; slots {}; pending_confirmation none; counters: low_conf_streak 2, clarify_attempts 2; turns_since_resolution 4; escalation_proximity 0.00 |
+| Generation | template `TPL-GEN-CLARIFY/second_attempt@1.1.0` (language en); patterns: P4; anti-pattern check: none |
+| State | phase CLARIFY; auth anonymous; turn_count 4; topic_stack [GEN-008 (app_how_to): active (candidate, not yet confirmed)]; slots {}; pending_confirmation none; counters: low_conf_streak 2, clarify_attempts 2; turns_since_resolution 4; escalation_proximity 0.00 |
 | Decision point | The two clarification replies are different templates (open_menu, then second_attempt). A third rephrase request would be a Robotic Loop, so the next low-confidence turn goes to a person. |
 
 ### T5 | Customer
@@ -103,7 +103,7 @@ Turn unit: one customer or agent message (D-119). System events (E) are not coun
 | KB / tools | none on the customer message (retrieval and tools run for the reply) |
 | Action | n/a (customer message; the policy decision is on the next agent message) |
 | Generation | n/a (customer message) |
-| State | phase CLARIFY > ESCALATING; auth anonymous; turn_count 5; topic_stack [GEN-008 (app_how_to): candidate]; slots {}; pending_confirmation none; counters: low_conf_streak 3, clarify_attempts 2; turns_since_resolution 5; escalation_proximity 0.80 |
+| State | phase CLARIFY > ESCALATING; auth anonymous; turn_count 5; topic_stack [GEN-008 (app_how_to): active (candidate, not yet confirmed)]; slots {}; pending_confirmation none; counters: low_conf_streak 3, clarify_attempts 2; turns_since_resolution 5; escalation_proximity 0.80 |
 | Decision point | ESC-003.a fires: secondary-layer confidence 0.38, 0.33 and 0.30 are each below the 0.40 floor on three consecutive customer turns (esc003_consecutive_turns 3). Smoothed sentiment is -0.30 and the raw scores are above -0.70, so ESC-004 is not near. |
 
 ### T6 | Agent
@@ -118,7 +118,7 @@ Turn unit: one customer or agent message (D-119). System events (E) are not coun
 | KB / tools | KB: KB-ESC-020@1.0.0 (0.66); retrieval confidence 0.66; decision answer<br>router: queue=General Support (24x7, open); team_plain=support team; no wait estimate supplied |
 | Action | escalate: ESC-003 warm handoff; the sentence says plainly that the need was not understood and that the colleague will help directly |
 | Generation | hybrid `TPL-ESC-HANDOFF-WARM/could_not_understand@1.0.0` (language en); patterns: P1, P4, P5; anti-pattern check: none |
-| State | phase ESCALATING; auth anonymous; turn_count 6; topic_stack [GEN-008 (app_how_to): candidate]; slots {}; pending_confirmation none; counters: low_conf_streak 3, clarify_attempts 2; turns_since_resolution 6; escalation_proximity 0.80 |
+| State | phase ESCALATING; auth anonymous; turn_count 6; topic_stack [GEN-008 (app_how_to): active (candidate, not yet confirmed)]; slots {}; pending_confirmation none; counters: low_conf_streak 3, clarify_attempts 2; turns_since_resolution 6; escalation_proximity 0.80 |
 
 ### E1 | System event
 
@@ -126,7 +126,7 @@ Turn unit: one customer or agent message (D-119). System events (E) are not coun
 
 | Field | Value |
 |---|---|
-| State | phase ESCALATING > HANDOFF; auth anonymous; turn_count 6; topic_stack [GEN-008 (app_how_to): candidate]; slots {}; pending_confirmation none; counters: low_conf_streak 3, clarify_attempts 2; turns_since_resolution 6; escalation_proximity 0.80 |
+| State | phase ESCALATING > HANDOFF; auth anonymous; turn_count 6; topic_stack [GEN-008 (app_how_to): active (candidate, not yet confirmed)]; slots {}; pending_confirmation none; counters: low_conf_streak 3, clarify_attempts 2; turns_since_resolution 6; escalation_proximity 0.80 |
 
 ### T7 | Agent
 
@@ -139,8 +139,8 @@ Turn unit: one customer or agent message (D-119). System events (E) are not coun
 | Guardrails | checked: Output Safety Layer: GR-OUT-01, GR-OUT-02, GR-OUT-03, GR-OUT-04, GR-OUT-05, GR-OUT-06; triggered: none |
 | KB / tools | router: agent_first_name=Sameer (synthetic); team_plain=support team |
 | Action | escalate: handoff complete; the agent posts one line and stops replying |
-| Generation | template `TPL-ESC-HUMAN-JOINED/standard@1.0.0` (language en); patterns: P5; anti-pattern check: none |
-| State | phase HANDOFF; auth anonymous; turn_count 7; topic_stack [GEN-008 (app_how_to): candidate]; slots {}; pending_confirmation none; counters: low_conf_streak 3, clarify_attempts 2; turns_since_resolution 7; escalation_proximity 0.80 |
+| Generation | template `TPL-ESC-HUMAN-JOINED/standard@1.1.0` (language en); patterns: P5; anti-pattern check: none |
+| State | phase HANDOFF; auth anonymous; turn_count 7; topic_stack [GEN-008 (app_how_to): active (candidate, not yet confirmed)]; slots {}; pending_confirmation none; counters: low_conf_streak 3, clarify_attempts 2; turns_since_resolution 7; escalation_proximity 0.80 |
 
 ## Closing
 
@@ -165,7 +165,7 @@ Turn unit: one customer or agent message (D-119). System events (E) are not coun
 | 7 | Actions already taken | none |
 | 8 | Escalation trigger and reason | trigger_id ESC-003; rule_id ESC-003.a; priority P2; source system; secondary []; reason_text: Intent confidence below 0.40 on three consecutive customer turns.; evidence_turns [T1, T3, T5] |
 
-Envelope: priority P2; queue General Support; handoff_mode warm; language en; channel chat; complete true; missing_fields []; versions.prompt_version sp-1.0.0+518d5a1e.n000000.  Never in the package: full card number, CVV, PIN, full Aadhaar, password, OTP.
+Envelope: priority P2; queue General Support; handoff_mode warm; language en; channel chat; complete true; missing_fields []; versions.prompt_version sp-1.1.0+1527a050.n000000.  Never in the package: full card number, CVV, PIN, full Aadhaar, password, OTP.
 
 ## Self-audit
 

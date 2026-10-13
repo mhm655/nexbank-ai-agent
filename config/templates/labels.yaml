@@ -1,7 +1,8 @@
 # Plain-language label tables used by locked template slots (Day 13, D-136).
 # A label is chosen by the Policy Engine or the Escalation Router from these tables, never written by the model.
 # Hindi and Hinglish labels are not native-reviewed. Validator: tests/templates/validate_templates.py checks that all 15
-# queues of config/escalation_rules.yaml have a label and that every intent id here exists in config/intents.yaml.
+# queues of config/escalation_rules.yaml have a label, that every intent id, tool name and notice code here exists, and that
+# the label tables added in D-198 (below) follow the wording rules of the templates.
 schema_version: "1.0"
 review: {hi: not_native_reviewed, hinglish: not_native_reviewed}
 
@@ -57,6 +58,119 @@ intent_request_labels:
   SEC-003: {en: "reset your credentials",             hi: "पासवर्ड या पिन रीसेट करने",     hinglish: "credentials reset karne"}
   SEC-004: {en: "review the activity on your account", hi: "खाते की गतिविधि देखने",        hinglish: "account activity dekhne"}
 
-# Not yet provided (open item): `action_plain`, `result_plain`, `service_plain`, `topic`, `option_a..c` label tables. Their grammar
-# contracts are stated on the slots in the template files; the tables are written with the Day 14 simulations, which fix
-# the concrete actions and topics shown.
+# ------------------------------------------------------------------------------------------------ tables added with the Day 13 audit fixes (D-198)
+# Source of the phrases: the Day 14 simulations (day14 handoff section e.3), made general. Hindi and Hinglish are not native-reviewed.
+# The validator checks that every key exists (tool, intent or notice code), that all three languages are present, that English and
+# Hinglish are ASCII, that Hindi has Devanagari, that no digit appears, that the only token is {{card_last4}} (supplied by the same tool
+# result) and that the global wording rules of the templates also hold for label text.
+
+# Slot `action_plain` of TPL-ACT-CONFIRM. Key: the tool the Policy Engine is about to call. Grammar contract: English is a verb phrase
+# after "I will" and "Should I"; Hindi and Hinglish are verbal nouns (infinitive form), because the template text puts them after
+# "karne ja raha hoon:" and "karoon:".
+action_verb_labels:
+  block_card:                 {en: "block your card",                                          hi: "आपका कार्ड ब्लॉक करना",                                   hinglish: "aapka card block karna"}
+  request_replacement:        {en: "request a replacement for your blocked card",               hi: "आपके ब्लॉक किए हुए कार्ड का नया कार्ड मँगवाना",              hinglish: "aapke blocked card ka replacement request karna"}
+  create_dispute_ticket:      {en: "open a dispute ticket for this charge",                    hi: "इस शुल्क के लिए विवाद टिकट खोलना",                          hinglish: "is charge ke liye dispute ticket kholna"}
+  create_complaint:           {en: "register a complaint for you",                             hi: "आपकी शिकायत दर्ज करना",                                    hinglish: "aapki complaint register karna"}
+  send_credential_reset_link: {en: "send a reset link to your registered contact",              hi: "आपके पंजीकृत संपर्क पर रीसेट लिंक भेजना",                    hinglish: "aapke registered contact par reset link bhejna"}
+  schedule_callback:          {en: "request a callback for you",                               hi: "आपके लिए कॉलबैक का अनुरोध करना",                             hinglish: "aapke liye callback request karna"}
+  get_statement:              {en: "send your account statement to your registered email address", hi: "आपका अकाउंट स्टेटमेंट आपके पंजीकृत ईमेल पते पर भेजना",       hinglish: "aapka account statement aapke registered email address par bhejna"}
+  flag_fraud:                 {en: "record your fraud report",                                 hi: "आपकी धोखाधड़ी की सूचना दर्ज करना",                           hinglish: "aapki fraud report record karna"}
+
+# Slot `action_plain` of TPL-ACT-FAILED. Key: the tool whose write or read did not complete. Grammar contract: a noun phrase that follows
+# "I'm not able to see" or precedes "did not go through"; the Hindi form precedes the Hindi words for "cannot see" or "did not complete".
+action_noun_labels:
+  block_card:                 {en: "the card block",                  hi: "कार्ड ब्लॉक",                  hinglish: "card block"}
+  request_replacement:        {en: "the replacement request",         hi: "नए कार्ड का अनुरोध",             hinglish: "replacement request"}
+  create_dispute_ticket:      {en: "the dispute ticket",              hi: "विवाद टिकट",                    hinglish: "dispute ticket"}
+  create_complaint:           {en: "the complaint registration",      hi: "शिकायत का पंजीकरण",              hinglish: "complaint registration"}
+  send_credential_reset_link: {en: "the reset link",                  hi: "रीसेट लिंक",                    hinglish: "reset link"}
+  schedule_callback:          {en: "the callback request",            hi: "कॉलबैक का अनुरोध",               hinglish: "callback request"}
+  flag_fraud:                 {en: "the fraud report",                hi: "धोखाधड़ी की सूचना",              hinglish: "fraud report"}
+  get_balance:                {en: "your account balance",            hi: "आपके खाते का बैलेंस",            hinglish: "aapke account ka balance"}
+  get_txn:                    {en: "the status of that payment",      hi: "उस भुगतान की स्थिति",            hinglish: "us payment ka status"}
+  search_txn:                 {en: "your recent transactions",        hi: "आपके हाल के लेन-देन",            hinglish: "aapke recent transactions"}
+  get_card_status:            {en: "your card status",                hi: "आपके कार्ड की स्थिति",           hinglish: "aapke card ka status"}
+  get_complaint_status:       {en: "your complaint status",           hi: "आपकी शिकायत की स्थिति",          hinglish: "aapki complaint ka status"}
+  get_statement:              {en: "your statement",                  hi: "आपका स्टेटमेंट",                hinglish: "aapka statement"}
+
+# Slot `result_plain` of TPL-ACT-DONE (the `result_label` the executed tool returns). Key: the tool. Grammar contract: a clause that
+# follows "That's done:" and ends without a full stop. {{card_last4}} is the masked last four digits from the same tool result.
+result_labels:
+  block_card:                 {en: "your card ending {{card_last4}} is blocked",                                                    hi: "{{card_last4}} पर समाप्त होने वाला आपका कार्ड ब्लॉक हो गया है",                          hinglish: "{{card_last4}} par khatm hone wala aapka card block ho gaya hai"}
+  request_replacement:        {en: "a replacement for your blocked card ending {{card_last4}} has been requested",                   hi: "{{card_last4}} पर समाप्त होने वाले आपके ब्लॉक किए हुए कार्ड के नए कार्ड का अनुरोध दर्ज हो गया है", hinglish: "{{card_last4}} par khatm hone wale aapke blocked card ke replacement ki request ho gayi hai"}
+  create_dispute_ticket:      {en: "a dispute ticket is open for this charge",                                                       hi: "इस शुल्क के लिए विवाद टिकट खुल गया है",                                             hinglish: "is charge ke liye dispute ticket khul gaya hai"}
+  create_complaint:           {en: "your complaint is registered",                                                                   hi: "आपकी शिकायत दर्ज हो गई है",                                                        hinglish: "aapki complaint register ho gayi hai"}
+  send_credential_reset_link: {en: "a reset link has been sent to your registered contact",                                           hi: "आपके पंजीकृत संपर्क पर रीसेट लिंक भेज दिया गया है",                                    hinglish: "aapke registered contact par reset link bhej diya gaya hai"}
+  schedule_callback:          {en: "your callback request is placed",                                                                hi: "आपका कॉलबैक अनुरोध दर्ज हो गया है",                                                  hinglish: "aapki callback request place ho gayi hai"}
+  get_statement:              {en: "your statement has been sent to your registered email address",                                  hi: "आपका स्टेटमेंट आपके पंजीकृत ईमेल पते पर भेज दिया गया है",                              hinglish: "aapka statement aapke registered email address par bhej diya gaya hai"}
+  flag_fraud:                 {en: "your report is recorded",                                                                        hi: "आपकी सूचना दर्ज हो गई है",                                                         hinglish: "aapki report record ho gayi hai"}
+
+# Slot `service_plain` of TPL-SYS-NOTICE. Key: an intent id from notice.affects.intents; `all` when the list is empty. Grammar contract:
+# English follows "affecting"; the Hindi label is already in the form that precedes the Hindi postposition "mein" (oblique); Hinglish precedes "mein".
+service_labels:
+  TXN-001: {en: "transaction status checks",  hi: "लेन-देन की स्थिति की जाँच",    hinglish: "transaction status checks"}
+  TXN-003: {en: "UPI payments",               hi: "UPI भुगतान",                   hinglish: "UPI payments"}
+  TXN-004: {en: "NEFT and RTGS transfers",    hi: "NEFT और RTGS ट्रांसफ़र",        hinglish: "NEFT aur RTGS transfers"}
+  ACC-001: {en: "balance checks",             hi: "बैलेंस की जाँच",                hinglish: "balance checks"}
+  CRD-001: {en: "card services",              hi: "कार्ड सेवाओं",                  hinglish: "card services"}
+  PRD-001: {en: "product information",        hi: "उत्पादों की जानकारी",            hinglish: "product information"}
+  GEN-008: {en: "some bank services",         hi: "बैंक की कुछ सेवाओं",             hinglish: "kuch bank services"}
+  all:     {en: "some of our services",       hi: "हमारी कुछ सेवाओं",               hinglish: "hamari kuch services"}
+
+# Sentence `effect_statement` of TPL-SYS-NOTICE (D-193). Key: the closed field notice.customer_effect set by operations and validated
+# at gate G0. These are the only sentences about the customer's money or payments that may appear in a notice reply; each is attributed
+# to the status system, so it is a statement of the system of record and not a claim of the agent.
+notice_effect_labels:
+  balances_unaffected:   {en: "Our status system shows that account balances are not affected.",                                    hi: "हमारे स्टेटस सिस्टम के अनुसार खाते के बैलेंस पर इसका असर नहीं है।",                        hinglish: "Hamare status system ke mutabiq account balances par iska asar nahi hai."}
+  payments_may_lag:      {en: "Our status system shows that some payments may take longer than usual to show as complete.",           hi: "हमारे स्टेटस सिस्टम के अनुसार कुछ भुगतानों के पूरा दिखने में सामान्य से अधिक समय लग सकता है।",   hinglish: "Hamare status system ke mutabiq kuch payments ke complete dikhne mein normal se zyada time lag sakta hai."}
+  effect_unknown:        {en: "I can't confirm yet whether your own payments or balances are affected.",                           hi: "मैं अभी यह पुष्टि नहीं कर सकता कि आपके अपने भुगतान या बैलेंस प्रभावित हैं या नहीं।",           hinglish: "Main abhi confirm nahi kar sakta ki aapke apne payments ya balances affected hain ya nahi."}
+
+# Slot `topic` of TPL-ADV-ADVISOR-CONFIRM. Key: the intent of the topic. Grammar contract: a bare noun that follows "your question about"
+# and precedes the Hindi "se juda" and the Hinglish "wala"; bare nouns do not inflect, so direct and oblique forms are the same.
+topic_labels:
+  PRD-002: {en: "loans",                     hi: "लोन",                  hinglish: "loans"}
+  PRD-003: {en: "deposit rates and tax",     hi: "जमा दरें और टैक्स",     hinglish: "deposit rates aur tax"}
+  PRD-004: {en: "insurance",                 hi: "बीमा",                 hinglish: "insurance"}
+  PRD-005: {en: "investments",               hi: "निवेश",                hinglish: "investments"}
+  TXN-006: {en: "currency exchange",         hi: "मुद्रा विनिमय",         hinglish: "currency exchange"}
+
+# Slots `option_a`, `option_b`, `option_c` of TPL-GEN-CLARIFY and `first_request`, `second_request` of TPL-GEN-TWO-REQUESTS. Key: intent id.
+# Grammar contract: a bare noun phrase with no possessive and no inflecting adjective, so that the direct form (before "hai") and the
+# oblique form (before "ke baare mein", "se", "par") are identical in Hindi. English follows "about" or "start with".
+option_labels:
+  ACC-001: {en: "your balance",                          hi: "बैलेंस",                      hinglish: "balance"}
+  ACC-002: {en: "your account statement",                hi: "अकाउंट स्टेटमेंट",              hinglish: "account statement"}
+  ACC-003: {en: "your contact details",                  hi: "संपर्क विवरण",                  hinglish: "contact details"}
+  ACC-004: {en: "your mailing address",                  hi: "डाक पता",                      hinglish: "mailing address"}
+  ACC-005: {en: "an account closure request",            hi: "खाता बंद करने का अनुरोध",        hinglish: "account closure request"}
+  TXN-001: {en: "the status of a payment",               hi: "भुगतान की स्थिति",              hinglish: "payment status"}
+  TXN-002: {en: "a disputed charge",                     hi: "विवादित शुल्क",                 hinglish: "disputed charge"}
+  TXN-003: {en: "a UPI payment that did not go through", hi: "विफल UPI भुगतान",               hinglish: "failed UPI payment"}
+  TXN-004: {en: "a NEFT or RTGS transfer",               hi: "NEFT या RTGS ट्रांसफ़र",         hinglish: "NEFT ya RTGS transfer"}
+  CRD-001: {en: "card block or unblock",                 hi: "कार्ड ब्लॉक या अनब्लॉक",         hinglish: "card block ya unblock"}
+  CRD-002: {en: "a replacement card",                    hi: "नया कार्ड",                    hinglish: "replacement card"}
+  CRD-003: {en: "a credit limit change",                 hi: "क्रेडिट लिमिट में बदलाव",        hinglish: "credit limit change"}
+  CRD-004: {en: "EMI conversion",                        hi: "EMI कन्वर्ज़न",                  hinglish: "EMI conversion"}
+  CRD-005: {en: "reward points",                         hi: "रिवॉर्ड पॉइंट",                  hinglish: "reward points"}
+  PRD-001: {en: "product information",                   hi: "उत्पादों की जानकारी",            hinglish: "product information"}
+  PRD-002: {en: "loans and EMI",                         hi: "लोन और EMI",                   hinglish: "loans aur EMI"}
+  PRD-003: {en: "FD and RD rates",                       hi: "FD और RD की दरें",              hinglish: "FD aur RD rates"}
+  PRD-004: {en: "insurance",                             hi: "बीमा",                        hinglish: "insurance"}
+  CMP-001: {en: "a new complaint",                       hi: "नई शिकायत",                    hinglish: "nayi complaint"}
+  CMP-002: {en: "the status of a complaint",             hi: "शिकायत की स्थिति",              hinglish: "complaint status"}
+  CMP-005: {en: "a callback",                            hi: "कॉलबैक",                      hinglish: "callback"}
+  SEC-001: {en: "a fraud report",                        hi: "धोखाधड़ी की सूचना",             hinglish: "fraud report"}
+  SEC-003: {en: "a PIN or password reset",               hi: "पिन या पासवर्ड रीसेट",           hinglish: "PIN ya password reset"}
+  GEN-008: {en: "bank service information",              hi: "बैंक सेवाओं की जानकारी",         hinglish: "bank services ki jaankari"}
+
+# Slot `finish_offer` of TPL-ESC-HUMAN-REQUEST-FIRST (XTR-01 request 1). Key: the pending intent. One full sentence naming one step the agent
+# can complete in this turn; it follows "I can bring in a colleague." The Policy Engine picks it only when the step needs no new
+# verification and no confirmation (a read), so the customer is never held back by it.
+finish_offer_sentences:
+  ACC-001: {en: "I can also show your balance right now.",                    hi: "मैं अभी आपका बैलेंस भी दिखा सकता हूँ।",          hinglish: "Main abhi aapka balance bhi dikha sakta hoon."}
+  TXN-001: {en: "I can also check the status of that payment right now.",      hi: "मैं अभी उस भुगतान की स्थिति भी देख सकता हूँ।",      hinglish: "Main abhi us payment ka status bhi check kar sakta hoon."}
+  TXN-003: {en: "I can also check the status of that UPI payment right now.",  hi: "मैं अभी उस UPI भुगतान की स्थिति भी देख सकता हूँ।", hinglish: "Main abhi us UPI payment ka status bhi check kar sakta hoon."}
+  TXN-004: {en: "I can also check the status of that transfer right now.",     hi: "मैं अभी उस ट्रांसफ़र की स्थिति भी देख सकता हूँ।",   hinglish: "Main abhi us transfer ka status bhi check kar sakta hoon."}
+  CMP-002: {en: "I can also check the status of your complaint right now.",    hi: "मैं अभी आपकी शिकायत की स्थिति भी देख सकता हूँ।",   hinglish: "Main abhi aapki complaint ka status bhi check kar sakta hoon."}
+  PRD-001: {en: "I can also share the product details right now.",             hi: "मैं अभी उत्पाद का विवरण भी बता सकता हूँ।",         hinglish: "Main abhi product ki details bhi bata sakta hoon."}

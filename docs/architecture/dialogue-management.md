@@ -87,7 +87,7 @@ Resolve "it", "that", "the same", "the first one" against, in order: the most re
 A topic switch is a change of secondary-intent label with high confidence (>= 0.70) that is not a clarification or slot answer. The active topic is pushed onto the **topic stack** with a snapshot of its slots; the new topic becomes active. Rules:
 - Switches to a **security/fraud** topic always take priority and can pre-empt the current action.
 - A parked topic is surfaced again when the active topic resolves ("Earlier you asked about the Swiggy charge, shall we continue?") or when the customer refers back to it.
-- A topic abandoned explicitly ("forget that") is marked `abandoned` and not resurfaced.
+- A topic abandoned explicitly ("forget that") is marked `abandoned` and not resurfaced. A topic whose outcome is a ticket the customer accepted is `resolved` from the turn the ticket exists, with the reference kept in state; it returns to `active` if the customer comes back to it. `abandoned` also covers an offer not taken or a request withdrawn, and `open_topic` in the escalation rules means status `active` or `parked` only (D-201).
 - Stack depth is capped (5); the oldest low-priority topic is summarised into pinned facts.
 
 ### 5.3 Implicit intent

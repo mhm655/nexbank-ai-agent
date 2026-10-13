@@ -10,7 +10,7 @@ templates:
 
 - id: TPL-ATK-NEUTRAL-REDIRECT
   title: "Neutral redirect after a flagged turn (three rotating variants)"
-  version: "1.0.0"
+  version: "1.1.0"
   customer_facing: true
   trigger:
     intents: []
@@ -24,9 +24,9 @@ templates:
     - key: first
       when: "first flagged turn in the session"
       text:
-        en: "I can't help with that request. I'm NexBank's AI assistant, and I can help with your own accounts, cards, payments and questions about our products. What would you like to do?"
-        hi: "इस अनुरोध में मैं मदद नहीं कर सकता। मैं नेक्सबैंक का AI सहायक हूँ और आपके अपने खातों, कार्ड, भुगतान और हमारे उत्पादों से जुड़े सवालों में मदद कर सकता हूँ। आप क्या करना चाहेंगे?"
-        hinglish: "Is request mein main madad nahi kar sakta. Main NexBank ka AI assistant hoon aur aapke apne accounts, cards, payments aur hamare products ke sawaalon mein madad kar sakta hoon. Aap kya karna chahenge?"
+        en: "I can't help with that request. I'm NexBank's AI assistant, and I can help with your own accounts, cards, payment status and questions about our products. What would you like to do?"
+        hi: "इस अनुरोध में मैं मदद नहीं कर सकता। मैं नेक्सबैंक का AI सहायक हूँ और आपके अपने खातों, कार्ड, भुगतान की स्थिति और हमारे उत्पादों से जुड़े सवालों में मदद कर सकता हूँ। आप क्या करना चाहेंगे?"
+        hinglish: "Is request mein main madad nahi kar sakta. Main NexBank ka AI assistant hoon aur aapke apne accounts, cards, payment status aur hamare products ke sawaalon mein madad kar sakta hoon. Aap kya karna chahenge?"
     - key: second
       when: "second flagged turn in the session"
       text:
@@ -94,6 +94,8 @@ templates:
   safety:
     guardrails_enforced: [GR-ATK-10, GR-SEC-R2, GR-SEC-R5, GR-REG-08]
     must_not_contain: ["those details match", "that is correct", "you are verified", "we found an account", "share the OTP", "enter the OTP"]
+    required_markers:
+      - {id: no_personal_details_in_chat, variants: all, en: ["don't share personal details"], hi: ["निजी जानकारी साझा न करें"], hinglish: ["personal details share na karein"]}
     notes: "Neither confirms nor denies that the typed details match a record (D-75). The OTP is entered in the secure widget, never in chat."
   a9: {patterns: [P4], anti_patterns_avoided: [AP6, AP8]}
   kb_refs: [KB-POL-003]
@@ -194,26 +196,28 @@ templates:
 
 - id: TPL-ATK-SAFE-MODE
   title: "Safe mode notice (templates only, human option stated)"
-  version: "1.0.0"
+  version: "1.1.0"
   customer_facing: true
   trigger:
     intents: []
     guardrails: [GR-ATK-04, GR-SYS-04]
     escalations: []
-    state: "session flagged-turn count reached atk_adversarial_flags_safe_mode, or the template-only containment lever is on"
+    state: "from the fourth flagged turn on (the third flagged turn is answered with the vector's own template and templates-only mode starts then, D-173), or the template-only containment lever is on"
   mode: template
   variant_selection: single
   slots: []
   variants:
     - key: default
       text:
-        en: "I can help with a limited set of banking requests in this chat right now, such as balances, card blocks, payment status and product information. A human colleague is also available if you'd prefer. What would you like to do?"
-        hi: "इस चैट में अभी मैं कुछ सीमित बैंकिंग अनुरोधों में मदद कर सकता हूँ, जैसे बैलेंस, कार्ड ब्लॉक, भुगतान की स्थिति और उत्पादों की जानकारी। अगर आप चाहें तो हमारे एक सहयोगी भी उपलब्ध हैं। आप क्या करना चाहेंगे?"
-        hinglish: "Is chat mein abhi main kuch limited banking requests mein madad kar sakta hoon, jaise balance, card block, payment status aur product information. Agar aap chahein to hamare ek colleague bhi available hain. Aap kya karna chahenge?"
+        en: "In this chat I can help with balances, card blocks, payment status and product information. A human colleague is also available if you'd prefer. What would you like to do?"
+        hi: "इस चैट में मैं बैलेंस, कार्ड ब्लॉक, भुगतान की स्थिति और उत्पादों की जानकारी में मदद कर सकता हूँ। अगर आप चाहें तो हमारे एक सहयोगी भी उपलब्ध हैं। आप क्या करना चाहेंगे?"
+        hinglish: "Is chat mein main balance, card block, payment status aur product information mein madad kar sakta hoon. Agar aap chahein to hamare ek colleague bhi available hain. Aap kya karna chahenge?"
   safety:
     guardrails_enforced: [GR-ATK-04, GR-SYS-04, GR-SYS-01, GR-REG-16]
-    must_not_contain: ["safe mode", "restricted because", "you have been flagged", "suspicious"]
-    notes: "The customer is never told that the session is in safe mode or why. Safety intents SEC-001, GEN-007 and GEN-003 are never blocked by safe mode."
+    must_not_contain: ["safe mode", "restricted because", "you have been flagged", "suspicious", "limited", "right now"]
+    required_markers:
+      - {id: human_available, variants: all, en: ["human colleague"], hi: ["सहयोगी"], hinglish: ["colleague"]}
+    notes: "The customer is never told that the session is in safe mode or why; the wording says what the agent can help with and does not use the words limited or right now, which would hint that something changed (D-198, audit finding 21). Safety intents SEC-001, GEN-007 and GEN-003 are never blocked by safe mode."
   a9: {patterns: [P4], anti_patterns_avoided: [AP1, AP4]}
   kb_refs: [KB-POL-004]
   tests: [GR-ATK-04-01, GR-ATK-04-03, GR-ATK-04-04, GR-SYS-04-01]

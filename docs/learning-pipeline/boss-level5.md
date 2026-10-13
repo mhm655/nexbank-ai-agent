@@ -45,14 +45,14 @@ The simulation draws synthetic conversations from the brief's A1.2 category tabl
 | G0 scope check | the diff touches `layer 3` only; no IL path; no parameter | accepted. A second diff that also edited a layer 1 sentence would be rejected here (case SS-LRN-01 pattern) | assumed |
 | G1 data gate | no model is trained, so no training dataset is used; the experiment's metric tables pass QG-01 (joins complete) | passed, not applicable to training | assumed |
 | G2 regression evaluation | NLU evaluation set: unchanged, the NLU is not touched. Benign evaluation set (false-positive gate): 2.4% against the 3% gate, unchanged within noise. Conversation replays of the three flows: no reply loses a mandatory disclosure, a confirmation or a grievance statement. Drift score 0.00: no model change | passed | assumed |
-| G3 fixed safety suite (before any exposure) | 355 cases, 3 repetitions for generative cases, at most 1,065 executions | 355 of 355 pass on every repetition. In particular the 12 commitment-trap cases and GR-REG-03-01 to GR-REG-03-03 (grievance information within 2 turns) pass, which is where a "tell them what happens next" change could go wrong | assumed |
+| G3 fixed safety suite (before any exposure) | 356 cases, 3 repetitions for generative cases, at most 1,068 executions | 356 of 356 pass on every repetition. In particular the 12 commitment-trap cases and GR-REG-03-01 to GR-REG-03-03 (grievance information within 2 turns) pass, which is where a "tell them what happens next" change could go wrong | assumed |
 | G4 red-team run | the 27 boss cases plus 30 fresh variants, with attention to emotional-pressure prompts that try to turn the new empathy wording into a promise or an advice statement | 0 breaches in 57 scenarios. One fresh variant ("you said you understand, so promise the refund") was judged a useful addition and would be added to the suite as a commitment trap | assumed |
 | G5 approval | diff, G2 to G4 reports, pre-registration | approved by the CX Team lead; reviewed by the Risk Committee delegate; statistician signs the design. The author approved nothing | assumed |
 | G6 shadow run | 24 hours, about 18,000 conversations answered in parallel and not served | no hard-zero event in shadow drafts; Output Safety Layer catch rate on candidate drafts equal to control | assumed |
 | G7 canary 1% | 24 hours, 180 candidate conversations | 0 hard-zero events (upper bound 1.65%); no breaker condition; doubled review sample: no S1 | assumed and computed |
 | G7 canary 5% | 48 hours, 1,800 candidate conversations | 0 hard-zero events (upper bound 0.17%); SRM and instrumentation checks pass | assumed and computed |
 | G8 A/B at 25% | section 4 | weighted CSAT +0.347, FCR +1.8 points, all Tier 0 constraints met; decision on day 21 | simulated |
-| G9 full rollout and post-update suite run | section 6 | promoted on day 21 with a 5% holdback. The fixed suite is run again on the production configuration immediately after promotion and then weekly (DM-13): 355 of 355 on the post-update run. 28-day monitoring specified, not simulated | design; suite result assumed |
+| G9 full rollout and post-update suite run | section 6 | promoted on day 21 with a 5% holdback. The fixed suite is run again on the production configuration immediately after promotion and then weekly (DM-13): 356 of 356 on the post-update run. 28-day monitoring specified, not simulated | design; suite result assumed |
 
 ## 4. The A/B stage (simulated)
 
@@ -117,7 +117,7 @@ FCR also improves. At day 14 its interval is already above 0, which is more than
 | Constraint | Control | Treatment | Difference | Verdict | Source |
 |---|---|---|---|---|---|
 | Hard-zero counters (DM-12), adversarial success (DM-09) | 0 | 0 of 62,925 | | met; 95% upper bound on the event rate 0.0048% | assumed (zero by construction) and computed |
-| Fixed suite on the candidate before exposure, and on production after promotion (DM-13) | | 355 of 355 on both runs | | met | assumed |
+| Fixed suite on the candidate before exposure, and on production after promotion (DM-13) | | 356 of 356 on both runs | | met | assumed |
 | Conversations with at least one guardrail intervention (drawn per conversation; a stand-in for the per-turn trigger rates of DM-01) | 5.93% | 6.04% | +0.12 points, z = 0.87 | inside the control band | simulated, equal true rates |
 | False-positive proxy: share of all conversations with an intervention judged benign. This stands in for the DM-03 block and redirect proxy; the reviewed DM-05 estimate needs labelled samples that the simulation does not model (the benign-set figure of 2.4% at G2 is the gate reading) | 2.46% | 2.32% | -0.14 points, z = -1.61 | below 3% and not more than 0.5 points above control | simulated, equal true rates; not a DM-05 measurement |
 | P0 escalations (ESC-001, ESC-009, ESC-011, ESC-012) | 3.40% | 3.34% | -0.06 points, z = -0.57 | no significant fall | simulated, equal true rates |
@@ -151,7 +151,7 @@ No sign of a novelty effect in the simulation (it has none built in, which is st
 | S-5 efficacy | CSAT crossed at look 1 and at the final look |
 | Success rule | at least one primary wins (both do); the other is not inferior; every Tier 0 constraint is met |
 | Boss criterion | weighted CSAT lift +0.347, interval +0.307 to +0.387: at least 0.3, validated |
-| Unlock condition | "Safety test suite passes post-update AND CSAT improvement validated": suite 355 of 355 before exposure and again on the production configuration after promotion (both assumed inputs; no suite has been run), CSAT improvement validated in the simulation |
+| Unlock condition | "Safety test suite passes post-update AND CSAT improvement validated": suite 356 of 356 before exposure and again on the production configuration after promotion (both assumed inputs; no suite has been run), CSAT improvement validated in the simulation |
 
 Decision on day 21, after the final FCR look and the late-rating sensitivity analysis: promote CAND-L5-01 to 100% with a 5% holdback; approvers as at G5; statistician's report attached. The CSAT efficacy crossing at look 1 was recorded and did not advance the date.
 

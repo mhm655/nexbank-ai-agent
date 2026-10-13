@@ -238,7 +238,7 @@ A handoff fails when the customer does not reach a human by the route chosen. Be
 | No acceptance by the SLA | SLA timer | Breach handling in `queue-management.md` section 5; the customer stays in the conversation and is told honestly | Next overflow step; choice to wait or request a callback | Same as P1 |
 | Transfer fails technically (agent desktop, channel) | Transfer error | Retry once at once, then the next queue; never a third attempt on the same route | Retry once, then overflow | Retry once, then overflow |
 | Package not delivered | Delivery error | Handoff proceeds; the agent pastes the summary element into the conversation for the human; package flagged incomplete | Same | Same |
-| Customer leaves while waiting | Channel disconnect or inactivity | The case stays open; the queue makes outbound contact on the registered channel; ESC-011 follows the Crisis Response team's own protocol (dependency) | Case stays open; one notification that a colleague will follow up; no promised time | Record closed as abandoned in queue; one message with how to resume; context is reusable for 24 hours (D-05) |
+| Customer leaves while waiting | Channel disconnect or inactivity | The case stays open; the queue makes outbound contact on the registered channel; ESC-011 follows the Crisis Response team's own protocol (dependency) | Case stays open; one notification that a colleague will follow up; no promised time | Record closed as abandoned in queue; one message with how to resume (`TPL-ESC-ABANDONED-P2`); context is reusable for 24 hours (D-05) |
 | Human returns the conversation without resolving | Wrap-up code | Not allowed for P0 | Returned to the queue, not to the agent | Allowed only with a wrap-up note; the agent resumes with the note visible |
 
 Limits: two transfer attempts per route (`handoff_attempts_max`); a failed handoff is never presented as the customer's problem; the phrases "no one is available" and "try later" are not used for a security report (existing oracle GR-SEC-R6-03). Every failure is logged with its type and feeds EQ-06 (`queue-management.md` section 8).
@@ -275,11 +275,11 @@ Recovery conditions:
 | Trigger | Recovery condition (all parts) |
 |---|---|
 | ESC-003 | A later customer turn at or above `intent_confidence_threshold`, and the agent has completed that request |
-| ESC-004 | The customer's issue has had a concrete action or answer, and the latest raw sentiment score is above -0.40 (proposal; the anchor is the -0.4 "recovering" reading in Case Study 5) |
+| ESC-004 | The customer's issue has had a concrete action or answer, and the latest raw sentiment score is at or above -0.40, that is `esc004_cancel_sentiment_min`, comparison non-strict (D-200, amending D-125; proposal; the anchor is the "-0.4 (recovering)" reading in Case Study 5, brief p.53, turn 5, so a score of exactly -0.40 counts as recovered). The score is only one part: the customer must also agree, so a customer who is asking for the handoff keeps it) |
 | ESC-010 | The open topic has reached status `resolved` |
 | ESC-014 | The failed read has succeeded and the request has been completed |
 
-The one question the agent may ask, once, when a recovery condition holds (illustrative): "It looks like this is now sorted. Would you still like to speak to my colleague, or are you happy to finish here?" Any answer other than a clear wish to finish keeps the handoff.
+The one question the agent may ask, once, when a recovery condition holds (illustrative): "It looks like this is now sorted. Would you still like to speak to my colleague, or are you happy to finish here?" Any answer other than a clear wish to finish keeps the handoff. When the customer does choose to finish, the line that closes the pending handoff is `TPL-ESC-HANDOFF-CANCELLED`.
 
 Safeguards against using cancellation to improve containment figures:
 
@@ -314,6 +314,10 @@ Safeguards against using cancellation to improve containment figures:
 | TPL-ESC-HANDOFF-FAILED | Section 8 | what happens next; no blame, no "try later" |
 | TPL-ESC-DEESCALATION-CHECK | Section 9.2 | none |
 | TPL-ESC-REFERRAL | XTR-05, XTR-07 | process name, what the customer needs to bring or do |
+| TPL-ESC-ABANDONED-P2 | Section 8 (customer leaves while waiting, P2 triggers) | how to resume |
+| TPL-ESC-HANDOFF-CANCELLED | Section 9.2 | none |
+| TPL-ESC-HUMAN-REQUEST-FIRST | XTR-01 first request | one concrete offer (optional) |
+| TPL-ESC-CARE-OFFER | XTR-03 | none |
 | TPL-ADV-ADVISOR-OFFER, TPL-ADV-ADVISOR-CONFIRM, TPL-ADV-ADVISOR-UNAVAILABLE | ESC-013 | already named on Day 9 |
 
 ## 12. Decisions and open items

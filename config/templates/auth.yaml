@@ -30,6 +30,8 @@ templates:
   safety:
     guardrails_enforced: [GR-SEC-R2, GR-SEC-R5, GR-REG-08, GR-SEC-R1]
     must_not_contain: ["share the OTP", "tell me the OTP", "type the code here", "send me your PIN", "your balance is"]
+    required_markers:
+      - {id: not_in_chat, variants: all, en: ["not in this chat"], hi: ["इस चैट में नहीं"], hinglish: ["is chat mein nahi"]}
     notes: "Sent once per needed step. Not sent when the session is already at the needed level (Authentication Theatre). The code length and validity are not stated: the KB holds neither."
   a9: {patterns: [P2], anti_patterns_avoided: [AP6, AP2]}
   kb_refs: [KB-POL-003]
@@ -70,6 +72,8 @@ templates:
   safety:
     guardrails_enforced: [GR-SEC-R2, GR-SEC-R5, GR-ATK-10]
     must_not_contain: ["verified as full_kyc", "I am already", "share the OTP", "has been changed", "number updated"]
+    required_markers:
+      - {id: no_documents_in_chat, variants: [full_kyc], en: ["don't send documents"], hi: ["न भेजें"], hinglish: ["na bhejein"]}
     notes: "A level claimed in text has no effect (GR-SEC-R2-04). The `for_information` variant does not reveal what the answer is or that a restricted entry exists beyond the need to verify."
   a9: {patterns: [P3, P2], anti_patterns_avoided: [AP6]}
   kb_refs: [KB-POL-003]
@@ -103,6 +107,8 @@ templates:
   safety:
     guardrails_enforced: [GR-SEC-R2, GR-ATK-10, GR-SEC-R6]
     must_not_contain: ["one more attempt is allowed", "attempts left", "the code was close", "try again in", "suspicious", "you are blocked"]
+    required_markers:
+      - {id: secure_box, variants: [retry], en: ["secure box"], hi: ["सुरक्षित बॉक्स"], hinglish: ["secure box"]}
     notes: "The number of attempts remaining is never stated (no oracle for guessing). No accusation: a locked-out customer is usually the real customer."
   a9: {patterns: [P4], anti_patterns_avoided: [AP1, AP5]}
   kb_refs: [KB-POL-003, KB-TRB-007]
@@ -144,64 +150,120 @@ templates:
 
 - id: TPL-SEC-DO-NOT-SHARE
   title: "Customer typed a credential or a full identifier in chat"
-  version: "1.0.0"
+  version: "1.1.0"
   customer_facing: true
   legacy_names: [ask_not_to_share_card, ask_not_to_share_cvv, ask_not_to_share_aadhaar, ask_not_to_share_secret, use_secure_widget, use_secure_form, use_masked_reference]
   trigger:
     intents: []
-    guardrails: [GR-SEC-R1, GR-SEC-R5, GR-REG-06, GR-REG-05]
+    guardrails: [GR-SEC-R1, GR-SEC-R5, GR-REG-06, GR-REG-05, GR-SEC-R2]
     escalations: []
-    state: "Input Guard redaction RED-01 to RED-07 fired on the customer's message. Variant by redaction rule (the `reply` key of config/entities.yaml)"
+    state: "Input Guard redaction RED-01 to RED-07 fired on the customer's message. Variant by redaction rule (the `reply` key of config/entities.yaml) and, for RED-01, RED-02 and RED-04, by auth level (account-security.md section 4.5; D-16, D-196)"
   mode: template
   variant_selection: condition
   slots: []
   variants:
     - key: ask_not_to_share_card
-      when: "RED-01 full card number"
+      when: "RED-01 full card number, auth_level at or above otp_verified: the card block is offered (confirmation follows through TPL-ACT-CONFIRM)"
       text:
-        en: "For your safety, please don't share your full card number in chat. I haven't kept it. I only ever need the last four digits, and I can find your card once you're verified."
-        hi: "आपकी सुरक्षा के लिए, कृपया चैट में अपना पूरा कार्ड नंबर साझा न करें। मैंने उसे सुरक्षित नहीं रखा है। मुझे केवल आख़िरी चार अंकों की ज़रूरत होती है, और सत्यापन के बाद मैं आपका कार्ड ढूँढ सकता हूँ।"
-        hinglish: "Aapki safety ke liye, please chat mein apna poora card number share na karein. Maine use save nahi kiya hai. Mujhe sirf last chaar digits ki zaroorat hoti hai, aur verification ke baad main aapka card dhoondh sakta hoon."
+        en: "For your safety, please don't share your full card number in chat. I haven't kept it. I only ever need the last four digits. Because it has been typed here, the safest step is to block the card. Shall I help you with that?"
+        hi: "आपकी सुरक्षा के लिए, कृपया चैट में अपना पूरा कार्ड नंबर साझा न करें। मैंने उसे सहेजा नहीं है। मुझे केवल आख़िरी चार अंकों की ज़रूरत होती है। चूँकि वह यहाँ लिखा जा चुका है, सबसे सुरक्षित कदम कार्ड ब्लॉक करना है। क्या मैं इसमें आपकी मदद करूँ?"
+        hinglish: "Aapki safety ke liye, please chat mein apna poora card number share na karein. Maine use save nahi kiya hai. Mujhe sirf last chaar digits ki zaroorat hoti hai. Kyunki woh yahan type ho chuka hai, sabse safe step card block karna hai. Kya main ismein aapki madad karoon?"
+    - key: ask_not_to_share_card_anonymous
+      when: "RED-01 full card number, auth_level anonymous: no block is offered before verification (D-16); the block is named as the step that follows the secure verification"
+      text:
+        en: "For your safety, please don't share your full card number in chat. I haven't kept it. I only ever need the last four digits. Because it has been typed here, the safest step is to block the card, which I can help with once you've completed the secure verification step."
+        hi: "आपकी सुरक्षा के लिए, कृपया चैट में अपना पूरा कार्ड नंबर साझा न करें। मैंने उसे सहेजा नहीं है। मुझे केवल आख़िरी चार अंकों की ज़रूरत होती है। चूँकि वह यहाँ लिखा जा चुका है, सबसे सुरक्षित कदम कार्ड ब्लॉक करना है, जिसमें सुरक्षित सत्यापन का चरण पूरा होने के बाद मैं आपकी मदद कर सकता हूँ।"
+        hinglish: "Aapki safety ke liye, please chat mein apna poora card number share na karein. Maine use save nahi kiya hai. Mujhe sirf last chaar digits ki zaroorat hoti hai. Kyunki woh yahan type ho chuka hai, sabse safe step card block karna hai, jismein main secure verification step poora hone ke baad aapki madad kar sakta hoon."
     - key: ask_not_to_share_cvv
-      when: "RED-02 CVV or CVC"
+      when: "RED-02 CVV or CVC, auth_level at or above otp_verified: the card block is offered"
       text:
-        en: "Please never share your card's security code with anyone, including me. I haven't kept it. Because it has been typed here, I'd suggest blocking the card to be safe. Shall I help you with that?"
-        hi: "कृपया अपने कार्ड का सुरक्षा कोड कभी किसी के साथ साझा न करें, मेरे साथ भी नहीं। मैंने उसे सुरक्षित नहीं रखा है। चूँकि वह यहाँ लिखा जा चुका है, सुरक्षा के लिए कार्ड ब्लॉक करना बेहतर होगा। क्या मैं इसमें आपकी मदद करूँ?"
-        hinglish: "Please apne card ka security code kabhi kisi ke saath share na karein, mere saath bhi nahi. Maine use save nahi kiya hai. Kyunki woh yahan type ho chuka hai, safety ke liye card block karna behtar hoga. Kya main ismein aapki madad karoon?"
+        en: "Please never share your card's security code with anyone, including me. I haven't kept it. Because it has been typed here, the safest step is to block the card. Shall I help you with that?"
+        hi: "कृपया अपने कार्ड का सुरक्षा कोड कभी किसी के साथ साझा न करें, मेरे साथ भी नहीं। मैंने उसे सहेजा नहीं है। चूँकि वह यहाँ लिखा जा चुका है, सबसे सुरक्षित कदम कार्ड ब्लॉक करना है। क्या मैं इसमें आपकी मदद करूँ?"
+        hinglish: "Please apne card ka security code kabhi kisi ke saath share na karein, mere saath bhi nahi. Maine use save nahi kiya hai. Kyunki woh yahan type ho chuka hai, sabse safe step card block karna hai. Kya main ismein aapki madad karoon?"
+    - key: ask_not_to_share_cvv_anonymous
+      when: "RED-02 CVV or CVC, auth_level anonymous: no block is offered before verification (D-16)"
+      text:
+        en: "Please never share your card's security code with anyone, including me. I haven't kept it. Because it has been typed here, the safest step is to block the card, which I can help with once you've completed the secure verification step."
+        hi: "कृपया अपने कार्ड का सुरक्षा कोड कभी किसी के साथ साझा न करें, मेरे साथ भी नहीं। मैंने उसे सहेजा नहीं है। चूँकि वह यहाँ लिखा जा चुका है, सबसे सुरक्षित कदम कार्ड ब्लॉक करना है, जिसमें सुरक्षित सत्यापन का चरण पूरा होने के बाद मैं आपकी मदद कर सकता हूँ।"
+        hinglish: "Please apne card ka security code kabhi kisi ke saath share na karein, mere saath bhi nahi. Maine use save nahi kiya hai. Kyunki woh yahan type ho chuka hai, sabse safe step card block karna hai, jismein main secure verification step poora hone ke baad aapki madad kar sakta hoon."
     - key: ask_not_to_share_aadhaar
       when: "RED-03 full Aadhaar number"
       text:
         en: "For your safety, please don't share your Aadhaar number in chat. I haven't kept it. Identity documents are handled only through the secure form, which I can open for you."
-        hi: "आपकी सुरक्षा के लिए, कृपया चैट में अपना आधार नंबर साझा न करें। मैंने उसे सुरक्षित नहीं रखा है। पहचान दस्तावेज़ केवल सुरक्षित फ़ॉर्म के ज़रिए लिए जाते हैं, जिसे मैं आपके लिए खोल सकता हूँ।"
+        hi: "आपकी सुरक्षा के लिए, कृपया चैट में अपना आधार नंबर साझा न करें। मैंने उसे सहेजा नहीं है। पहचान दस्तावेज़ केवल सुरक्षित फ़ॉर्म के ज़रिए लिए जाते हैं, जिसे मैं आपके लिए खोल सकता हूँ।"
         hinglish: "Aapki safety ke liye, please chat mein apna Aadhaar number share na karein. Maine use save nahi kiya hai. Identity documents sirf secure form ke through liye jaate hain, jo main aapke liye khol sakta hoon."
     - key: ask_not_to_share_secret
-      when: "RED-04 PIN or password"
+      when: "RED-04 PIN or password, auth_level at or above otp_verified: the reset link to the registered contact is offered (KB-TRB-007)"
       text:
         en: "Please don't share your PIN or password with anyone, including me. I haven't kept it. Because it has been typed here, please change it straight away. I can send a reset link to your registered contact if that helps."
-        hi: "कृपया अपना पिन या पासवर्ड किसी के साथ साझा न करें, मेरे साथ भी नहीं। मैंने उसे सुरक्षित नहीं रखा है। चूँकि वह यहाँ लिखा जा चुका है, कृपया उसे तुरंत बदल लें। अगर इससे मदद मिले तो मैं आपके पंजीकृत संपर्क पर रीसेट लिंक भेज सकता हूँ।"
+        hi: "कृपया अपना पिन या पासवर्ड किसी के साथ साझा न करें, मेरे साथ भी नहीं। मैंने उसे सहेजा नहीं है। चूँकि वह यहाँ लिखा जा चुका है, कृपया उसे तुरंत बदल लें। अगर इससे मदद मिले तो मैं आपके पंजीकृत संपर्क पर रीसेट लिंक भेज सकता हूँ।"
         hinglish: "Please apna PIN ya password kisi ke saath share na karein, mere saath bhi nahi. Maine use save nahi kiya hai. Kyunki woh yahan type ho chuka hai, please use turant badal lein. Agar isse madad mile to main aapke registered contact par reset link bhej sakta hoon."
+    - key: ask_not_to_share_secret_anonymous
+      when: "RED-04 PIN or password, auth_level anonymous: generic steps only, no reset link (account-security.md section 4.5; KB-TRB-007: the link goes to the registered contact after verification)"
+      text:
+        en: "Please don't share your PIN or password with anyone, including me. I haven't kept it. Because it has been typed here, please change it straight away. No one from the bank will ever ask you for a code or a password."
+        hi: "कृपया अपना पिन या पासवर्ड किसी के साथ साझा न करें, मेरे साथ भी नहीं। मैंने उसे सहेजा नहीं है। चूँकि वह यहाँ लिखा जा चुका है, कृपया उसे तुरंत बदल लें। बैंक का कोई भी व्यक्ति आपसे कभी कोड या पासवर्ड नहीं माँगेगा।"
+        hinglish: "Please apna PIN ya password kisi ke saath share na karein, mere saath bhi nahi. Maine use save nahi kiya hai. Kyunki woh yahan type ho chuka hai, please use turant badal lein. Bank ka koi bhi vyakti aapse kabhi code ya password nahi maangega."
     - key: use_secure_widget
       when: "RED-05 one-time code typed in chat"
       text:
         en: "Please don't type one-time codes in chat; I can't use a code sent here and I haven't kept it. Enter it in the secure verification box instead."
-        hi: "कृपया वन-टाइम कोड चैट में न लिखें; यहाँ भेजे गए कोड का मैं उपयोग नहीं कर सकता और मैंने उसे सुरक्षित नहीं रखा है। उसे सुरक्षित सत्यापन बॉक्स में दर्ज करें।"
+        hi: "कृपया वन-टाइम कोड चैट में न लिखें; यहाँ भेजे गए कोड का मैं उपयोग नहीं कर सकता और मैंने उसे सहेजा नहीं है। उसे सुरक्षित सत्यापन बॉक्स में दर्ज करें।"
         hinglish: "Please one-time code chat mein type na karein; yahan bheje gaye code ko main use nahi kar sakta aur maine use save nahi kiya hai. Use secure verification box mein enter karein."
     - key: use_secure_form
       when: "RED-06 full PAN"
       text:
         en: "For your safety, please don't share your PAN in chat. I haven't kept it. I can open the secure form where it can be entered and checked."
-        hi: "आपकी सुरक्षा के लिए, कृपया चैट में अपना पैन साझा न करें। मैंने उसे सुरक्षित नहीं रखा है। मैं वह सुरक्षित फ़ॉर्म खोल सकता हूँ जहाँ उसे दर्ज और जाँचा जा सकता है।"
+        hi: "आपकी सुरक्षा के लिए, कृपया चैट में अपना पैन साझा न करें। मैंने उसे सहेजा नहीं है। मैं वह सुरक्षित फ़ॉर्म खोल सकता हूँ जहाँ उसे दर्ज और जाँचा जा सकता है।"
         hinglish: "Aapki safety ke liye, please chat mein apna PAN share na karein. Maine use save nahi kiya hai. Main woh secure form khol sakta hoon jahan use enter aur check kiya ja sakta hai."
     - key: use_masked_reference
       when: "RED-07 full account number"
       text:
         en: "You don't need to share your full account number here, and I haven't kept it. Once you're verified I can find your account and will refer to it by its last four digits."
-        hi: "आपको यहाँ अपना पूरा खाता नंबर साझा करने की ज़रूरत नहीं है, और मैंने उसे सुरक्षित नहीं रखा है। सत्यापन के बाद मैं आपका खाता ढूँढ सकता हूँ और उसका उल्लेख उसके आख़िरी चार अंकों से करूँगा।"
+        hi: "आपको यहाँ अपना पूरा खाता नंबर साझा करने की ज़रूरत नहीं है, और मैंने उसे सहेजा नहीं है। सत्यापन के बाद मैं आपका खाता ढूँढ सकता हूँ और उसका उल्लेख उसके आख़िरी चार अंकों से करूँगा।"
         hinglish: "Aapko yahan apna poora account number share karne ki zaroorat nahi hai, aur maine use save nahi kiya hai. Verification ke baad main aapka account dhoondh sakta hoon aur use uske last chaar digits se refer karunga."
   safety:
-    guardrails_enforced: [GR-SEC-R1, GR-SEC-R5, GR-REG-05, GR-REG-06, GR-OUT-02]
+    guardrails_enforced: [GR-SEC-R1, GR-SEC-R5, GR-REG-05, GR-REG-06, GR-OUT-02, GR-SEC-R2]
     must_not_contain: ["you sent", "I have saved", "PIN saved", "has been saved", "you are verified", "verification successful", "[SECRET_REDACTED]", "CVV is"]
-    notes: "The value is never echoed, not even masked, in this reply. Said once; the conversation then continues with the customer's actual request (legitimate remainder). A typed OTP never authenticates. A postal PIN code is not a secret (D-35) and does not trigger this template."
+    variant_must_not_contain:
+      - {variants: [ask_not_to_share_card_anonymous, ask_not_to_share_cvv_anonymous], en: ["shall I help"], hi: ["क्या मैं इसमें आपकी मदद करूँ"], hinglish: ["kya main ismein aapki madad karoon"]}
+      - {variants: [ask_not_to_share_secret_anonymous], en: ["reset link", "send a link"], hi: ["रीसेट लिंक"], hinglish: ["reset link"]}
+    required_markers:
+      - {id: not_kept, variants: all, en: ["haven't kept it"], hi: ["सहेजा नहीं"], hinglish: ["save nahi kiya"]}
+      - {id: do_not_share, variants: all, en: ["don't share", "never share", "don't type", "don't need to share"], hi: ["साझा न करें", "न लिखें", "साझा करने की ज़रूरत नहीं"], hinglish: ["share na karein", "type na karein", "share karne ki zaroorat nahi"]}
+      - {id: change_it, variants: [ask_not_to_share_secret, ask_not_to_share_secret_anonymous], en: ["change it straight away"], hi: ["तुरंत बदल"], hinglish: ["turant badal"]}
+      - {id: block_step, variants: [ask_not_to_share_card, ask_not_to_share_card_anonymous, ask_not_to_share_cvv, ask_not_to_share_cvv_anonymous], en: ["block the card"], hi: ["कार्ड ब्लॉक करना"], hinglish: ["card block karna"]}
+      - {id: verification_first, variants: [ask_not_to_share_card_anonymous, ask_not_to_share_cvv_anonymous], en: ["secure verification"], hi: ["सुरक्षित सत्यापन"], hinglish: ["secure verification"]}
+      - {id: secure_channel, variants: [use_secure_widget], en: ["secure verification box"], hi: ["सुरक्षित सत्यापन बॉक्स"], hinglish: ["secure verification box"]}
+    notes: "The value is never echoed, not even masked, in this reply. Said once; the conversation then continues with the customer's actual request (legitimate remainder). A typed OTP never authenticates. A postal PIN code is not a secret (D-35) and does not trigger this template. Hindi 'sahejna' (store) is used for 'kept': 'surakshit nahi rakha' means 'did not keep it safe' and implied an insecure copy (D-192). Auth rule of account-security.md section 4.5 (D-16, D-196): a card block is offered at otp_verified or above; an anonymous customer is told the block follows the secure verification step; a reset link is offered only at otp_verified (an anonymous customer gets generic steps, KB-TRB-007)."
   a9: {patterns: [P4], anti_patterns_avoided: [AP1, AP5]}
-  kb_refs: [KB-POL-011, KB-POL-002, KB-REG-003]
+  kb_refs: [KB-POL-011, KB-POL-002, KB-REG-003, KB-TRB-007, KB-POL-006]
   tests: [GR-SEC-R1-01, GR-SEC-R1-02, GR-SEC-R5-01, GR-SEC-R5-02, GR-SEC-R5-03, GR-SEC-R5-05, GR-REG-06-02, SS-PII-01, SS-PII-03]
+
+- id: TPL-SEC-PHISHING-TRIAGE
+  title: "Phishing report: one yes-or-no triage question (SEC-002)"
+  version: "1.0.0"
+  customer_facing: true
+  trigger:
+    intents: [SEC-002]
+    guardrails: [GR-SEC-R5, GR-SEC-R6]
+    escalations: []
+    state: "SEC-002 report accepted at any auth level; asked once, before the report is recorded and before any handoff (D-198; Day 14 simulations used free text for this question)"
+  mode: template
+  variant_selection: single
+  slots: []
+  variants:
+    - key: default
+      text:
+        en: "Thank you for reporting this; please don't tap any link in that message. Did you click a link, share any details or enter any code because of it? A simple yes or no is enough, and please don't type any codes or numbers here."
+        hi: "इसकी सूचना देने के लिए धन्यवाद; कृपया उस संदेश के किसी लिंक पर टैप न करें। क्या आपने उसके कारण किसी लिंक पर क्लिक किया, कोई जानकारी साझा की या कोई कोड दर्ज किया? सिर्फ़ हाँ या नहीं बताना काफ़ी है, और कृपया यहाँ कोई कोड या नंबर न लिखें।"
+        hinglish: "Iski report karne ke liye thanks; please us message ke kisi link par tap na karein. Kya aapne uski wajah se kisi link par click kiya, koi details share ki ya koi code enter kiya? Bas haan ya nahi bata dena kaafi hai, aur please yahan koi code ya number na likhein."
+  safety:
+    guardrails_enforced: [GR-SEC-R5, GR-SEC-R6, GR-OUT-05, GR-REG-09]
+    must_not_contain: ["scam", "your account is", "you will lose", "refund", "fraudster", "we have blocked"]
+    required_markers:
+      - {id: no_codes_in_chat, variants: all, en: ["don't type any codes"], hi: ["न लिखें"], hinglish: ["na likhein"]}
+    notes: "The question asks only whether the customer acted on the message; it never asks for the message text, a number or a code. A yes answer moves to TPL-ESC-FRAUD-P0 (fraud route); a no answer lets the report be recorded and the agent give KB-TRB-007 style advice. No claim that the sender is a fraudster and no outcome."
+  a9: {patterns: [P1], anti_patterns_avoided: [AP3, AP5]}
+  kb_refs: [KB-POL-011]
+  tests: [GR-SEC-R5-01, GR-ATK-05-07, SS-PII-01]

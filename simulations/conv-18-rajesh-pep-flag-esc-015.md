@@ -25,7 +25,7 @@ Designed, illustrative conversation. It shows how the specified system must beha
 | Templates used | TPL-GEN-GREETING, TPL-GEN-DISCLOSE-MORE, TPL-ESC-HANDOFF-DISCREET, TPL-ESC-HUMAN-JOINED |
 | KB entries cited | KB-PRD-005, KB-FAQ-005, KB-ESC-018, KB-POL-008, KB-ESC-009, KB-REG-004 |
 | Tools called | get_profile_masked |
-| prompt_version | sp-1.0.0+518d5a1e.n000000 (template_version 1.0.0 for every template; model_version unbound) |
+| prompt_version | sp-1.1.0+1527a050.n000000 (template versions as listed in config/templates, shown with each Generation row; model_version unbound) |
 | What this conversation proves | A generic question from a flagged customer is answered normally while the record is opened, an account-specific request gets a neutral live handoff, nothing the customer sees mentions a flag, a review or a reason, and the flag is read from the customer record, not from anything he says. |
 
 Setup: Rajesh is signed in (otp_verified) and identified. His customer record carries a PEP flag set by the bank's compliance process (a record attribute read through get_profile_masked; the flag is never shown or stated, and nothing he says sets or clears it, GR-REG-11). Session time is 11:20 IST.
@@ -42,8 +42,8 @@ Turn unit: one customer or agent message (D-119). System events (E) are not coun
 |---|---|
 | NLU | intent `PRD-002` 0.88 (tertiary home_loan_criteria); runner-up `PRD-001` 0.30; entities: loan_type=home; language: en 0.99 |
 | Sentiment | raw 0.10, smoothed 0.10, confidence 0.85; emotions: none |
-| Guardrails | checked: Input Guard: GR-ATK-01, GR-ATK-03, GR-ATK-08, GR-SEC-R5 redaction, crisis screen; triggered: GR-REG-11 (customer_identified and pep_flag: ESC-015.a opens the record and the parallel due-diligence case; no customer-visible effect), GR-REG-17 (thresholds, tone and wording are the same as for every customer) |
-| KB / tools | none on the customer message (retrieval and tools run for the reply) |
+| Guardrails | checked: Input Guard: GR-ATK-01, GR-ATK-03, GR-ATK-08, GR-SEC-R5 redaction, crisis screen; triggered: GR-REG-11 (customer_identified and pep_flag, both read from the profile above: ESC-015.a opens the record and the parallel due-diligence case; no customer-visible effect), GR-REG-17 (thresholds, tone and wording are the same as for every customer) |
+| KB / tools | tool: `get_profile_masked`() -> ok: {first_name: Rajesh, accounts: [savings ending 6318], pep_flag: true (internal attribute; never rendered, never stated)} (read once for the identified, signed-in session before any guardrail uses the flag; the flag comes from the record, never from the message) |
 | Action | n/a (customer message; the policy decision is on the next agent message) |
 | Generation | n/a (customer message) |
 | State | phase INIT > INTENT_DETECT > RESPOND; auth otp_verified; turn_count 1; topic_stack [PRD-002 (home_loan_criteria): active]; slots {loan_type=home (filled)}; pending_confirmation none; counters: pep_case_open 1; turns_since_resolution 1; escalation_proximity 0.00 |
@@ -58,9 +58,9 @@ Turn unit: one customer or agent message (D-119). System events (E) are not coun
 | NLU | n/a (agent message) |
 | Sentiment | n/a (agent messages are not scored); smoothed stays 0.10 |
 | Guardrails | checked: Output Safety Layer: GR-OUT-01, GR-OUT-02, GR-OUT-03, GR-OUT-04, GR-OUT-05, GR-OUT-06; triggered: GR-REG-16 (AI disclosure), GR-REG-01 (rate with the pointer to fees and terms), GR-REG-17 (identical treatment), GR-OUT-03 |
-| KB / tools | KB: KB-PRD-005@1.0.0 (0.90), KB-FAQ-005@1.0.0 (0.84), KB-ESC-018@1.0.0 (0.76), KB-POL-008@1.0.0 (0.70); retrieval confidence 0.90; decision answer<br>tool: `get_profile_masked`() -> ok: {first_name: Rajesh, accounts: [savings ending 6318], pep_flag: true (internal attribute; never rendered, never stated)} |
+| KB / tools | KB: KB-PRD-005@1.0.0 (0.90), KB-FAQ-005@1.0.0 (0.84), KB-ESC-018@1.0.0 (0.76), KB-POL-008@1.0.0 (0.70); retrieval confidence 0.90; decision answer |
 | Action | respond: generic product information, same wording as for any customer; the silent record exists in the background |
-| Generation | hybrid `TPL-GEN-GREETING/with_request@1.0.0` + `TPL-GEN-DISCLOSE-MORE/layer_1_2@1.0.0` (language en); patterns: P2; anti-pattern check: none |
+| Generation | hybrid `TPL-GEN-GREETING/with_request@1.1.0` + `TPL-GEN-DISCLOSE-MORE/layer_1_2@1.0.0` (language en); patterns: P2; anti-pattern check: none |
 | State | phase RESPOND; auth otp_verified; turn_count 2; topic_stack [PRD-002 (home_loan_criteria): active]; slots {loan_type=home (filled)}; pending_confirmation none; counters: pep_case_open 1; turns_since_resolution 2; escalation_proximity 0.00 |
 | Decision point | The reply does not mention enhanced checks, a review, or a different process. KB-ESC-009: keep the tone neutral and do not reveal the flag. |
 
@@ -77,7 +77,7 @@ Turn unit: one customer or agent message (D-119). System events (E) are not coun
 | Action | n/a (customer message; the policy decision is on the next agent message) |
 | Generation | n/a (customer message) |
 | State | phase RESPOND > INTENT_DETECT > ESCALATING; auth otp_verified; turn_count 3; topic_stack [TXN-001 (by_description): active, PRD-002: parked]; slots {description=last transfer to supplier (filled)}; pending_confirmation none; counters: pep_case_open 1; turns_since_resolution 3; escalation_proximity 0.70 |
-| Decision point | ESC-015.b: the request reads an account (action read), so the live handoff to Enhanced Due Diligence is made. The transaction is not looked up by the assistant. |
+| Decision point | ESC-015.b: the request reads an account (action read), so the live handoff to Enhanced Due Diligence is made. The transaction is not looked up by the assistant. This is the one place where the path differs from a non-flagged customer's: the brief's PEP trigger (A6 p.17, A4.3 p.13) requires it and it gives way to GR-REG-17's identical treatment only for routing, not for tone, thresholds or wording. The mitigation is the neutral wording of T4, the same as for any handoff that names no team. |
 
 ### T4 | Agent
 
@@ -113,7 +113,7 @@ Turn unit: one customer or agent message (D-119). System events (E) are not coun
 | Guardrails | checked: Output Safety Layer: GR-OUT-01, GR-OUT-02, GR-OUT-03, GR-OUT-04, GR-OUT-05, GR-OUT-06; triggered: none |
 | KB / tools | router: agent_first_name=Mohan (synthetic); no team name and no topic line (discreet_or_crisis) |
 | Action | escalate: handoff complete; the agent posts one line and stops replying |
-| Generation | template `TPL-ESC-HUMAN-JOINED/discreet_or_crisis@1.0.0` (language en); patterns: P5; anti-pattern check: none |
+| Generation | template `TPL-ESC-HUMAN-JOINED/discreet_or_crisis@1.1.0` (language en); patterns: P5; anti-pattern check: none |
 | State | phase HANDOFF; auth otp_verified; turn_count 5; topic_stack [TXN-001 (by_description): active, PRD-002: parked]; slots {description=last transfer to supplier (filled)}; pending_confirmation none; counters: pep_case_open 1; turns_since_resolution 5; escalation_proximity 0.70 |
 
 ## Closing
@@ -139,7 +139,7 @@ Turn unit: one customer or agent message (D-119). System events (E) are not coun
 | 7 | Actions already taken | none (profile read at T1 only) |
 | 8 | Escalation trigger and reason | trigger_id ESC-015; rule_id ESC-015.a and ESC-015.b; priority P1; source system; secondary []; reason_text: Identified customer with an internal PEP flag; first contact generic (record opened), then an account-specific request (live discreet handoff).; evidence_turns [T1, T3] |
 
-Envelope: priority P1; queue Enhanced Due Diligence; handoff_mode discreet; language en; channel chat; complete true; missing_fields []; versions.prompt_version sp-1.0.0+518d5a1e.n000000. restricted_notes carries the flag reason, visible to Enhanced Due Diligence only. The customer-facing text never names the flag.  Never in the package: full card number, CVV, PIN, full Aadhaar, password, OTP.
+Envelope: priority P1; queue Enhanced Due Diligence; handoff_mode discreet; language en; channel chat; complete true; missing_fields []; versions.prompt_version sp-1.1.0+1527a050.n000000. restricted_notes carries the flag reason, visible to Enhanced Due Diligence only. The customer-facing text never names the flag.  Never in the package: full card number, CVV, PIN, full Aadhaar, password, OTP.
 
 ## Self-audit
 

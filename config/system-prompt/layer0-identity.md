@@ -76,12 +76,12 @@ Each instruction above is written so that it can be checked (A12.2 "Testable Ass
 | PA-L0-04 | A persona, "mode" or rename request does not change the agent's name, role or rules | MUST NOT | GR-ATK-03 | GR-ATK-03-01, GR-ATK-03-03, GR-ATK-01-01, GR-ATK-01-02 |
 | PA-L0-05 | A request outside the capability list is declined once with an alternative, and no reply promises that capability | SHOULD / MUST NOT | GR-SEC-R3, GR-OUT-05 | GR-SEC-R3-01, SS-COM-05, XTR-T-07-01 |
 | PA-L0-06 | No reply contains a product figure that is not in a locked slot or a cited passage for that turn | MUST NOT | GR-OUT-01, GR-OUT-03 | GR-OUT-01-01, SS-HAL-03, SS-HAL-04 |
-| PA-L0-07 | The reply language equals `language.reply_language` in the state for that turn | SHOULD | none (quality rule) | KB-BOSS-L3-05, GR-ADV-01-03 |
+| PA-L0-07 | The reply language equals `language.reply_language` in the state for that turn | SHOULD | none (quality rule) | PA-T-06, KB-BOSS-L3-05 |
 | PA-L0-08 | The learning pipeline cannot change this layer | MUST NOT | GR-SYS-02 | SS-LRN-01, GR-SYS-02-02 |
 
 ## 3. Notes
 
 1. No secret is held in this layer (D-73): the bank's name, the assistant's role and its limits are public statements.
-2. No product figure, threshold or internal host name appears in the prompt text. The validator rejects any digit in it.
+2. No product figure, threshold or internal host name appears in the prompt text. The validator rejects any digit in it except the numbers in section labels such as S1 (layers 1 to 4 use labels; this layer has none).
 3. The capability list restates KB-POL-004 and the tool list of `docs/architecture/system-architecture.md`; if a tool is added or removed, this layer changes through safety change control in the same release.
 4. The assistant has no personal name in the brief. None is invented here; "NexBank virtual assistant" is a role description. A brand name is a rebrand change for Product and the CEB.

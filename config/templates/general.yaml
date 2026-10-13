@@ -9,7 +9,7 @@ templates:
 
 - id: TPL-GEN-GREETING
   title: "Greeting with AI disclosure (first reply of every conversation)"
-  version: "1.0.0"
+  version: "1.1.0"
   customer_facing: true
   trigger:
     intents: [GEN-001]
@@ -24,9 +24,9 @@ templates:
     - key: anonymous
       when: "auth_level anonymous, greeting only"
       text:
-        en: "Hello, and welcome to NexBank. I'm NexBank's AI assistant. I can help with accounts, cards, payments and product information, and a human colleague is available whenever you prefer. How can I help you today?"
-        hi: "नमस्ते, नेक्सबैंक में आपका स्वागत है। मैं नेक्सबैंक का AI सहायक हूँ। मैं खातों, कार्ड, भुगतान और उत्पादों की जानकारी में मदद कर सकता हूँ, और आप जब चाहें हमारे एक सहयोगी से भी बात कर सकते हैं। आज मैं आपकी क्या मदद करूँ?"
-        hinglish: "Namaste, NexBank mein aapka swagat hai. Main NexBank ka AI assistant hoon. Main accounts, cards, payments aur product information mein madad kar sakta hoon, aur aap jab chahein hamare ek colleague se bhi baat kar sakte hain. Aaj main aapki kya madad karoon?"
+        en: "Hello, and welcome to NexBank. I'm NexBank's AI assistant. I can help with accounts, cards, payment status and product information, and a human colleague is available whenever you prefer. How can I help you today?"
+        hi: "नमस्ते, नेक्सबैंक में आपका स्वागत है। मैं नेक्सबैंक का AI सहायक हूँ। मैं खातों, कार्ड, भुगतान की स्थिति और उत्पादों की जानकारी में मदद कर सकता हूँ, और आप जब चाहें हमारे एक सहयोगी से भी बात कर सकते हैं। आज मैं आपकी क्या मदद करूँ?"
+        hinglish: "Namaste, NexBank mein aapka swagat hai. Main NexBank ka AI assistant hoon. Main accounts, cards, payment status aur product information mein madad kar sakta hoon, aur aap jab chahein hamare ek colleague se bhi baat kar sakte hain. Aaj main aapki kya madad karoon?"
     - key: authenticated
       when: "the session starts already verified (in-app) and the profile tool returned a first name"
       text:
@@ -42,6 +42,7 @@ templates:
   safety:
     guardrails_enforced: [GR-REG-16, GR-REG-04, GR-SEC-R1]
     must_not_contain: ["I am a human", "my name is", "offer", "your balance"]
+    ai_disclosure: all
     notes: "The name is used only when authenticated (A9.3 Personalisation). No product push in a greeting. In a fraud or crisis first message the with_request sentence is used and nothing else is added before the safety template."
   a9: {patterns: [P2], anti_patterns_avoided: [AP2, AP5]}
   kb_refs: [KB-POL-009, KB-FAQ-009]
@@ -68,6 +69,9 @@ templates:
   safety:
     guardrails_enforced: [GR-REG-16, GR-REG-20]
     must_not_contain: ["I am a human", "real person here", "I'm just a bot", "as an AI language model"]
+    ai_disclosure: all
+    required_markers:
+      - {id: human_available, variants: all, en: ["human colleague"], hi: ["सहयोगी"], hinglish: ["colleague"]}
     notes: "Never denies being an AI; never claims to be staff or an advisor."
   a9: {patterns: [P2], anti_patterns_avoided: [AP8]}
   kb_refs: [KB-POL-009, KB-FAQ-009, KB-REG-009]
@@ -115,7 +119,7 @@ templates:
 
 - id: TPL-GEN-CLARIFY
   title: "Clarifying question (one question, at most three labelled options)"
-  version: "1.0.0"
+  version: "1.1.0"
   customer_facing: true
   trigger:
     intents: [GEN-004]
@@ -134,7 +138,7 @@ templates:
       when: "first attempt, two candidates"
       text:
         en: "Happy to help. Just so I get this right: is this about {{option_a}}, or {{option_b}}?"
-        hi: "ज़रूर, मैं मदद करूँगा। सही समझने के लिए पूछ रहा हूँ: क्या यह {{option_a}} के बारे में है, या {{option_b}} के बारे में?"
+        hi: "मैं मदद करूँगा। सही समझने के लिए पूछ रहा हूँ: क्या यह {{option_a}} के बारे में है, या {{option_b}} के बारे में?"
         hinglish: "Zaroor, main madad karunga. Sahi samajhne ke liye pooch raha hoon: kya yeh {{option_a}} ke baare mein hai, ya {{option_b}} ke baare mein?"
     - key: three_options
       when: "first attempt, three candidates"
@@ -239,7 +243,7 @@ templates:
 
 - id: TPL-GEN-CARRYOVER
   title: "Context carry-over for a returning customer"
-  version: "1.0.0"
+  version: "1.1.0"
   customer_facing: true
   trigger:
     intents: []
@@ -259,15 +263,15 @@ templates:
         hi: "आपका फिर से स्वागत है। मैं देख रहा हूँ कि आपने पहले {{prior_topic}} के बारे में हमसे संपर्क किया था। {{ticket_status}} क्या हम वहीं से आगे बढ़ें?"
         hinglish: "Welcome back. Main dekh raha hoon ki aapne pehle {{prior_topic}} ke baare mein humse contact kiya tha. {{ticket_status}} Kya hum wahin se aage badhein?"
     - key: needs_verification
-      when: "returning context exists but this session is not yet verified: no detail of the earlier contact is revealed"
+      when: "returning context exists but this session is not yet verified: no detail of the earlier contact is revealed, and the wording does not confirm that there is one"
       text:
-        en: "Welcome back. If this is about your earlier request, I can pick it up as soon as you've completed the secure verification step, and you won't need to explain it again."
-        hi: "आपका फिर से स्वागत है। अगर यह आपके पिछले अनुरोध के बारे में है, तो सुरक्षित सत्यापन का चरण पूरा होते ही मैं वहीं से आगे बढ़ सकता हूँ, और आपको दोबारा समझाना नहीं पड़ेगा।"
-        hinglish: "Welcome back. Agar yeh aapki pichhli request ke baare mein hai, to secure verification step poora hote hi main wahin se aage badh sakta hoon, aur aapko dobara explain nahi karna padega."
+        en: "Welcome back. Please complete the secure verification step I've opened, and I'll take it from there."
+        hi: "आपका फिर से स्वागत है। कृपया मेरे खोले हुए सुरक्षित सत्यापन चरण को पूरा करें, फिर मैं वहीं से आगे बढ़ूँगा।"
+        hinglish: "Welcome back. Please mere khole hue secure verification step ko poora karein, phir main wahin se aage badhunga."
   safety:
     guardrails_enforced: [GR-SEC-R7, GR-SEC-R2, GR-SEC-R1, GR-OUT-05]
     must_not_contain: ["you are already verified", "as you were verified", "will be credited", "within"]
-    notes: "Context is reused for 24 hours; authentication is never carried over (D-05, a documented deviation from Case Study 6). The earlier topic is named only after verification in this session, so a different person on the same device learns nothing."
+    notes: "Context is reused for 24 hours; authentication is never carried over (D-05, a documented deviation from Case Study 6). The earlier topic is named only after verification in this session. The unverified wording is a generic welcome plus the verification step: it does not say 'earlier request' or 'you won't need to explain', which would hint that a prior contact exists, so a different person on the same device learns nothing (D-198, audit finding 21)."
   a9: {patterns: [P5], anti_patterns_avoided: [AP6, AP3, AP1]}
   kb_refs: [KB-POL-003]
   tests: [XTR-T-05-01, ESC-BOSS-L6-01, GR-SEC-R7-01]
@@ -348,3 +352,59 @@ templates:
   a9: {patterns: [P5], anti_patterns_avoided: [AP2]}
   kb_refs: []
   tests: [ESC-T-010-02, XTR-T-06-01]
+
+- id: TPL-GEN-TWO-REQUESTS
+  title: "Two requests in one message: acknowledge both, take them one at a time"
+  version: "1.0.0"
+  customer_facing: true
+  trigger:
+    intents: []
+    guardrails: [GR-ATK-09]
+    escalations: []
+    state: "two recognised requests in one message, within what the turn can serve (more than two, or an over-long message, use TPL-ATK-SHORTEN-OR-SPLIT). The safety intent, if any, is served first (mi_rank). D-198; Day 14 simulations used free text for this line"
+  mode: template
+  variant_selection: single
+  slots:
+    - {name: first_request, source: {type: policy, ref: "highest-ranked recognised intent (mi_rank), option_labels in config/templates/labels.yaml", field: plain_label}, locked: true}
+    - {name: second_request, source: {type: policy, ref: "second recognised intent, option_labels in config/templates/labels.yaml", field: plain_label}, locked: true}
+  variants:
+    - key: default
+      text:
+        en: "I can help with both. Let's start with {{first_request}}, and then we'll go on to {{second_request}}."
+        hi: "मैं दोनों में मदद कर सकता हूँ। पहले {{first_request}} से शुरू करते हैं, फिर {{second_request}} पर चलेंगे।"
+        hinglish: "Main dono mein madad kar sakta hoon. Pehle {{first_request}} se shuru karte hain, phir {{second_request}} par chalenge."
+  safety:
+    guardrails_enforced: [GR-ATK-09, GR-SYS-01]
+    must_not_contain: ["both done", "all done", "at the same time", "too many", "limit"]
+    notes: "Promises only an order, never a result or a time. The second request is picked up in the next turn from the topic stack (dialogue-management.md section 5.2)."
+  a9: {patterns: [P5], anti_patterns_avoided: [AP2, AP1]}
+  kb_refs: []
+  tests: [GR-ATK-09-01, GR-ATK-09-03]
+
+- id: TPL-GEN-LIMIT-CLOSE
+  title: "Polite close at the conversation turn ceiling when every topic is resolved (XTR-06)"
+  version: "1.0.0"
+  customer_facing: true
+  trigger:
+    intents: []
+    guardrails: [GR-ATK-09, GR-OUT-05]
+    escalations: []
+    state: "turn_count reaches max_conversation_turns (XTR-06) and every topic is resolved: this reply is the closing message and no further message is processed (D-174). If a topic is open, the reply is the XTR-06 handoff (TPL-ESC-HANDOFF-WARM standard) instead and no record is created here"
+  mode: template
+  variant_selection: single
+  slots: []
+  variants:
+    - key: default
+      text:
+        en: "We've covered a lot in this chat, and it can't run any longer, so I'm closing it here. You're welcome to start a new chat whenever you like, and a human colleague is available if you'd prefer one. Thank you for banking with NexBank."
+        hi: "इस चैट में हम काफ़ी कुछ कर चुके हैं, और यह इससे लंबी नहीं चल सकती, इसलिए मैं इसे यहीं बंद कर रहा हूँ। आप जब चाहें नई चैट शुरू कर सकते हैं, और अगर आप चाहें तो हमारे एक सहयोगी उपलब्ध हैं। नेक्सबैंक के साथ बैंकिंग करने के लिए धन्यवाद।"
+        hinglish: "Is chat mein hum kaafi kuch kar chuke hain, aur yeh isse lambi nahi chal sakti, isliye main ise yahin band kar raha hoon. Aap jab chahein nayi chat shuru kar sakte hain, aur agar aap chahein to hamare ek colleague available hain. NexBank ke saath banking karne ke liye thanks."
+  safety:
+    guardrails_enforced: [GR-ATK-09, GR-OUT-05, GR-REG-04]
+    must_not_contain: ["offer", "upgrade", "rate us", "survey", "unresolved", "limit reached", "error"]
+    required_markers:
+      - {id: new_chat, variants: all, en: ["start a new chat"], hi: ["नई चैट शुरू"], hinglish: ["nayi chat shuru"]}
+    notes: "Honest about the reason without a number or jargon. It offers a way forward and a person, and asks for no rating. The CSAT ask follows only where csat-signals.md section 3.1 allows it."
+  a9: {patterns: [P4, P5], anti_patterns_avoided: [AP3, AP4, AP2]}
+  kb_refs: []
+  tests: [XTR-T-06-01, XTR-T-06-02]

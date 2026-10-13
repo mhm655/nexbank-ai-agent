@@ -11,7 +11,7 @@ Brief refs: A11.1 Technical Risk Matrix (p.30), A11.2 Business Risk Matrix (p.31
 3. Score inherent risk (no project controls), list the controls that exist in this repository by ID, score residual risk, name an owner, a monitoring metric and a contingency.
 4. The component FMEA of Day 3 looks at one component failing. This matrix looks at outcomes for the bank and its customers. Section 3.4 maps each FMEA row to the risk rows that build on it.
 
-Register size: 52 risks (17 technical, 13 business, 22 ethical); 25 from the brief and 27 additions.
+Register size: 55 risks (19 technical, 13 business, 23 ethical); 25 from the brief and 30 additions.
 
 ## 2. Scales
 
@@ -103,12 +103,14 @@ Rows RISK-T-01 to RISK-T-06 are the brief's, in its order, with its probability 
 | RISK-T-15 | Dependence on one model provider or an unvetted component (supply chain) | addition | Provider outage, price change, silent model change, a compromised library or model artefact | 2 Medium | 3 High | 6 | P1 | E5 requires model-swappability; `docs/guardrails/regulatory-mapping.md` section 4 records the supply-chain category as a gap by scope |
 | RISK-T-16 | Guardrails over-block legitimate requests | addition | Many always-on guardrails; a tightened lexicon; a classifier that drifts | 3 High | 2 Medium | 6 | P2 | The end-to-end false-positive budget has 0.04 points of reserve against the 3 percent gate (D-76) |
 | RISK-T-17 | A deletion request is not completed everywhere inside 30 days | addition | A store, a backup, a downstream ticket system or a model lineage is missed; the legal reading of retention against deletion is unresolved | 2 Medium | 4 Critical | 8 | P0 | A10.3 sets the 30-day duty with backups, derived data and training data in scope; the brief does not say how it meets the 7-year retention |
+| RISK-T-18 | Volumetric (network-layer) denial of service takes the chat channels down | addition | A flood from many sources exhausts bandwidth or the platform edge before any application limit applies; a slow, low-rate attack on the session path | 2 Medium | 4 Critical | 8 | P0 | A total outage stops service for every customer, fraud reports included (impact 4 in section 2.2). OWASP LLM10 is covered only at the application layer (`docs/guardrails/adversarial-defences.md` sections 8.6 and 11); the network layer is a gap by scope, because this repository specifies no CDN, WAF or scrubbing service |
+| RISK-T-19 | Weakness in the vector and embedding store: a poisoned or cross-audience entry is retrieved, or the store itself is reachable (OWASP LLM08) | addition | A poisoned entry is indexed; the audience or expiry filter is bypassed; the embedding store is reachable from another workload or its contents are read or altered outside the maintenance workflow | 2 Medium | 4 Critical | 8 | P0 | A poisoned or wrong entry served as a fact is the A9.2 AUTO-FAIL class, and an audience bypass shows internal text to customers. RISK-T-09 covers customer data leakage; this row covers the store itself. `docs/guardrails/regulatory-mapping.md` marks LLM08 partial |
 
 ### 3.3 Controls, residual risk, owner, monitoring, contingency
 
 | ID | Existing controls (repository references) | Residual L | Residual I | Residual | Band | Owner | Monitoring metric | Contingency |
 |---|---|---|---|---|---|---|---|---|
-| RISK-T-01 | GR-OUT-01 (figure match), GR-OUT-03 (grounding), GR-OUT-05 (commitments), GR-REG-18, GR-OUT-06; locked fact slots and template mode for 57 of 63 templates (D-144); retrieval threshold 0.65 (D-43); FMEA #11, #17, #19; gates G2, G3; cases GR-OUT-01-01, GR-OUT-03-01 and `tests/safety-suite/hallucination-traps.yaml` | 1 Low | 4 Critical | 4 | amber | NLU Team; Risk Committee for the guardrails | KPI-G6, DM-12, DM-07, KPI-L5 | Runbook R4: template-only lever for the intent (GR-SYS-04), find affected turns with AQ-02, human correction with TPL-SYS-CORRECTION |
+| RISK-T-01 | GR-OUT-01 (figure match), GR-OUT-03 (grounding), GR-OUT-05 (commitments), GR-REG-18, GR-OUT-06; locked fact slots and template mode for 67 of 73 templates (D-144); retrieval threshold 0.65 (D-43); FMEA #11, #17, #19; gates G2, G3; cases GR-OUT-01-01, GR-OUT-03-01 and `tests/safety-suite/hallucination-traps.yaml` | 1 Low | 4 Critical | 4 | amber | NLU Team; Risk Committee for the guardrails | KPI-G6, DM-12, DM-07, KPI-L5 | Runbook R4: template-only lever for the intent (GR-SYS-04), find affected turns with AQ-02, human correction with TPL-SYS-CORRECTION |
 | RISK-T-02 | DM-11 (model drift score, PSI, trigger-rate z-score), KPI-O6 target under 0.05, frozen evaluation sets at gate G2, G9 post-deployment monitoring, breaker (GR-SYS-04), retraining triggers and 21-day cycle (`docs/learning-pipeline/overview.md`), pinned `model_version` in every turn record | 2 Medium | 2 Medium | 4 | amber | NLU Team, ML Team | KPI-O6, DM-11, KPI-L2, KPI-L7 | Roll back to the previous model version; widen clarification (rules-only policy, FMEA #9); retrain through gates G1 to G9 |
 | RISK-T-03 | Summary with `pinned_facts` and a history buffer of at least 20 turns (`config/dialogue_state.schema.json`), token ceilings per layer (D-139), topic stack, ESC-010 and XTR-06 (turn ceiling), GR-ATK-09; FMEA #8; Level 1 boss trace (`docs/architecture/boss-trace.md`) | 1 Low | 2 Medium | 2 | green | NLU Team | KPI-A6, KPI-O1, EQ-04 | Rebuild state from the turn log; clarify once; hand to a human with the package (ESC-010) |
 | RISK-T-04 | TTL classes with hard expiry (D-27), regulatory fast-track and staleness alerts (`docs/knowledge-base/maintenance-workflow.md`), `stale` flag and hard-expiry exclusion leading to ESC-008 (D-43), GR-REG-18, `id@version` on every citation, FMEA #11, `tests/kb/validate_kb_entries.py` | 1 Low | 4 Critical | 4 | amber | KB owner; Regulatory Compliance Manager for regulatory entries | KPI-O5, KPI-L5, DM-12 | Quarantine the entry; answer with the gap statement and ESC-008; AQ-02 for the blast radius; correction to affected customers (playbook section 6) |
@@ -118,13 +120,15 @@ Rows RISK-T-01 to RISK-T-06 are the brief's, in its order, with its probability 
 | RISK-T-08 | RED-01 to RED-07 with the D-21 normalisation, GR-SEC-R1, GR-SEC-R5, GR-OUT-02, GR-REG-05, GR-REG-06, GR-ATK-07, sealed PII fields and the daily scan (`docs/compliance/audit-logging.md` sections 5 and 8), QG-03, `tests/safety-suite/pii-masking.yaml` | 1 Low | 4 Critical | 4 | amber | Information Security Officer | DM-12, QG-03, AQ-07 | Runbook R2: SEV0 for a credential or another customer's data; appended correction event; rule fix; re-scan of stored records |
 | RISK-T-09 | GR-SEC-R4, customer key set by the Gateway session and never by the model, tool-side auth re-check, retrieval auth pre-filter (D-44, D-51), no cross-conversation memory, splits by customer and consent filter in datasets (QG-02, QG-06), per-customer PII keys (D-183) | 1 Low | 4 Critical | 4 | amber | Information Security Officer | DM-12, AQ-12 | Runbook R2 at SEV0; kill switch if systemic; notify the Compliance lead (IR-D3) |
 | RISK-T-10 | GR-SEC-R2, GR-SEC-R3 (no money-movement tool exists), GR-SEC-R7, GR-ATK-10, auth matrix as immutable layer IL-2, confirm before action, idempotency keys, FMEA #7, #14; `tests/safety-suite/auth-gating.yaml` | 1 Low | 4 Critical | 4 | amber | Information Security Officer; Product Engineering for tools | DM-12, AQ-11 | Runbook R5 at SEV0: reverse the action through the system of record, human contact, tool disabled until the cause is fixed |
-| RISK-T-11 | Deterministic rules for eight triggers with exact replay, strict precedence order (FMEA #10), proximity score as backstop, human request honoured (XTR-01), FMEA #16, EQ-02 with a random review stream, 63 cases in `tests/escalation/`, `tests/safety-suite/escalation-triggers.yaml`, triggers as immutable layer IL-5 | 2 Medium | 4 Critical | 8 | red | Escalation owner (CX Team) with the Risk Committee | EQ-02, EQ-04, DM-12 | Any confirmed miss on a P0 trigger is an incident; new suite case; lexicon or threshold change through safety change control |
+| RISK-T-11 | Deterministic rules for eight triggers with exact replay, strict precedence order (FMEA #10), proximity score as backstop, human request honoured (XTR-01), FMEA #16, EQ-02 with a random review stream, 64 cases in `tests/escalation/`, `tests/safety-suite/escalation-triggers.yaml`, triggers as immutable layer IL-5 | 2 Medium | 4 Critical | 8 | red | Escalation owner (CX Team) with the Risk Committee | EQ-02, EQ-04, DM-12 | Any confirmed miss on a P0 trigger is an incident; new suite case; lexicon or threshold change through safety change control |
 | RISK-T-12 | Tiered thresholds (D-06), six disambiguation trees, clarification budget (XTR-04), validators and echo-back, confirmation before any side effect, FMEA #5, #7, `tests/nlu/boss-level2.yaml` | 2 Medium | 2 Medium | 4 | amber | NLU Team | KPI-L2, KPI-L3, KPI-A6 | Clarify, then human; supervisor corrections feed the next U4 cycle |
-| RISK-T-13 | Immutable layer IL-1 to IL-6, invariants INV-01 to INV-12, gates G0 to G9, GR-SYS-02, GR-SYS-03, fixed suite of 355 cases at 100 percent (KPI-A3), canary and breaker, QG-08, FMEA #22, #23 | 1 Low | 4 Critical | 4 | amber | ML Team; Risk Committee as suite custodian | KPI-A3, DM-13, DM-11 | Runbook R7: automatic rollback and freeze; SEV0 if an immutable element changed |
+| RISK-T-13 | Immutable layer IL-1 to IL-6, invariants INV-01 to INV-12, gates G0 to G9, GR-SYS-02, GR-SYS-03, fixed suite of 356 cases at 100 percent (KPI-A3), canary and breaker, QG-08, FMEA #22, #23 | 1 Low | 4 Critical | 4 | amber | ML Team; Risk Committee as suite custodian | KPI-A3, DM-13, DM-11 | Runbook R7: automatic rollback and freeze; SEV0 if an immutable element changed |
 | RISK-T-14 | Hash chain, daily signed root and write-once storage (D-184), fail-closed states A0 to A4 (D-185), GR-REG-07, separation of duties in the access matrix (D-186), FMEA #21 | 1 Low | 3 High | 3 | green | Security Operations (audit bus owner) | DM-12, AQ-09, AQ-10 | Replay from local buffers; a gap is a finding and an incident; high-risk actions stay blocked until the replay completes |
 | RISK-T-15 | Provider-agnostic interfaces (assumption A4), failover model (FMEA #18, #24), template mode needs no model (D-144), version tuple pinned and logged, any model swap is a U4 or U5 candidate through gates G1 to G9 | 2 Medium | 2 Medium | 4 | amber | CTO; Information Security Officer | KPI-O3, KPI-O6 | Fail over; template-only mode; supply-chain controls remain a platform dependency |
 | RISK-T-16 | False-positive target per guardrail in the registry, end-to-end gate DM-05 on the benign evaluation set (D-64), near-miss tracking, soft-block with rephrase, FMEA #4, #20 | 2 Medium | 2 Medium | 4 | amber | Risk Committee (registry) with the CX Team | KPI-L6, DM-05, DM-04 | Tune through safety change control only; a new always-on guardrail needs another bound lowered |
 | RISK-T-17 | Tombstone and QG-07, weekly purge and deletion-only rebuild (D-104, D-157), per-customer key destruction and residual record (D-183), certificate, AQ-08, twice-yearly drill, legal hold rule (D-87) | 2 Medium | 3 High | 6 | amber | Data Protection lead | AQ-08, QG-07 | Escalate to the Data Protection lead and Compliance lead on day 20 if any store is open; record the reason on the certificate |
+| RISK-T-18 | Application layer only: GR-ATK-08 (rate limits, token budget), GR-ATK-09 (complexity scoring, turn cap), autoscale on queue depth and the caches of `docs/architecture/latency-scalability-cost.md`, template-only lever and kill switch GR-SYS-04, static status message TPL-SYS-STATUS-STATIC, FMEA #2. No control in this specification covers a volumetric flood (CDN, WAF, DDoS scrubbing, upstream capacity); it is a platform dependency (`docs/guardrails/adversarial-defences.md` section 8.6) and the residual stays red until one is specified and tested | 2 Medium | 4 Critical | 8 | red | Platform on-call; Information Security Officer (dependency owner: the platform and network team, not yet named) | DM-10, KPI-O3, KPI-O4 | Static status message and the human line; P0 conversations to any available human (D-123); ask the hosting provider to switch on upstream scrubbing; incident at SEV1 or higher |
+| RISK-T-19 | Retrieval auth, audience and expiry pre-filter inside both searches (D-44, D-51), KB approval chain so only published, approved entries are indexed (`docs/knowledge-base/maintenance-workflow.md`), imperative-text scan at ingestion and retrieval GR-ATK-02, GR-SEC-R4, no customer data in the index, `tests/kb/validate_kb_entries.py`. Not specified in this repository: access control, network isolation, encryption and backup of the embedding store, which depend on the platform design (dependency in section 11) | 2 Medium | 3 High | 6 | amber | Information Security Officer; KB owner; store isolation: platform team | DM-12, KPI-L5, AQ-12 | Quarantine the entry; rebuild the index from approved entries; kill switch if systemic; AQ-02 for the blast radius |
 
 ### 3.4 Relation to the component FMEA
 
@@ -133,7 +137,7 @@ Every row of `docs/architecture/failure-modes.md` is taken up by at least one ri
 | FMEA row | Risk rows that build on it |
 |---|---|
 | #1 | RISK-T-05 |
-| #2 | RISK-T-06 |
+| #2 | RISK-T-06, RISK-T-18 |
 | #3 | RISK-T-07 |
 | #4 | RISK-T-16 |
 | #5 | RISK-T-12 |
@@ -200,7 +204,7 @@ Rows RISK-B-01 to RISK-B-04 are the brief's. Two of the brief's mitigations are 
 | RISK-B-06 | Stated as a deviation needing Risk Committee sign-off (D-163), callback and honest wording (TPL-ESC-AFTER-HOURS), P0 queues 24x7, EQ-07 reported in-hours and all-hours, on-call rota proposed for Enhanced Due Diligence and Compliance Helpdesk | 3 High | 2 Medium | 6 | amber | Chief Risk Officer (sign-off); queue owners | EQ-07, EQ-10 | Adopt the on-call rota if the all-hours attainment stays below the target |
 | RISK-B-07 | KPI-G4 defined as resolved by the AI with no escalation record (D-162), counter-metric pairs (`docs/metrics/kpi-framework.md` section 8), de-escalation followed by a repeat contact counts as a missed escalation (D-125), EQ-02 | 2 Medium | 2 Medium | 4 | amber | Head of Customer Experience | KPI-G4, KPI-G3, KPI-A2, EQ-02 | Report containment with the non-escalated share and the dropped share side by side |
 | RISK-B-08 | Weighted CSAT with response-rate reporting (D-99), predicted CSAT for silent conversations, post-escalation CSAT (EQ-12), experiments powered for 0.1 point (`docs/learning-pipeline/ab-testing.md`) | 2 Medium | 3 High | 6 | amber | Head of Customer Experience | KPI-G1, KPI-G5, EQ-12 | Report the weighted and raw figures with the sample; no target claim on under 30 ratings |
-| RISK-B-09 | Template mode for 57 of 63 templates (D-144), caches, token budget (D-139), GR-ATK-08 and GR-ATK-09, cost model (`docs/architecture/latency-scalability-cost.md`); audit storage is about 1 percent of infrastructure cost (`docs/compliance/audit-logging.md` section 16) | 1 Low | 2 Medium | 2 | green | CTO | KPI-O4, DM-10 | Raise the template and cache share; model tiering |
+| RISK-B-09 | Template mode for 67 of 73 templates (D-144), caches, token budget (D-139), GR-ATK-08 and GR-ATK-09, cost model (`docs/architecture/latency-scalability-cost.md`); audit storage is about 1 percent of infrastructure cost (`docs/compliance/audit-logging.md` section 16) | 1 Low | 2 Medium | 2 | green | CTO | KPI-O4, DM-10 | Raise the template and cache share; model tiering |
 | RISK-B-10 | Status column on every decision, approval gate G5, INV-12 (layers 3 and 4 need Risk Committee review), language release gate (D-145), `registry_status` fields in the config files | 2 Medium | 3 High | 6 | amber | Chief Risk Officer | KPI-A3, DM-13 | No launch for an intent, language or template whose owner has not signed; the list of open sign-offs is in `docs/compliance/submission-checklist.md` section 6 |
 | RISK-B-11 | Each deviation is recorded with its reason (`config/templates/README.md` section 9), flagged for Risk Committee and CEB review, and covered by a test oracle | 2 Medium | 2 Medium | 4 | amber | Risk Committee and CEB | EQ-11, KPI-G5 | If the CEB prefers the case-study behaviour for the card block, D-94 is reopened; the OTP rule is not negotiable under A4.2 rule 5 |
 | RISK-B-12 | Proxy lists (D-01, D-02), `docs/compliance/submission-checklist.md` with counts recomputed by `tests/compliance/validate_compliance.py`, draft questions in `docs/coordinator-questions.md` | 2 Medium | 2 Medium | 4 | amber | Project author | KPI-A3, DM-13 | Send the coordinator questions; treat every stated minimum as a failure condition |
@@ -258,6 +262,7 @@ Likelihood, impact and severity are the project's for every row in this matrix. 
 | RISK-E-20 | Vulnerable or low-literacy customers are served worse | addition | Jargon, long replies, widget-only steps, a customer who cannot use the app (persona Meera) | 2 Medium | 3 High | 6 | P1 | The CEB lists accessibility across literacy levels and languages (A1.3) |
 | RISK-E-21 | Survey non-response hides the dissatisfaction of a group | addition | Only about 15 percent answer; response differs by channel and language | 3 High | 2 Medium | 6 | P2 | A group that does not answer surveys is invisible to a CSAT target |
 | RISK-E-22 | Human reviewers or agents pass their own bias into labels, or over-trust the AI summary | addition | A reviewer labels one group's messages as rude; a human agent accepts a wrong package summary | 2 Medium | 3 High | 6 | P1 | Feedback is the input to learning; a biased label becomes a biased model |
+| RISK-E-23 | A repeat contact is queued ahead of a first contact at the same deadline (history-based treatment) | addition (accepted deviation, D-121) | D-121 breaks a tie between handoffs with the same SLA deadline in favour of a customer with a recent contact on the same issue, while A11.3 asks for no differential treatment based on history | 2 Medium | 3 High | 6 | P1 | The brief names history in its fairness statement (p.31). The rule changes order only inside an identical deadline and never a threshold, a priority, a queue, an SLA or the wording (`docs/risk/fairness-testing.md` section 2), but it is still treatment by history, so it is recorded here with the check that watches it |
 
 ### 5.3 Controls, residual risk, owner, monitoring, contingency
 
@@ -285,6 +290,7 @@ Likelihood, impact and severity are the project's for every row in this matrix. 
 | RISK-E-20 | Plain-language rules and length calibration (`docs/architecture/conversation-design.md`), XTR-03 care flag on explicit disclosure only, human on request, callback, no inference of vulnerability from age, language or balance (D-129) | 2 Medium | 2 Medium | 4 | amber | UX Research Lead | KPI-G5, KPI-A6, FT-09 | Human handoff; wording fix through the layer 3 process |
 | RISK-E-21 | Weighted CSAT by stratum, predicted CSAT for silent conversations, random review stream (`docs/learning-pipeline/csat-signals.md`), FT-06 on weighted figures | 2 Medium | 2 Medium | 4 | amber | Head of Customer Experience | KPI-G1, FT-06 | Report response rate per slice beside CSAT |
 | RISK-E-22 | Double review and adjudication, kappa gate QG-04, reviewer outlier filter and QG-08, the package shows raw turns and scores beside the summary, FMEA #23 | 2 Medium | 2 Medium | 4 | amber | CX Team; Risk Committee | DM-14, KPI-A5, QG-04 | Hold the reviewer's labels out; re-adjudicate |
+| RISK-E-23 | Rule limited to ties at the same deadline (`docs/escalation/queue-management.md`, D-121); counterfactual pair FAIR-15 (varies repeat_contact_7d: same action, priority, queue, SLA and wording on both sides, order examined inside the tie only); FT-02 (counterfactual invariance), FT-09 (parity of effort); the Risk Committee decision on D-121 stays open | 2 Medium | 2 Medium | 4 | amber | Chief Risk Officer; escalation owner | FT-02, FT-09, EQ-07 | Remove the tiebreak (order by deadline, then arrival) through safety change control; nothing else depends on it |
 
 ## 6. Heat maps
 
@@ -295,14 +301,15 @@ Inherent risk (before the project's controls)
 
 Impact      | L1 Low                            | L2 Medium                         | L3 High
 ------------+-----------------------------------+-----------------------------------+-----------------------------------
-I4 Critical | score 4 amber n=5                 | score 8 red n=12                  | score 12 red n=1
+I4 Critical | score 4 amber n=5                 | score 8 red n=14                  | score 12 red n=1
             | T-05 T-14 B-02 B-03 B-04          | T-01 T-04 T-08 T-09 T-10 T-11     | T-07
-            |                                   | T-13 T-17 E-03 E-13 E-14 E-15     |
+            |                                   | T-13 T-17 T-18 T-19 E-03 E-13     |
+            |                                   | E-14 E-15                         |
 ------------+-----------------------------------+-----------------------------------+-----------------------------------
-I3 High     | score 3 green n=0                 | score 6 amber n=17                | score 9 red n=10
+I3 High     | score 3 green n=0                 | score 6 amber n=18                | score 9 red n=10
             |                                   | T-15 B-01 B-07 B-08 B-12 B-13     | T-02 T-12 B-05 B-06 B-10 E-04
             |                                   | E-01 E-02 E-05 E-06 E-08 E-09     | E-07 E-10 E-16 E-17
-            |                                   | E-11 E-12 E-19 E-20 E-22          |
+            |                                   | E-11 E-12 E-19 E-20 E-22 E-23     |
 ------------+-----------------------------------+-----------------------------------+-----------------------------------
 I2 Medium   | score 2 green n=0                 | score 4 amber n=5                 | score 6 amber n=2
             |                                   | T-03 T-06 B-09 B-11 E-18          | T-16 E-21
@@ -316,19 +323,19 @@ Residual risk (with the specified controls)
 
 Impact      | L1 Low                            | L2 Medium                         | L3 High
 ------------+-----------------------------------+-----------------------------------+-----------------------------------
-I4 Critical | score 4 amber n=13                | score 8 red n=1                   | score 12 red n=0
-            | T-01 T-04 T-07 T-08 T-09 T-10     | T-11                              |
+I4 Critical | score 4 amber n=13                | score 8 red n=2                   | score 12 red n=0
+            | T-01 T-04 T-07 T-08 T-09 T-10     | T-11 T-18                         |
             | T-13 B-02 B-04 E-03 E-13 E-14     |                                   |
             | E-15                              |                                   |
 ------------+-----------------------------------+-----------------------------------+-----------------------------------
-I3 High     | score 3 green n=10                | score 6 amber n=8                 | score 9 red n=1
-            | T-05 T-14 B-03 B-13 E-01 E-05     | T-17 B-08 B-10 E-02 E-04 E-10     | B-05
-            | E-06 E-07 E-09 E-12               | E-16 E-17                         |
+I3 High     | score 3 green n=10                | score 6 amber n=9                 | score 9 red n=1
+            | T-05 T-14 B-03 B-13 E-01 E-05     | T-17 T-19 B-08 B-10 E-02 E-04     | B-05
+            | E-06 E-07 E-09 E-12               | E-10 E-16 E-17                    |
 ------------+-----------------------------------+-----------------------------------+-----------------------------------
-I2 Medium   | score 2 green n=3                 | score 4 amber n=14                | score 6 amber n=1
+I2 Medium   | score 2 green n=3                 | score 4 amber n=15                | score 6 amber n=1
             | T-03 B-09 E-18                    | T-02 T-12 T-15 T-16 B-01 B-07     | B-06
             |                                   | B-11 B-12 E-08 E-11 E-19 E-20     |
-            |                                   | E-21 E-22                         |
+            |                                   | E-21 E-22 E-23                    |
 ------------+-----------------------------------+-----------------------------------+-----------------------------------
 I1 Low      | score 1 green n=0                 | score 2 green n=1                 | score 3 green n=0
             |                                   | T-06                              |
@@ -336,12 +343,12 @@ I1 Low      | score 1 green n=0                 | score 2 green n=1             
 
 | Band | Inherent | Residual |
 |---|---|---|
-| red (8 to 12) | 23 | 2 |
-| amber (4 to 6) | 29 | 36 |
+| red (8 to 12) | 25 | 3 |
+| amber (4 to 6) | 30 | 38 |
 | green (1 to 3) | 0 | 14 |
-| Sum of scores | 352 | 217 |
+| Sum of scores | 374 | 235 |
 
-The sum of scores falls by 38.4 percent. That figure describes the register, not the system: it is the arithmetic of design-time judgements. 7 risks keep their inherent score (RISK-T-11, RISK-B-02, RISK-B-04, RISK-B-05, RISK-B-08, RISK-B-11, RISK-E-02): either the brief already scores the probability Low and the controls serve to hold it there, or no control in the design reduces the score and the row is a finding to be decided by its owner.
+The sum of scores falls by 37.2 percent. That figure describes the register, not the system: it is the arithmetic of design-time judgements. 8 risks keep their inherent score (RISK-B-02, RISK-B-04, RISK-B-05, RISK-B-08, RISK-B-11, RISK-E-02, RISK-T-11, RISK-T-18): either the brief already scores the probability Low and the controls serve to hold it there, or no control in the design reduces the score and the row is a finding to be decided by its owner.
 
 ## 7. Top 10 residual risks and treatment plans
 
@@ -349,20 +356,20 @@ Ranked by residual score, then residual impact, then inherent score, then ID.
 
 | Rank | ID | Risk | Inherent | Residual | Band | Treatment plan | Owner |
 |---|---|---|---|---|---|---|---|
-| 1 | RISK-B-05 | The 60 percent staffing reduction is not reachable at the planned escalation rate | 9 | 9 | red | No design control removes this risk; it is reported, not mitigated. Put the break-even table (180 FTE carry 14.1 percent escalation at the model's handling time) to the board. Measure real handling time per queue in the first quarter and rerun the model. Decide the reading of the 60 percent aim (headcount or interactions). Target residual: Medium x High after a phased plan is approved | CTO with the Head of Customer Experience |
-| 2 | RISK-T-11 | A true escalation trigger does not fire (missed escalation) | 8 | 8 | red | Measure EQ-02 on the random review stream from the first canary stage and report it by language. Hold the residual likelihood at Medium until one quarter of measured data shows a P0 miss rate inside the bound of `docs/escalation/queue-management.md` section 8. Add native-reviewed crisis and fraud cue lists per language before a language is enabled. Target residual: Low x Critical | Escalation owner (CX Team) with the Risk Committee |
-| 3 | RISK-B-10 | The system launches with governance artefacts that nobody has reviewed | 9 | 6 | amber | Turn the open questions of the decisions log into a sign-off register with an owner and a date per item, reviewed weekly by the Risk Committee until empty. Crisis text, layer 1 and layer 2 first. Target residual: Low x High | Chief Risk Officer |
-| 4 | RISK-E-04 | Bias goes undetected because the fairness tests lack data or power | 9 | 6 | amber | Agree the fairness view's data source and access list with the Risk Committee (open item in `docs/metrics/dashboards.md`). Generate the 1,320-pair counterfactual matrix and run it at gate G3 once a harness exists. Publish the minimum detectable gap with each slice. Target residual: Low x High | Chief Risk Officer |
-| 5 | RISK-E-10 | The accountability chain (who designed, who approved the model, who reviewed guardrails) is not documented with names | 9 | 6 | amber | Name the role holders (IR-D1, AL-D8) and record the first Risk Committee review of layers 0 to 2 and of the registry. The RACI is ready to receive names. Target residual: Low x High | Chief Risk Officer |
-| 6 | RISK-E-16 | Hindi and Hinglish wording is not native-reviewed and secondary languages have no template text | 9 | 6 | amber | Commission native review of the 63 templates in Hindi and Hinglish, safety-critical set first (crisis, fraud P0, do-not-share, OTP request, language choice, warm handoff). Add `body_i18n` to KB entries. Target residual: Low x Medium | Head of Customer Experience; Risk Committee for safety text |
-| 7 | RISK-E-17 | Language and sentiment models are less accurate for secondary languages and code-switched text | 9 | 6 | amber | Per-language evaluation sets and quality floors as release conditions for each secondary language; report FT-08 monthly. Target residual: Medium x Medium | NLU Team |
-| 8 | RISK-T-17 | A deletion request is not completed everywhere inside 30 days | 8 | 6 | amber | Obtain the legal reading of AL-D1 before launch. Run the planted-customer drill before the first canary stage and after every new store is added. Add downstream systems (AL-D5) to the reconciliation. Target residual: Low x High | Data Protection lead |
-| 9 | RISK-B-08 | The CSAT target of 4.5 is not reached or cannot be shown | 6 | 6 | amber | Set interim targets per quarter with the CEB instead of a single 4.5 date. Prioritise the three lowest-CSAT categories of A1.2 (complaints 2.4, disputes 2.8, loans 3.0) in the improvement cycle. Target residual: Medium x Medium once two consecutive quarters show the planned slope | Head of Customer Experience |
-| 10 | RISK-E-02 | Escalation thresholds are not consistent across customer segments in effect | 6 | 6 | amber | Report EQ-01 and EQ-02 by language from the first week. Build per-language evaluation sets of at least 904 reviewed true-trigger conversations (`docs/risk/fairness-testing.md` section 5) for the primary languages. Hold secondary languages on the conservative route until their sets exist. Target residual: Low x High | Escalation owner; Risk Committee |
+| 1 | RISK-B-05 | The 60 percent staffing reduction is not reachable at the planned escalation rate | 9 | 9 | red | No design control removes this risk; it is reported, not mitigated. Put the break-even table (180 FTE carry 14.1 percent escalation at the model's handling time) to the board. Measure real handling time per queue in the first quarter and rerun the model. Decide the reading of the 60 percent aim (headcount or interactions). Target residual: Medium x High after a phased plan is approved | CTO with the Head of Customer Experience | |
+| 2 | RISK-T-11 | A true escalation trigger does not fire (missed escalation) | 8 | 8 | red | Measure EQ-02 on the random review stream from the first canary stage and report it by language. Hold the residual likelihood at Medium until one quarter of measured data shows a P0 miss rate inside the bound of `docs/escalation/queue-management.md` section 8. Add native-reviewed crisis and fraud cue lists per language before a language is enabled. Target residual: Low x Critical | Escalation owner (CX Team) with the Risk Committee | |
+| 3 | RISK-T-18 | Volumetric (network-layer) denial of service takes the chat channels down | 8 | 8 | red | No control in this specification covers a volumetric flood, so the residual is reported, not mitigated. Name the platform and network owner, specify edge capacity, CDN, WAF and DDoS scrubbing for each channel, and test them with the hosting provider before the first canary stage. Prove the static status message and the human line under flood in the Day 15 failure drill. Target residual: Low x High | CTO with the Information Security Officer |
+| 4 | RISK-B-10 | The system launches with governance artefacts that nobody has reviewed | 9 | 6 | amber | Turn the open questions of the decisions log into a sign-off register with an owner and a date per item, reviewed weekly by the Risk Committee until empty. Crisis text, layer 1 and layer 2 first. Target residual: Low x High | Chief Risk Officer | |
+| 5 | RISK-E-04 | Bias goes undetected because the fairness tests lack data or power | 9 | 6 | amber | Agree the fairness view's data source and access list with the Risk Committee (open item in `docs/metrics/dashboards.md`). Generate the 1,320-pair counterfactual matrix and run it at gate G3 once a harness exists. Publish the minimum detectable gap with each slice. Target residual: Low x High | Chief Risk Officer | |
+| 6 | RISK-E-10 | The accountability chain (who designed, who approved the model, who reviewed guardrails) is not documented with names | 9 | 6 | amber | Name the role holders (IR-D1, AL-D8) and record the first Risk Committee review of layers 0 to 2 and of the registry. The RACI is ready to receive names. Target residual: Low x High | Chief Risk Officer | |
+| 7 | RISK-E-16 | Hindi and Hinglish wording is not native-reviewed and secondary languages have no template text | 9 | 6 | amber | Commission native review of the 73 templates in Hindi and Hinglish, safety-critical set first (crisis, fraud P0, do-not-share, OTP request, language choice, warm handoff). Add `body_i18n` to KB entries. Target residual: Low x Medium | Head of Customer Experience; Risk Committee for safety text | |
+| 8 | RISK-E-17 | Language and sentiment models are less accurate for secondary languages and code-switched text | 9 | 6 | amber | Per-language evaluation sets and quality floors as release conditions for each secondary language; report FT-08 monthly. Target residual: Medium x Medium | NLU Team | |
+| 9 | RISK-T-17 | A deletion request is not completed everywhere inside 30 days | 8 | 6 | amber | Obtain the legal reading of AL-D1 before launch. Run the planted-customer drill before the first canary stage and after every new store is added. Add downstream systems (AL-D5) to the reconciliation. Target residual: Low x High | Data Protection lead | |
+| 10 | RISK-T-19 | Weakness in the vector and embedding store: a poisoned or cross-audience entry is retrieved, or the store itself is reachable (OWASP LLM08) | 8 | 6 | amber | Specify access control, network isolation, encryption and backup of the embedding store with the platform team. Run the retrieval-poisoning and cross-audience probes of the red-team gate (G4) against the real store, and keep customer data out of the index. Target residual: Low x High | Information Security Officer; platform team |
 
-Also carrying a treatment plan although outside the top 10: RISK-B-06.
+Also carrying a treatment plan although outside the top 10: RISK-B-06, RISK-B-08, RISK-E-02.
 
-Reading of the list: the two red residual risks are not model risks. One is a staffing and capacity finding that follows from the brief's own figures, the other is the detection of triggers that depend on a model reading distress or fraud in mixed-language text. The remaining eight are amber and share one cause: a control exists on paper and has not yet been reviewed, measured or staffed.
+Reading of the list: the three red residual risks are not model risks. One is a staffing and capacity finding that follows from the brief's own figures, one is the detection of triggers that depend on a model reading distress or fraud in mixed-language text, and one is a platform dependency with no control in this specification (network-layer denial of service). The remaining seven are amber and share one cause: a control exists on paper and has not yet been reviewed, measured or staffed.
 
 ## 8. Risk appetite
 
@@ -422,12 +429,15 @@ These rows exist so that a deviation recorded in a decision is also visible as a
 | RISK-B-06 | After-hours P1 SLAs cannot be met by design | D-163, D-122 | 6 amber | Chief Risk Officer (sign-off); queue owners |
 | RISK-B-11 | Deliberate deviations from the brief's case studies are read as errors, or add friction | D-153, D-94 | 4 amber | Risk Committee and CEB |
 | RISK-E-16 | Hindi and Hinglish wording is not native-reviewed and secondary languages have no template text | D-145 | 6 amber | Head of Customer Experience; Risk Committee for safety text |
+| RISK-T-18 | Network-layer denial of service has no control in this specification (gap by scope; platform dependency) | D-202 | 8 red | CTO with the Information Security Officer |
+| RISK-T-19 | Access control and isolation of the embedding store (OWASP LLM08) are left to the platform design | D-202 | 6 amber | Information Security Officer; platform team |
+| RISK-E-23 | The repeat-contact tiebreak of D-121 is treatment by history, which A11.3 asks the system not to apply | D-203, D-121 | 4 amber | Risk Committee and CEB |
 
 Related, and already rows above: the legal-hold default against the deletion duty (D-87, RISK-T-17), the thin false-positive reserve (D-76, RISK-T-16), protective actions without a bus acknowledgement (D-185, RISK-T-14), and the reading of the customer-facing staff rule for handoff packages (D-186).
 
 ## 11. Decisions and open items
 
-Decisions: D-187 (scales, severity rule, residual scoring, appetite and acceptance rule, review cadence). The fairness method is D-188.
+Decisions: D-187 (scales, severity rule, residual scoring, appetite and acceptance rule, review cadence). The fairness method is D-188. D-202 (RISK-T-18 and RISK-T-19: the two gaps by scope that Day 10 deferred to Day 14, with a named dependency and owner) and D-203 (RISK-E-23: the repeat-contact tiebreak recorded as an ethical risk with FAIR-15 as its check).
 
 Open items:
 
@@ -436,3 +446,6 @@ Open items:
 3. Legal review and insurance for AI-caused loss (the brief's mitigation for RISK-B-04) are not in place (IR-D5).
 4. The quarterly regulatory audit is proposed here and has no charter yet.
 5. Risks outside the AI platform (the human channel's conduct after a handoff, core banking, telephony) are not in this register.
+6. Network-layer DDoS protection (CDN, WAF, scrubbing, upstream capacity) is a platform dependency with no design in this repository. Owner: the CTO with the Information Security Officer. RISK-T-18 stays red until a platform control is specified and tested.
+7. Access control, network isolation, encryption and backup of the embedding store (OWASP LLM08, store isolation) are a platform dependency with no design in this repository. Owner: the Information Security Officer with the platform team. RISK-T-19 is scored on the application-side controls only.
+8. The OWASP LLM 2025 category names used for LLM08 and LLM10 are still to be verified against the OWASP publication (Day 15).

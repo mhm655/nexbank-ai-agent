@@ -25,7 +25,7 @@ Designed, illustrative conversation. It shows how the specified system must beha
 | Templates used | TPL-GEN-GREETING, TPL-CMP-EMPATHY-FIRST, TPL-TXN-DISPUTE-INTAKE, TPL-ACT-CONFIRM, TPL-ACT-DONE, TPL-ESC-HANDOFF-WARM, TPL-ESC-WAIT-UPDATE, TPL-ESC-HUMAN-JOINED |
 | KB entries cited | KB-TRB-005, KB-POL-007, KB-ESC-006 |
 | Tools called | search_txn, create_dispute_ticket |
-| prompt_version | sp-1.0.0+518d5a1e.n000000 (template_version 1.0.0 for every template; model_version unbound) |
+| prompt_version | sp-1.1.0+1527a050.n000000 (template versions as listed in config/templates, shown with each Generation row; model_version unbound) |
 | What this conversation proves | A duplicate charge is found by tool, the ticket is opened only after an explicit yes, the amount above INR 50,000 routes to Dispute Resolution with a full package, and the demand for a refund today is answered without a promise or a date. |
 
 Setup: Rajesh, Surat, opens the app already signed in (otp_verified by the app login, so no OTP step). No earlier session. Two charges of the same amount to one merchant exist in the synthetic ledger.
@@ -59,7 +59,7 @@ Turn unit: one customer or agent message (D-119). System events (E) are not coun
 | Guardrails | checked: Output Safety Layer: GR-OUT-01, GR-OUT-02, GR-OUT-03, GR-OUT-04, GR-OUT-05, GR-OUT-06; triggered: GR-REG-16 (AI disclosure), GR-OUT-05 (nothing promised), GR-REG-07 (enhanced audit logging for a payment-related conversation) |
 | KB / tools | KB: KB-TRB-005@1.0.0 (0.88), KB-POL-007@1.0.0 (0.70); retrieval confidence 0.88; decision answer<br>tool: `search_txn`(amount=INR 62,000, date=11 Oct 2026) -> ok: 2 matches {TXN-SYN-0901 and TXN-SYN-0902, Surat Supply Hub, INR 62,000 each, 11 Oct 2026, 14:02 and 14:03 IST} |
 | Action | respond: empathy first, the matches stated from the record, and the pair 5 question (did you make this payment yourself or do you not recognise it) |
-| Generation | hybrid `TPL-GEN-GREETING/with_request@1.0.0` + `TPL-CMP-EMPATHY-FIRST/four_steps@1.0.0` + `TPL-TXN-DISPUTE-INTAKE/confirm_match_and_ask_recognition@1.0.0` (language en); patterns: P1, P2; anti-pattern check: none |
+| Generation | hybrid `TPL-GEN-GREETING/with_request@1.1.0` + `TPL-CMP-EMPATHY-FIRST/four_steps@1.0.0` + `TPL-TXN-DISPUTE-INTAKE/confirm_match_and_ask_recognition@1.0.0` (language en); patterns: P1, P2; anti-pattern check: none |
 | State | phase EXECUTE > RESPOND; auth otp_verified; turn_count 2; topic_stack [TXN-002 (duplicate_charge): active]; slots {amount=INR 62,000 (from the record); date=11 Oct 2026 (from the record); merchant_name=Surat Supply Hub (from the record); transaction_id=TXN-SYN-0902 (second charge, from the record)}; pending_confirmation none; counters: all 0; turns_since_resolution 2; escalation_proximity 0.10 |
 | Decision point | The question 'did you make this payment yourself' is the disambiguation pair 5 question (KB-TRB-005); it is asked before a dispute or a fraud route is chosen. |
 
@@ -89,7 +89,7 @@ Turn unit: one customer or agent message (D-119). System events (E) are not coun
 | Guardrails | checked: Output Safety Layer: GR-OUT-01, GR-OUT-02, GR-OUT-03, GR-OUT-04, GR-OUT-05, GR-OUT-06; triggered: GR-OUT-05 (the demand for a refund today is not echoed as a promise), GR-SEC-R2 (a ticket needs otp_verified) |
 | KB / tools | KB: KB-TRB-005@1.0.0 (0.88), KB-ESC-006@1.0.0 (0.82), KB-POL-007@1.0.0 (0.80); retrieval confidence 0.88; decision answer |
 | Action | confirm: explicit confirmation before create_dispute_ticket (TXN-002 is HIGH, confirmation explicit); no refund or date stated |
-| Generation | hybrid `TPL-ACT-CONFIRM/default@1.0.0` + free text (grounded on the cited entries) (language en); patterns: P1, P3; anti-pattern check: none |
+| Generation | hybrid `TPL-ACT-CONFIRM/default@1.1.0` + free text (grounded on the cited entries) (language en); patterns: P1, P3; anti-pattern check: none |
 | State | phase ESCALATING > CONFIRM; auth otp_verified; turn_count 4; topic_stack [TXN-002 (duplicate_charge): active]; slots {amount=INR 62,000 (from the record); transaction_id=TXN-SYN-0902 (from the record); dispute_reason=duplicate_charge (filled); merchant_name=Surat Supply Hub (from the record)}; pending_confirmation create_dispute_ticket, explicit, awaiting yes or no; counters: dispute_open 1; turns_since_resolution 4; escalation_proximity 0.60 |
 | Decision point | The customer says 'refund me today'. Agreeing, or saying when the money will return, would be False Confidence. The reply moves to the confirmation and states that no refund or date is promised. |
 
@@ -169,7 +169,7 @@ Turn unit: one customer or agent message (D-119). System events (E) are not coun
 | Guardrails | checked: Output Safety Layer: GR-OUT-01, GR-OUT-02, GR-OUT-03, GR-OUT-04, GR-OUT-05, GR-OUT-06; triggered: none |
 | KB / tools | router: agent_first_name=Kavita (synthetic); team_plain=disputes team |
 | Action | escalate: handoff complete; the agent posts one line and stops replying |
-| Generation | template `TPL-ESC-HUMAN-JOINED/standard@1.0.0` (language en); patterns: P5; anti-pattern check: none |
+| Generation | template `TPL-ESC-HUMAN-JOINED/standard@1.1.0` (language en); patterns: P5; anti-pattern check: none |
 | State | phase HANDOFF; auth otp_verified; turn_count 9; topic_stack [TXN-002 (duplicate_charge): active]; slots {amount=INR 62,000 (from the record); transaction_id=TXN-SYN-0902 (from the record); dispute_reason=duplicate_charge (filled); merchant_name=Surat Supply Hub (from the record)}; pending_confirmation none; counters: dispute_open 1; turns_since_resolution 9; escalation_proximity 0.85 |
 
 ## Closing
@@ -195,7 +195,7 @@ Turn unit: one customer or agent message (D-119). System events (E) are not coun
 | 7 | Actions already taken | create_dispute_ticket at T6: ok, reference DSP-SYN-0901 |
 | 8 | Escalation trigger and reason | trigger_id ESC-005; rule_id ESC-005.a; priority P1; source system; secondary []; reason_text: Dispute of INR 62,000, above the INR 50,000 threshold, with transaction, reason and amount captured.; evidence_turns [T3] |
 
-Envelope: priority P1; queue Dispute Resolution; handoff_mode warm; language en; channel app; complete true; missing_fields []; versions.prompt_version sp-1.0.0+518d5a1e.n000000.  Never in the package: full card number, CVV, PIN, full Aadhaar, password, OTP.
+Envelope: priority P1; queue Dispute Resolution; handoff_mode warm; language en; channel app; complete true; missing_fields []; versions.prompt_version sp-1.1.0+1527a050.n000000.  Never in the package: full card number, CVV, PIN, full Aadhaar, password, OTP.
 
 ## Self-audit
 

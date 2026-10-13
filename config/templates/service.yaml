@@ -133,7 +133,7 @@ templates:
 
 - id: TPL-ACT-CONFIRM
   title: "Confirmation before action (summary, details, yes or no)"
-  version: "1.0.0"
+  version: "1.1.0"
   customer_facing: true
   trigger:
     intents: [CRD-001, CRD-002, TXN-002, TXN-005, CMP-001, CMP-005, SEC-003]
@@ -143,7 +143,7 @@ templates:
   mode: template
   variant_selection: condition
   slots:
-    - {name: action_plain, source: {type: policy, ref: "PolicyDecision.tool_calls[0] plain description", field: text}, locked: true}
+    - {name: action_plain, source: {type: policy, ref: "PolicyDecision.tool_calls[0] plain description from config/templates/labels.yaml action_verb_labels", field: text}, locked: true}
     - {name: details, source: {type: state, ref: "confirmed slots for the action: masked identifiers, amounts, dates", field: text}, locked: true}
     - {name: effect, source: {type: kb, ref: "entry for the action, for example KB-POL-006 for a card block", field: "structured_fields (what the action does and whether it is reversible)"}, locked: true, required: false}
   variants:
@@ -151,18 +151,21 @@ templates:
       when: "single action"
       text:
         en: "Before I go ahead, let me confirm. I will {{action_plain}}. Details: {{details}}. {{effect}} Shall I go ahead? Please reply yes or no."
-        hi: "आगे बढ़ने से पहले मैं पुष्टि कर लूँ। मैं {{action_plain}}। विवरण: {{details}}। {{effect}} क्या मैं आगे बढ़ूँ? कृपया हाँ या नहीं में जवाब दें।"
-        hinglish: "Aage badhne se pehle main confirm kar loon. Main {{action_plain}}. Details: {{details}}. {{effect}} Kya main aage badhoon? Please haan ya nahi mein jawab dein."
+        hi: "आगे बढ़ने से पहले मैं पुष्टि कर लूँ। मैं यह करने जा रहा हूँ: {{action_plain}}। विवरण: {{details}}। {{effect}} क्या मैं आगे बढ़ूँ? कृपया हाँ या नहीं में जवाब दें।"
+        hinglish: "Aage badhne se pehle main confirm kar loon. Main yeh karne ja raha hoon: {{action_plain}}. Details: {{details}}. {{effect}} Kya main aage badhoon? Please haan ya nahi mein jawab dein."
     - key: unclear_answer
       when: "the reply to the question was not a clear yes or no ('hmm', 'maybe', 'ok I guess')"
       text:
         en: "I want to be sure before I do anything. Should I {{action_plain}}? A simple yes or no is all I need, and nothing changes until you say yes."
-        hi: "कुछ भी करने से पहले मैं सुनिश्चित कर लेना चाहता हूँ। क्या मैं {{action_plain}}? बस हाँ या नहीं बता दीजिए, और आपके हाँ कहने तक कुछ नहीं बदलेगा।"
-        hinglish: "Kuch bhi karne se pehle main sure hona chahta hoon. Kya main {{action_plain}}? Bas haan ya nahi bata dijiye, aur aapke haan kehne tak kuch nahi badlega."
+        hi: "कुछ भी करने से पहले मैं सुनिश्चित कर लेना चाहता हूँ। क्या मैं यह करूँ: {{action_plain}}? बस हाँ या नहीं बता दीजिए, और आपके हाँ कहने तक कुछ नहीं बदलेगा।"
+        hinglish: "Kuch bhi karne se pehle main sure hona chahta hoon. Kya main yeh karoon: {{action_plain}}? Bas haan ya nahi bata dijiye, aur aapke haan kehne tak kuch nahi badlega."
   safety:
     guardrails_enforced: [GR-SEC-R2, GR-SEC-R7, GR-SEC-R1, GR-SEC-R3]
     must_not_contain: ["has been blocked", "is confirmed", "I have blocked", "done", "transfer", "payment of"]
-    notes: "One action per question. The action list is restricted to the agent's capability set (protective writes and tickets); a fund movement can never be an `action_plain` value because no such tool exists (GR-SEC-R3). A confirmation is single-use and void after session expiry. The Hindi and Hinglish `action_plain` label must be a verb phrase that completes the sentence; labels are part of the reviewed label table (README section 4)."
+    required_markers:
+      - {id: yes_or_no, variants: [default], en: ["yes or no"], hi: ["हाँ या नहीं"], hinglish: ["haan ya nahi"]}
+      - {id: nothing_changes_until_yes, variants: [unclear_answer], en: ["nothing changes until you say yes"], hi: ["तक कुछ नहीं बदलेगा"], hinglish: ["tak kuch nahi badlega"]}
+    notes: "Grammar of the action label: English is a verb phrase after 'I will' and 'Should I'; Hindi and Hinglish are verbal nouns (infinitive form) after 'karne ja raha hoon:' and 'karoon:' (labels.yaml action_verb_labels, D-198). One action per question. The action list is restricted to the agent's capability set (protective writes and tickets); a fund movement can never be an `action_plain` value because no such tool exists (GR-SEC-R3). A confirmation is single-use and void after session expiry. The Hindi and Hinglish `action_plain` label must be a verb phrase that completes the sentence; labels are part of the reviewed label table (README section 4)."
   a9: {patterns: [P3], anti_patterns_avoided: [AP3, AP6, AP2]}
   kb_refs: [KB-POL-006, KB-POL-004]
   tests: [SS-AUTH-15, SS-AUTH-13, SS-AUTH-16, GR-SEC-R7-02, KB-BOSS-L3-03]
@@ -179,7 +182,7 @@ templates:
   mode: template
   variant_selection: single
   slots:
-    - {name: result_plain, source: {type: tool, ref: "the executed tool (block_card, create_dispute_ticket, create_complaint, request_replacement, send_credential_reset_link, schedule_callback)", field: result_label}, locked: true}
+    - {name: result_plain, source: {type: tool, ref: "the executed tool (block_card, create_dispute_ticket, create_complaint, request_replacement, send_credential_reset_link, schedule_callback)", field: "result_label (the reviewed sentence of config/templates/labels.yaml result_labels for that tool)"}, locked: true}
     - {name: reference_id, source: {type: tool, ref: "the executed tool", field: reference_id}, locked: true}
     - {name: next_steps, source: {type: kb, ref: "entry for the action (for example KB-POL-006 after_block, KB-TRB-005)", field: structured_fields}, locked: true, required: false}
   variants:
@@ -198,7 +201,7 @@ templates:
 
 - id: TPL-ACT-FAILED
   title: "Action or lookup did not complete (honest failure)"
-  version: "1.0.0"
+  version: "1.1.0"
   customer_facing: true
   trigger:
     intents: []
@@ -208,7 +211,7 @@ templates:
   mode: template
   variant_selection: condition
   slots:
-    - {name: action_plain, source: {type: policy, ref: "the attempted action, plain noun phrase", field: text}, locked: true}
+    - {name: action_plain, source: {type: policy, ref: "the attempted action or lookup, plain noun phrase from config/templates/labels.yaml action_noun_labels", field: text}, locked: true}
   variants:
     - key: write_failed
       when: "a protective write or ticket did not complete"
@@ -219,13 +222,16 @@ templates:
     - key: read_failed
       when: "a lookup failed after the single allowed retry (then ESC-014 through TPL-ESC-HANDOFF-WARM system_error)"
       text:
-        en: "I'm not able to see {{action_plain}} right now, and I don't want to guess."
-        hi: "मैं अभी {{action_plain}} नहीं देख पा रहा हूँ, और मैं अंदाज़ा नहीं लगाना चाहता।"
-        hinglish: "Main abhi {{action_plain}} nahi dekh pa raha hoon, aur main guess nahi karna chahta."
+        en: "I'm not able to see {{action_plain}} right now, and I don't want to guess. I can bring in a colleague who can check another way. Shall I?"
+        hi: "मैं अभी {{action_plain}} नहीं देख पा रहा हूँ, और मैं अंदाज़ा नहीं लगाना चाहता। मैं एक सहयोगी को जोड़ सकता हूँ जो दूसरे तरीके से जाँच कर सकें। क्या मैं ऐसा करूँ?"
+        hinglish: "Main abhi {{action_plain}} nahi dekh pa raha hoon, aur main guess nahi karna chahta. Main ek colleague ko jod sakta hoon jo doosre tareeke se check kar sakein. Kya main aisa karoon?"
   safety:
     guardrails_enforced: [GR-SYS-01, GR-OUT-05, GR-REG-07, GR-SEC-R6]
     must_not_contain: ["error", "exception", "timeout", "stack trace", "technical issue", "has been blocked", "try later", "will be fixed in"]
-    notes: "Never implies success. No jargon and no repair time. For a card block in a fraud flow the next step is the P0 handoff, not a retry question (contain-first)."
+    required_markers:
+      - {id: next_step_offered, variants: [read_failed], en: ["bring in a colleague"], hi: ["सहयोगी को जोड़ सकता हूँ"], hinglish: ["colleague ko jod sakta hoon"]}
+      - {id: choice_offered, variants: [write_failed], en: ["Which would you prefer"], hi: ["आप क्या पसंद करेंगे"], hinglish: ["Aap kya prefer karenge"]}
+    notes: "The read_failed variant ends with a human offer so that it is never a dead end (A9 Pattern 4); the ESC-014 handoff text follows only after the customer says yes, or in the same turn when the router has already started it, and then the pair is read as one message (D-196). Never implies success. No jargon and no repair time. For a card block in a fraud flow the next step is the P0 handoff, not a retry question (contain-first)."
   a9: {patterns: [P4, P3], anti_patterns_avoided: [AP3, AP7, AP8]}
   kb_refs: [KB-TRB-009]
   tests: [GR-REG-07-01, ESC-T-014-01, SS-ESC-18, GR-SYS-01-02]
@@ -263,3 +269,31 @@ templates:
   a9: {patterns: [P4], anti_patterns_avoided: [AP3, AP8, AP1]}
   kb_refs: [KB-POL-004, KB-POL-002]
   tests: [GR-SEC-R3-01, GR-SEC-R3-03, GR-SEC-R3-04, SS-COM-05, GR-REG-15-01]
+
+- id: TPL-ACC-CLOSURE-REASON
+  title: "Account closure request: optional reason for the referral ticket (ACC-005)"
+  version: "1.0.0"
+  customer_facing: true
+  trigger:
+    intents: [ACC-005]
+    guardrails: [GR-REG-04, GR-SEC-R2]
+    escalations: []
+    state: "XTR-07 for ACC-005 after TPL-ESC-REFERRAL human_process has explained the process; the reason, if given, is recorded on the referral ticket (D-198; Day 14 simulations used free text for this question)"
+  mode: template
+  variant_selection: single
+  slots: []
+  variants:
+    - key: default
+      text:
+        en: "You don't have to give a reason, but if you'd like to share one, I'll pass it on with your request. Is there anything you'd like me to include?"
+        hi: "आपको कारण बताना ज़रूरी नहीं है, लेकिन अगर आप बताना चाहें, तो मैं उसे आपके अनुरोध के साथ आगे भेज दूँगा। क्या आप कुछ जोड़वाना चाहेंगे?"
+        hinglish: "Aapko reason batana zaroori nahi hai, lekin agar aap batana chahein, to main use aapki request ke saath aage bhej dunga. Kya aap kuch jodwana chahenge?"
+  safety:
+    guardrails_enforced: [GR-REG-04, GR-SEC-R2, GR-OUT-05]
+    must_not_contain: ["before you go", "are you sure", "we would hate", "special", "stay with us", "retain", "better deal", "offer"]
+    required_markers:
+      - {id: reason_optional, variants: all, en: ["don't have to give a reason"], hi: ["कारण बताना ज़रूरी नहीं"], hinglish: ["reason batana zaroori nahi"]}
+    notes: "The reason is optional and is not used to talk the customer out of closing (no retention pitch, no product offer, GR-REG-04). It is recorded for the human process only; the agent does not comment on it."
+  a9: {patterns: [P5], anti_patterns_avoided: [AP5, AP3]}
+  kb_refs: [KB-POL-005]
+  tests: [XTR-T-07-01, XTR-T-07-02]

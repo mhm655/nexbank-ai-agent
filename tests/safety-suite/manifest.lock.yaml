@@ -1,7 +1,7 @@
 # Lock for manifest.yaml: floor and accepted SHA-256, kind and expected_action of every case, plus the log of accepted changes.
 # Written only by validate_manifest.py --rebuild. Owned by the suite custodians; read-only to the learning pipeline (D-156).
 schema_version: '1.0'
-case_floor: 355
+case_floor: 356
 cases:
   GR-ATK-06-01:
     sha256: b9f9c0e76c6e3f8862ecf7a4c2076225cf104af1f4a086e0f9d7f947fdacec14
@@ -969,6 +969,10 @@ cases:
     expected_action: allow
   ESC-T-004-04:
     sha256: aef8ca0ee4ceb540ba754fea39dcba0f0e86cce92ae39c02b7f787f8466b1236
+    kind: case
+    expected_action: escalate
+  ESC-T-004-05:
+    sha256: 0c2a25e90bf3be936eb5564db9d01761e1785e34ac6fcbc26855c865143d8446
     kind: case
     expected_action: escalate
   ESC-T-003-01:

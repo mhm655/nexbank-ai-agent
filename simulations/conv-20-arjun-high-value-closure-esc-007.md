@@ -25,7 +25,7 @@ Designed, illustrative conversation. It shows how the specified system must beha
 | Templates used | TPL-GEN-GREETING, TPL-AUTH-STEP-UP, TPL-ESC-HANDOFF-WARM, TPL-ESC-HUMAN-JOINED |
 | KB entries cited | KB-POL-005, KB-POL-003, KB-ESC-007 |
 | Tools called | get_balance |
-| prompt_version | sp-1.0.0+518d5a1e.n000000 (template_version 1.0.0 for every template; model_version unbound) |
+| prompt_version | sp-1.1.0+1527a050.n000000 (template versions as listed in config/templates, shown with each Generation row; model_version unbound) |
 | What this conversation proves | The closure request triggers the full identity step, the balance that makes it high-value is read by tool and never repeated or asked for, the reason is recorded, and the customer is passed to the relationship team without any attempt to keep him. |
 
 Setup: Arjun, Dubai, in the app, signed in (otp_verified). Session time is 15:30 IST. One NexSave account (masked ending 2290) with a synthetic balance above the INR 5,00,000 line.
@@ -60,7 +60,7 @@ Turn unit: one customer or agent message (D-119). System events (E) are not coun
 | Guardrails | checked: Output Safety Layer: GR-OUT-01, GR-OUT-02, GR-OUT-03, GR-OUT-04, GR-OUT-05, GR-OUT-06; triggered: GR-REG-16 (AI disclosure), GR-SEC-R2 (step-up to full_kyc), GR-SEC-R1 (no document or ID number in chat) |
 | KB / tools | KB: KB-POL-005@1.0.0 (0.88), KB-POL-003@1.0.0 (0.82); retrieval confidence 0.88; decision answer |
 | Action | transfer: step-up to full_kyc in the secure flow; no process detail until the level is met |
-| Generation | template `TPL-GEN-GREETING/with_request@1.0.0` + `TPL-AUTH-STEP-UP/full_kyc@1.0.0` (language en); patterns: P2; anti-pattern check: none |
+| Generation | template `TPL-GEN-GREETING/with_request@1.1.0` + `TPL-AUTH-STEP-UP/full_kyc@1.0.0` (language en); patterns: P2; anti-pattern check: none |
 | State | phase AUTH_REQUIRED; auth otp_verified; turn_count 2; topic_stack [ACC-005 (closure_request): active]; slots {account_type=savings (filled); close_reason=relocation (filled)}; pending_confirmation none; counters: all 0; turns_since_resolution 2; escalation_proximity 0.00 |
 
 ### E1 | System event
@@ -73,7 +73,7 @@ Turn unit: one customer or agent message (D-119). System events (E) are not coun
 
 ### T3 | Agent
 
-> Thank you, that's done. Could you tell me the main reason for closing the account? I'll note it for my colleague, so you won't need to repeat it.
+> Thank you, that's done. You've told me you're moving back to India, so I've noted that reason for my colleague, and you won't need to repeat it.
 
 | Field | Value |
 |---|---|
@@ -81,10 +81,10 @@ Turn unit: one customer or agent message (D-119). System events (E) are not coun
 | Sentiment | n/a (agent messages are not scored); smoothed stays 0.00 |
 | Guardrails | checked: Output Safety Layer: GR-OUT-01, GR-OUT-02, GR-OUT-03, GR-OUT-04, GR-OUT-05, GR-OUT-06; triggered: GR-SEC-R1 (the balance is not stated), GR-REG-04 (no retention offer, no pressure) |
 | KB / tools | KB: KB-POL-005@1.0.0 (0.90), KB-ESC-007@1.0.0 (0.86); retrieval confidence 0.90; decision answer<br>tool: `get_balance`(account_type=savings) -> ok: {account_type: savings, masked_last4: 2290, available_balance: INR 7,25,000.00, source_ts: 12-10-2026 15:31 IST} (read by the router only to test the high-value condition; never stated to the customer) |
-| Action | escalate: ESC-007.a fires (closure requested and balance above INR 5,00,000 by tool); the reason is collected for the package; no retention attempt |
-| Generation | llm (free text inside prompt layers 0 to 5; grounded on KB-POL-005 (record the reason) and KB-ESC-007; no figure; language en); patterns: P2, P5; anti-pattern check: none |
+| Action | escalate: ESC-007.a fires (closure requested and balance above INR 5,00,000 by tool); the reason already given at T1 is carried over for the package and no question is asked; no retention attempt |
+| Generation | llm (free text inside prompt layers 0 to 5; grounded on KB-POL-005 (record the reason given) and KB-ESC-007; no figure; language en); patterns: P2, P5; anti-pattern check: none |
 | State | phase EXECUTE > ESCALATING; auth full_kyc; turn_count 3; topic_stack [ACC-005 (closure_request): active]; slots {account_type=savings (filled); account_last4=2290 (from the record); close_reason=relocation (filled)}; pending_confirmation none; counters: all 0; turns_since_resolution 3; escalation_proximity 0.60 |
-| Decision point | ESC-007.a fires at this turn. The balance is read through a tool and is never asked for or stated (escalation_rules.yaml note). No template carries the reason question, so it is free text checked by the Output Safety Layer; the gap is reported in the handoff. |
+| Decision point | ESC-007.a fires at this turn. The balance is read through a tool and is never asked for or stated (escalation_rules.yaml note). The customer already gave the reason (close_reason=relocation at T1), so asking again would break Context Carry-Over. No template carries this acknowledgement, so it is free text checked by the Output Safety Layer; the gap is reported in the handoff. |
 
 ### T4 | Customer
 
@@ -133,7 +133,7 @@ Turn unit: one customer or agent message (D-119). System events (E) are not coun
 | Guardrails | checked: Output Safety Layer: GR-OUT-01, GR-OUT-02, GR-OUT-03, GR-OUT-04, GR-OUT-05, GR-OUT-06; triggered: none |
 | KB / tools | router: agent_first_name=Rohit (synthetic); team_plain=relationship team |
 | Action | escalate: handoff complete; the agent posts one line and stops replying |
-| Generation | template `TPL-ESC-HUMAN-JOINED/standard@1.0.0` (language en); patterns: P5; anti-pattern check: none |
+| Generation | template `TPL-ESC-HUMAN-JOINED/standard@1.1.0` (language en); patterns: P5; anti-pattern check: none |
 | State | phase HANDOFF; auth full_kyc; turn_count 6; topic_stack [ACC-005 (closure_request): active]; slots {account_type=savings (filled); account_last4=2290 (from the record); close_reason=relocation (confirmed)}; pending_confirmation none; counters: all 0; turns_since_resolution 6; escalation_proximity 0.60 |
 
 ## Closing
@@ -159,7 +159,7 @@ Turn unit: one customer or agent message (D-119). System events (E) are not coun
 | 7 | Actions already taken | get_balance at T3: ok (read only, not stated) |
 | 8 | Escalation trigger and reason | trigger_id ESC-007; rule_id ESC-007.a; priority P1; source system; secondary []; reason_text: Account closure requested by a customer whose balance is above INR 5,00,000.; evidence_turns [T3] |
 
-Envelope: priority P1; queue Relationship Manager; handoff_mode warm; language en; channel app; complete true; missing_fields []; versions.prompt_version sp-1.0.0+518d5a1e.n000000.  Never in the package: full card number, CVV, PIN, full Aadhaar, password, OTP.
+Envelope: priority P1; queue Relationship Manager; handoff_mode warm; language en; channel app; complete true; missing_fields []; versions.prompt_version sp-1.1.0+1527a050.n000000.  Never in the package: full card number, CVV, PIN, full Aadhaar, password, OTP.
 
 ## Self-audit
 

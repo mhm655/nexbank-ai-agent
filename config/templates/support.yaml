@@ -255,7 +255,7 @@ templates:
 
 - id: TPL-SYS-STATUS-STATIC
   title: "Static status message and the human line (fail-closed ladder rung 5)"
-  version: "1.0.0"
+  version: "1.1.0"
   customer_facing: true
   trigger:
     intents: []
@@ -268,40 +268,49 @@ templates:
   variants:
     - key: default
       text:
-        en: "I'm not able to help with this in chat right now. I'm connecting you to a human colleague. If you need to report fraud or a lost card, please tell them straight away."
-        hi: "मैं अभी इस चैट में इस काम में मदद नहीं कर पा रहा हूँ। मैं आपको हमारे एक सहयोगी से जोड़ रहा हूँ। अगर आपको धोखाधड़ी या खोए हुए कार्ड की सूचना देनी है, तो कृपया उन्हें तुरंत बताएँ।"
-        hinglish: "Main abhi is chat mein is kaam mein madad nahi kar pa raha hoon. Main aapko hamare ek colleague se connect kar raha hoon. Agar aapko fraud ya lost card report karna hai, to please unhe turant batayein."
+        en: "I'm not able to help with this in chat right now. I'm trying to connect you to a human colleague. If you need to report fraud or a lost card, please tell them straight away."
+        hi: "मैं अभी इस चैट में इस काम में मदद नहीं कर पा रहा हूँ। मैं आपको हमारे एक सहयोगी से जोड़ने की कोशिश कर रहा हूँ। अगर आपको धोखाधड़ी या खोए हुए कार्ड की सूचना देनी है, तो कृपया उन्हें तुरंत बताएँ।"
+        hinglish: "Main abhi is chat mein is kaam mein madad nahi kar pa raha hoon. Main aapko hamare ek colleague se connect karne ki koshish kar raha hoon. Agar aapko fraud ya lost card report karna hai, to please unhe turant batayein."
   safety:
     guardrails_enforced: [GR-SYS-01, GR-OUT-06, GR-SYS-04]
-    must_not_contain: ["error", "exception", "outage", "will be back", "try later", "technical issue", "within"]
-    notes: "No slot, so it cannot fail a check and needs no model. Pre-approved under safety change control; the only reply that may be delivered without a per-turn SafetyVerdict because its verdict is recorded at approval time (GR-OUT-06 fail mode). No restoration time."
+    must_not_contain: ["error", "exception", "outage", "will be back", "try later", "technical issue", "within", "I'm connecting you", "is connecting"]
+    required_markers:
+      - {id: human_line, variants: all, en: ["human colleague"], hi: ["सहयोगी"], hinglish: ["colleague"]}
+    notes: "The wording says 'trying to connect' because the connection is not yet made when this static text is sent (D-198). No slot, so it cannot fail a check and needs no model. Pre-approved under safety change control; the only reply that may be delivered without a per-turn SafetyVerdict because its verdict is recorded at approval time (GR-OUT-06 fail mode). No restoration time."
   a9: {patterns: [P4], anti_patterns_avoided: [AP3, AP8, AP1]}
   kb_refs: [KB-TRB-009]
   tests: [GR-SYS-01-02, GR-OUT-06-01, GR-OUT-06-02, GR-SYS-04-02]
 
 - id: TPL-SYS-NOTICE
   title: "Customer wording for a layer 5 operational notice"
-  version: "1.0.0"
+  version: "1.1.0"
   customer_facing: true
   trigger:
     intents: [TXN-001, TXN-003, TXN-004, GEN-008, PRD-001]
     guardrails: [GR-SYS-01, GR-REG-04]
     escalations: []
-    state: "an active layer 5 notice whose `affects` matches the turn (config/system-prompt/layer5-operational.md). Variant equals the notice type"
+    state: "an active layer 5 notice whose `affects` matches the turn (config/system-prompt/layer5-operational.md). Variant equals the notice type and, for a known issue, whether the notice carries a restoration time or a customer_effect"
   mode: template
   variant_selection: condition
   slots:
-    - {name: service_plain, source: {type: notice, ref: "notice.affects mapped to a plain service label", field: plain_label}, locked: true}
+    - {name: service_plain, source: {type: notice, ref: "notice.affects mapped to a plain service label (config/templates/labels.yaml service_labels)", field: plain_label}, locked: true}
     - {name: restoration_time, source: {type: notice, ref: "notice.restoration_time (status platform only)", field: restoration_time, format: date_dd_mm_yyyy_time}, locked: true, required: false}
+    - {name: effect_statement, source: {type: notice, ref: "notice.customer_effect (closed set set by operations, validated at gate G0) mapped through config/templates/labels.yaml notice_effect_labels", field: effect_sentence}, locked: true, required: false}
     - {name: policy_text, source: {type: kb, ref: "notice.kb_entry_id", field: structured_fields}, locked: true, required: false}
     - {name: offer_title, source: {type: kb, ref: "notice.kb_entry_id", field: title}, locked: true, required: false}
   variants:
     - key: known_issue
-      when: "type known_issue or system_status, no restoration time"
+      when: "type known_issue or system_status, no restoration time, and the notice has no customer_effect: the wording makes no claim about money, accounts or what a team is doing"
       text:
-        en: "We're aware of a problem affecting {{service_plain}} at the moment, and the team is working on it. I don't have a restoration time for it. Your money and your account are not changed by this, and I can note your details so you don't have to explain again."
-        hi: "हमें जानकारी है कि इस समय {{service_plain}} में एक समस्या आ रही है, और टीम उस पर काम कर रही है। यह कब तक ठीक होगी, इसका समय मेरे पास नहीं है। इससे आपके पैसे या खाते में कोई बदलाव नहीं होता, और मैं आपकी जानकारी नोट कर सकता हूँ ताकि आपको दोबारा समझाना न पड़े।"
-        hinglish: "Humein pata hai ki is time {{service_plain}} mein ek problem aa rahi hai, aur team us par kaam kar rahi hai. Yeh kab tak theek hogi, iska time mere paas nahi hai. Isse aapke paise ya account mein koi change nahi hota, aur main aapki details note kar sakta hoon taaki aapko dobara explain na karna pade."
+        en: "We're aware of a problem affecting {{service_plain}} at the moment. I don't have a restoration time for it. If you'd like, I can bring in a colleague."
+        hi: "हमें जानकारी है कि इस समय {{service_plain}} में एक समस्या आ रही है। इसकी बहाली का समय मेरे पास नहीं है। अगर आप चाहें, तो मैं एक सहयोगी को जोड़ सकता हूँ।"
+        hinglish: "Humein pata hai ki is time {{service_plain}} mein ek problem aa rahi hai. Iske restoration ka time mere paas nahi hai. Agar aap chahein, to main ek colleague ko jod sakta hoon."
+    - key: known_issue_with_effect
+      when: "type known_issue or system_status, no restoration time, and the notice carries customer_effect: the sentence about the customer's money or payments comes from the notice, never from this template"
+      text:
+        en: "We're aware of a problem affecting {{service_plain}} at the moment. {{effect_statement}} I don't have a restoration time for it. If you'd like, I can bring in a colleague."
+        hi: "हमें जानकारी है कि इस समय {{service_plain}} में एक समस्या आ रही है। {{effect_statement}} इसकी बहाली का समय मेरे पास नहीं है। अगर आप चाहें, तो मैं एक सहयोगी को जोड़ सकता हूँ।"
+        hinglish: "Humein pata hai ki is time {{service_plain}} mein ek problem aa rahi hai. {{effect_statement}} Iske restoration ka time mere paas nahi hai. Agar aap chahein, to main ek colleague ko jod sakta hoon."
     - key: known_issue_with_time
       when: "type known_issue or system_status and the status platform supplied restoration_time"
       text:
@@ -322,11 +331,14 @@ templates:
         hinglish: "Ek current offer hai jiske baare mein aap jaanna chah sakte hain: {{offer_title}}. Kya aap uski details aur terms jaanna chahenge?"
   safety:
     guardrails_enforced: [GR-SYS-01, GR-OUT-05, GR-REG-04, GR-REG-01, GR-ATK-02]
-    must_not_contain: ["limited time", "hurry", "act now", "don't miss", "lose this offer", "will be fixed in", "error", "outage code"]
-    notes: "The notice `summary` is never shown to the customer. The claim that money and account are unchanged in `known_issue` must be true for the notice type: a notice for an issue that does affect balances may not use this variant and needs its own reviewed variant (open item). Promotion terms come only from the KB entry, on request (Progressive Disclosure)."
+    must_not_contain: ["limited time", "hurry", "act now", "don't miss", "lose this offer", "will be fixed in", "error", "outage code", "your money", "your account", "not changed", "not affected", "working on it", "being fixed", "team is"]
+    required_markers:
+      - {id: no_restoration_promise, variants: [known_issue, known_issue_with_effect], en: ["don't have a restoration time"], hi: ["बहाली का समय मेरे पास नहीं"], hinglish: ["restoration ka time mere paas nahi"]}
+      - {id: estimate_wording, variants: [known_issue_with_time], en: ["estimate"], hi: ["अनुमान"], hinglish: ["estimate"]}
+    notes: "The notice `summary` is never shown to the customer. Fixed text states nothing about the customer's money, an account or what a team is doing: the earlier known_issue sentences ('your money and your account are not changed', 'the team is working on it') had no source and are removed (D-193). A sentence about funds or payments appears only as `effect_statement`, a reviewed sentence chosen by the closed field `customer_effect` of the notice record (config/templates/labels.yaml notice_effect_labels); with no such field the reply makes no such claim, and the fallback wording is `known_issue`. Promotion terms come only from the KB entry, on request (Progressive Disclosure)."
   a9: {patterns: [P4, P2], anti_patterns_avoided: [AP3, AP2, AP8]}
   kb_refs: [KB-TRB-009]
-  tests: [SS-LRN-17, GR-REG-04-01]
+  tests: [SS-LRN-17, GR-REG-04-01, PA-T-08, PA-T-09]
 
 - id: TPL-SYS-CORRECTION
   title: "Correction of an earlier wrong statement (pre-approved incident wording)"
@@ -355,3 +367,77 @@ templates:
   a9: {patterns: [P1, P4], anti_patterns_avoided: [AP7, AP3, AP8]}
   kb_refs: [KB-POL-007]
   tests: [GR-OUT-01-01, GR-OUT-01-02, SS-HAL-03]
+
+- id: TPL-CMP-STATUS
+  title: "Complaint status from the complaints record (CMP-002)"
+  version: "1.0.0"
+  customer_facing: true
+  trigger:
+    intents: [CMP-002]
+    guardrails: [GR-REG-03, GR-OUT-01, GR-OUT-05]
+    escalations: []
+    state: "auth_level at or above otp_verified and get_complaint_status returned ok in this turn. Variant by whether the tool returned an expected date (D-198; Day 14 simulations used free text for this reply)"
+  mode: template
+  variant_selection: condition
+  slots:
+    - {name: complaint_reference, source: {type: tool, ref: get_complaint_status, field: reference_id}, locked: true}
+    - {name: status_text, source: {type: tool, ref: get_complaint_status, field: status_label}, locked: true}
+    - {name: expected_date, source: {type: tool, ref: get_complaint_status, field: expected_resolution_date, format: date_dd_mm_yyyy}, locked: true, required: false}
+  variants:
+    - key: status_only
+      when: "no expected date returned"
+      text:
+        en: "I've checked complaint {{complaint_reference}}: it is showing as {{status_text}}. The record doesn't give a date for the next update, so I won't guess one. If you'd like, I can raise it with a senior colleague or request a callback."
+        hi: "मैंने शिकायत {{complaint_reference}} की जाँच की है: वह {{status_text}} दिख रही है। रिकॉर्ड में अगली जानकारी की कोई तारीख नहीं है, इसलिए मैं अंदाज़ा नहीं लगाऊँगा। अगर आप चाहें, तो मैं इसे किसी वरिष्ठ सहयोगी तक पहुँचा सकता हूँ या कॉलबैक का अनुरोध कर सकता हूँ।"
+        hinglish: "Maine complaint {{complaint_reference}} check ki hai: woh {{status_text}} dikh rahi hai. Record mein next update ki koi date nahi hai, isliye main guess nahi karunga. Agar aap chahein, to main ise kisi senior colleague tak pahuncha sakta hoon ya callback request kar sakta hoon."
+    - key: with_expected_date
+      when: "the tool returned an expected date in this turn"
+      text:
+        en: "I've checked complaint {{complaint_reference}}: it is showing as {{status_text}}. The record shows an expected date of {{expected_date}}. That date comes from the complaints record and can change. If you'd like, I can raise it with a senior colleague or request a callback."
+        hi: "मैंने शिकायत {{complaint_reference}} की जाँच की है: वह {{status_text}} दिख रही है। रिकॉर्ड में अपेक्षित तारीख {{expected_date}} दिख रही है। यह तारीख शिकायत रिकॉर्ड से आती है और बदल सकती है। अगर आप चाहें, तो मैं इसे किसी वरिष्ठ सहयोगी तक पहुँचा सकता हूँ या कॉलबैक का अनुरोध कर सकता हूँ।"
+        hinglish: "Maine complaint {{complaint_reference}} check ki hai: woh {{status_text}} dikh rahi hai. Record mein expected date {{expected_date}} dikh rahi hai. Yeh date complaints record se aati hai aur badal sakti hai. Agar aap chahein, to main ise kisi senior colleague tak pahuncha sakta hoon ya callback request kar sakta hoon."
+  safety:
+    guardrails_enforced: [GR-REG-03, GR-OUT-01, GR-OUT-05, GR-REG-19]
+    must_not_contain: ["will be resolved", "resolved by", "closed", "guarantee", "no action needed", "within", "your complaint is valid", "we are not liable"]
+    required_markers:
+      - {id: next_step, variants: all, en: ["senior colleague or request a callback"], hi: ["वरिष्ठ सहयोगी तक पहुँचा सकता हूँ या कॉलबैक"], hinglish: ["senior colleague tak pahuncha sakta hoon ya callback"]}
+    notes: "A date appears only when the tool returned it in this turn (D-09), as an estimate that can change. The status is shown as the record words it and is never summarised as an outcome. The next step is the grievance route of TPL-CMP-GRIEVANCE-INFO, not a promise."
+  a9: {patterns: [P2, P4], anti_patterns_avoided: [AP3, AP8]}
+  kb_refs: [KB-REG-002, KB-ESC-005]
+  tests: [GR-REG-03-01, SS-AUTH-20, GR-OUT-05-01, GR-REG-19-01]
+
+- id: TPL-KB-TRANSLATION-UNAVAILABLE
+  title: "The answer exists only in English: say so and offer a choice (retrieval-pipeline.md section 2)"
+  version: "1.0.0"
+  customer_facing: true
+  trigger:
+    intents: [GEN-004]
+    guardrails: [GR-OUT-03, GR-REG-17]
+    escalations: []
+    state: "retrieval flag translation_unavailable is set on the evidence of a fact-bearing reply and the reply language is hi, hinglish or a secondary language. Whether this template replaces the mixed-language rendering is the open decision of config/templates/README.md section 8 item 5 (D-199); the template exists so that either choice is available"
+  mode: template
+  variant_selection: condition
+  slots:
+    - {name: reply_language_name, source: {type: state, ref: language.reply_language, field: "language name in its own script"}, locked: true}
+  variants:
+    - key: primary_language
+      when: "reply language hi or hinglish: English or a colleague is offered"
+      text:
+        en: "I have the information you asked about, but I can't give it to you reliably in {{reply_language_name}} yet. Would you like me to give it in English, or would you prefer to speak to a colleague?"
+        hi: "आपने जो पूछा उसकी जानकारी मेरे पास है, लेकिन अभी मैं उसे {{reply_language_name}} में भरोसेमंद ढंग से नहीं दे सकता। क्या आप चाहेंगे कि मैं उसे अंग्रेज़ी में दूँ, या आप किसी सहयोगी से बात करना पसंद करेंगे?"
+        hinglish: "Aapne jo poocha uski jaankari mere paas hai, lekin abhi main use {{reply_language_name}} mein reliably nahi de sakta. Kya aap chahenge ki main use English mein doon, ya aap kisi colleague se baat karna prefer karenge?"
+    - key: secondary_language
+      when: "reply language is a secondary language: Hindi, English or a colleague is offered"
+      text:
+        en: "I have the information you asked about, but I can't give it to you reliably in {{reply_language_name}} yet. I can give it in Hindi or English, or bring in a colleague. Which would you prefer?"
+        hi: "आपने जो पूछा उसकी जानकारी मेरे पास है, लेकिन अभी मैं उसे {{reply_language_name}} में भरोसेमंद ढंग से नहीं दे सकता। मैं उसे हिंदी या अंग्रेज़ी में दे सकता हूँ, या किसी सहयोगी को जोड़ सकता हूँ। आप क्या पसंद करेंगे?"
+        hinglish: "Aapne jo poocha uski jaankari mere paas hai, lekin abhi main use {{reply_language_name}} mein reliably nahi de sakta. Main use Hindi ya English mein de sakta hoon, ya ek colleague ko jod sakta hoon. Aap kya prefer karenge?"
+  safety:
+    guardrails_enforced: [GR-OUT-03, GR-REG-17, GR-OUT-01, GR-OUT-05]
+    must_not_contain: ["translated", "machine translation", "roughly", "approximately", "in other words", "I think"]
+    required_markers:
+      - {id: choice_offered, variants: all, en: ["colleague"], hi: ["सहयोगी"], hinglish: ["colleague"]}
+    notes: "The fact itself is not in this reply, so no fact can be mistranslated. The switch is the customer's choice (D-20). Reviewed Hindi and Hinglish bodies for the KB entries (body_i18n) make this template unnecessary for those entries; until then it is the safe alternative to the verbatim English rendering."
+  a9: {patterns: [P4], anti_patterns_avoided: [AP3, AP8, AP1]}
+  kb_refs: [KB-ESC-020]
+  tests: [KB-BOSS-L3-05, SS-HAL-02]

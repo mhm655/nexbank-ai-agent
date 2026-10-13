@@ -13,7 +13,7 @@ Non-English text in this file (customer lines, template wording, glosses) is not
 | Channel | WhatsApp |
 | Language | hinglish |
 | Starting auth level | anonymous |
-| Intents covered | CMP-002, CMP-005, GEN-006 |
+| Intents covered | CMP-002, CMP-004, CMP-005, GEN-006 |
 | Guardrails exercised | GR-OUT-01, GR-OUT-04, GR-OUT-05, GR-REG-03, GR-REG-08, GR-REG-16, GR-SEC-R1, GR-SEC-R2, GR-SEC-R5 |
 | Escalation outcome | none. ESC-004 did not fire: one raw score below -0.70 (T4), never two in a row |
 | Escalation IDs | none |
@@ -27,7 +27,7 @@ Non-English text in this file (customer lines, template wording, glosses) is not
 | Templates used | TPL-GEN-GREETING, TPL-CMP-EMPATHY-FIRST, TPL-ESC-CALLBACK-OFFER, TPL-SRV-CSAT, TPL-GEN-CLOSING |
 | KB entries cited | KB-REG-002, KB-POL-003, KB-POL-007, KB-ESC-005, KB-ESC-003 |
 | Tools called | get_complaint_status, get_profile_masked, schedule_callback |
-| prompt_version | sp-1.0.0+518d5a1e.n000000 (template_version 1.0.0 for every template; model_version unbound) |
+| prompt_version | sp-1.1.0+1527a050.n000000 (template versions as listed in config/templates, shown with each Generation row; model_version unbound) |
 | What this conversation proves | A single very negative message does not escalate (ESC-004 needs two in a row), the reply to it is empathy plus a real choice rather than a transfer, the callback is described as a request, and the sentiment climbs back without a human. |
 
 Setup: Priya, Mumbai, on WhatsApp, anonymous. A card-related complaint (synthetic reference CMP-SYN-2401) was registered three weeks ago. Session time is 14:20 IST.
@@ -65,7 +65,7 @@ _English gloss (annotation only, not customer-facing; not native-reviewed): Hell
 | Guardrails | checked: Output Safety Layer: GR-OUT-01, GR-OUT-02, GR-OUT-03, GR-OUT-04, GR-OUT-05, GR-OUT-06; triggered: GR-REG-16 (AI disclosure), GR-SEC-R2, GR-SEC-R5 |
 | KB / tools | KB: KB-REG-002@1.0.0 (0.82), KB-POL-003@1.0.0 (0.76); retrieval confidence 0.82; decision answer |
 | Action | transfer: to the authentication flow; acknowledgement first |
-| Generation | llm-guided `TPL-GEN-GREETING/with_request@1.0.0` + `TPL-CMP-EMPATHY-FIRST/needs_verification_first@1.0.0` (language hinglish); patterns: P1; anti-pattern check: none |
+| Generation | llm-guided `TPL-GEN-GREETING/with_request@1.1.0` + `TPL-CMP-EMPATHY-FIRST/needs_verification_first@1.0.0` (language hinglish); patterns: P1; anti-pattern check: none |
 | State | phase AUTH_REQUIRED; auth anonymous; turn_count 2; topic_stack [CMP-002 (latest_open_complaint): active]; slots {}; pending_confirmation none; counters: neg_sentiment_streak 0, grievance_info_due_turn 2; turns_since_resolution 2; escalation_proximity 0.30 |
 
 ### E1 | System event

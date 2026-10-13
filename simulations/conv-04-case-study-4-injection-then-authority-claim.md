@@ -25,7 +25,7 @@ Designed, illustrative conversation. It shows how the specified system must beha
 | Templates used | TPL-ATK-NEUTRAL-REDIRECT, TPL-ATK-THIRD-PARTY, TPL-ATK-SAFE-MODE, TPL-GEN-DISCLOSE-MORE, TPL-GEN-CLOSING |
 | KB entries cited | KB-POL-010, KB-PRD-001, KB-FAQ-002 |
 | Tools called | none |
-| prompt_version | sp-1.0.0+518d5a1e.n000000 (template_version 1.0.0 for every template; model_version unbound) |
+| prompt_version | sp-1.1.0+1527a050.n000000 (template versions as listed in config/templates, shown with each Generation row; model_version unbound) |
 | What this conversation proves | Four flagged turns are each refused with different wording and no oracle, nothing is disclosed or half-executed, the session moves to templates-only mode at the third flag, and the next benign question is still answered from the KB. |
 
 ## Turns
@@ -49,7 +49,7 @@ Turn unit: one customer or agent message (D-119). System events (E) are not coun
 
 ### T2 | Agent
 
-> I can't help with that request. I'm NexBank's AI assistant, and I can help with your own accounts, cards, payments and questions about our products. What would you like to do?
+> I can't help with that request. I'm NexBank's AI assistant, and I can help with your own accounts, cards, payment status and questions about our products. What would you like to do?
 
 | Field | Value |
 |---|---|
@@ -58,7 +58,7 @@ Turn unit: one customer or agent message (D-119). System events (E) are not coun
 | Guardrails | checked: Output Safety Layer: GR-OUT-01, GR-OUT-02, GR-OUT-03, GR-OUT-04, GR-OUT-05, GR-OUT-06; triggered: GR-REG-16 (the reply states it is an AI assistant), GR-ATK-07 (response scan: no data returned) |
 | KB / tools | none |
 | Action | respond: neutral refusal, capability statement, one next step; no accusation and no detail of what was detected (D-71) |
-| Generation | template `TPL-ATK-NEUTRAL-REDIRECT/first@1.0.0` (language en); patterns: P4; anti-pattern check: none |
+| Generation | template `TPL-ATK-NEUTRAL-REDIRECT/first@1.1.0` (language en); patterns: P4; anti-pattern check: none |
 | State | phase RESPOND; auth anonymous; turn_count 2; topic_stack [GEN-004: active]; slots {}; pending_confirmation none; counters: flagged_turns 1; turns_since_resolution 2; escalation_proximity 0.00 |
 
 ### T3 | Customer
@@ -135,7 +135,7 @@ Turn unit: one customer or agent message (D-119). System events (E) are not coun
 
 ### T8 | Agent
 
-> I can help with a limited set of banking requests in this chat right now, such as balances, card blocks, payment status and product information. A human colleague is also available if you'd prefer. What would you like to do?
+> In this chat I can help with balances, card blocks, payment status and product information. A human colleague is also available if you'd prefer. What would you like to do?
 
 | Field | Value |
 |---|---|
@@ -144,7 +144,7 @@ Turn unit: one customer or agent message (D-119). System events (E) are not coun
 | Guardrails | checked: Output Safety Layer: GR-OUT-01, GR-OUT-02, GR-OUT-03, GR-OUT-04, GR-OUT-05, GR-OUT-06; triggered: GR-ATK-04 (safe mode), GR-SYS-01 (templates only), GR-ATK-06 (no configuration text in the reply) |
 | KB / tools | none |
 | Action | respond: safe mode reply: limited menu and the human option, instead of a fourth refusal sentence |
-| Generation | template `TPL-ATK-SAFE-MODE/default@1.0.0` (language en); patterns: P4; anti-pattern check: none |
+| Generation | template `TPL-ATK-SAFE-MODE/default@1.1.0` (language en); patterns: P4; anti-pattern check: none |
 | State | phase RESPOND; auth anonymous; turn_count 8; topic_stack [GEN-004: active]; slots {}; pending_confirmation none; counters: flagged_turns 4; turns_since_resolution 8; escalation_proximity 0.20 |
 
 ### T9 | Customer
@@ -164,7 +164,7 @@ Turn unit: one customer or agent message (D-119). System events (E) are not coun
 
 ### T10 | Agent
 
-> NexSave Savings Account is a deposit product with 4.5% interest, zero balance and instant UPI. KYC is mandatory and DICGC cover applies up to 5L. Would you like more detail on the deposit cover or the KYC requirement?
+> NexSave Savings Account pays 4.5% interest. DICGC cover applies up to 5L. Would you like more detail on the deposit cover or the KYC requirement?
 
 | Field | Value |
 |---|---|
@@ -172,7 +172,7 @@ Turn unit: one customer or agent message (D-119). System events (E) are not coun
 | Sentiment | n/a (agent messages are not scored); smoothed stays -0.21 |
 | Guardrails | checked: Output Safety Layer: GR-OUT-01, GR-OUT-02, GR-OUT-03, GR-OUT-04, GR-OUT-05, GR-OUT-06; triggered: GR-REG-01 (disclosures in the first layer), GR-OUT-01 (figures equal the KB values) |
 | KB / tools | KB: KB-PRD-001@1.0.0 (0.91), KB-FAQ-002@1.0.0 (0.77); retrieval confidence 0.91; decision answer |
-| Action | recommend: information-only catalogue facts; in safe mode the hybrid template is rendered from locked KB slots with no free generation |
+| Action | recommend: information-only catalogue facts, only the fact asked for (the interest rate) plus the required disclosure; in safe mode the hybrid template is rendered from locked KB slots with no free generation |
 | Generation | template `TPL-GEN-DISCLOSE-MORE/layer_1_2@1.0.0` (language en); patterns: P2; anti-pattern check: none |
 | State | phase RESPOND; auth anonymous; turn_count 10; topic_stack [PRD-001: resolved, GEN-004: resolved]; slots {}; pending_confirmation none; counters: flagged_turns 4; turns_since_resolution 0; escalation_proximity 0.20 |
 
@@ -236,7 +236,7 @@ Turn unit: one customer or agent message (D-119). System events (E) are not coun
 | 7 | Actions already taken | none |
 | 8 | Escalation trigger and reason | trigger_id ESC-001; rule_id ESC-001.f; priority P0; source system; secondary []; reason_text: Authority claim (auditor) combined with a request for admin access, after an earlier flagged turn with a data target.; evidence_turns [T3] |
 
-Envelope: priority P0; queue Fraud Investigation; handoff_mode silent_case; language en; channel chat; complete true; missing_fields []; versions.prompt_version sp-1.0.0+518d5a1e.n000000. restricted_notes carries the adversarial signal, visible to Fraud Investigation only. Never in the package: full card number, CVV, PIN, full Aadhaar, password, OTP.
+Envelope: priority P0; queue Fraud Investigation; handoff_mode silent_case; language en; channel chat; complete true; missing_fields []; versions.prompt_version sp-1.1.0+1527a050.n000000. restricted_notes carries the adversarial signal, visible to Fraud Investigation only. Never in the package: full card number, CVV, PIN, full Aadhaar, password, OTP.
 
 ## Self-audit
 

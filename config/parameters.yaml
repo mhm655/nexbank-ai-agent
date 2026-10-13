@@ -4,7 +4,8 @@
 # Docs: config/system-prompt/README.md, docs/learning-pipeline/overview.md section 3 (update classes U1-U5, exclusions X1-X6),
 #   docs/learning-pipeline/ab-testing.md section 11 (approval workflow per A12.3 parameter).
 # Validator: tests/templates/validate_templates.py (checks the 8 A12.3 names, default inside range, effective range inside brief range,
-#   and that every `mirror` below equals the value in the file it names, so two copies cannot drift silently).
+#   that every `mirror` below equals the value in the file it names, so two copies cannot drift silently, that no X4 or X5 parameter is
+#   marked may_propose, and that the three ESC-condition parameters carry proposal_limits).
 #
 # How to read this file (decision D-142)
 #   governed_parameters : the 8 parameters of A12.3, copied from the brief's table. `default` and `brief_range` are the brief's.
@@ -18,6 +19,14 @@
 #   learning            : may_propose = the learning pipeline may file a change proposal (class U3) that then follows the owner's
 #                         change process; no = excluded (X4 registry parameters, X5 trigger conditions, rule layer). No value in this
 #                         file is ever applied by the pipeline itself: promotion is a human action (D-113).
+#   proposal_limits     : D-197 (amends D-171). Three of the eight A12.3 parameters appear inside an ESC trigger condition
+#                         (escalation_sentiment_threshold in ESC-004, max_conversation_turns in XTR-06, retrieval_confidence_threshold in
+#                         ESC-008). They stay proposable because A12.3 gives each a change process and D-111 defines the workflow. The
+#                         exclusion of D-171 covers the structure of ESC conditions and the non-A12.3 thresholds, not these eight. Each of
+#                         the three states its owner, the approval a proposal needs and hard bounds that a proposal cannot cross; a
+#                         proposal outside `bounds` or larger than `max_step_per_proposal` is rejected at gate G0 before any test runs.
+#                         The validator fails if one of the three lacks these fields, and fails if any X4 or X5 parameter (a registry
+#                         parameter of config/guardrails.yaml or a constant of config/escalation_rules.yaml) is marked may_propose.
 #   No value in this file is a measurement. Nothing here has been run or tuned.
 
 schema_version: "1.0"
@@ -57,9 +66,15 @@ governed_parameters:
   decisions: [D-18]
   learning: may_propose
   update_class: U3
+  proposal_limits:
+    owner: CX Team
+    required_approval: "CEB approval (A12.3) and a Risk Committee view (D-58, X5 as amended by D-197); A/B test per D-111"
+    bounds: {min: -1.0, max: -0.4}
+    max_step_per_proposal: 0.1
+    bounds_reason: "The upper bound is esc004_cancel_sentiment_min (-0.40): above it ESC-004 could fire on a score that its own recovery rule would cancel in the same turn. The lower bound is the brief's. A proposal may not leave the brief range."
   mirrors: []
   used_by: [docs/intent-taxonomy/sentiment.md section 5, config/escalation_rules.yaml parameters_ref, docs/escalation/triggers.md]
-  notes: "A6 states -0.7 inside the ESC-004 condition itself. Moving this parameter therefore changes a brief trigger and needs the CEB (A12.3) and, by D-58 and X5, a Risk Committee view."
+  notes: "A6 states -0.7 inside the ESC-004 condition itself. Moving this parameter therefore changes a brief trigger and needs the CEB (A12.3) and, by D-58 and X5, a Risk Committee view. It stays proposable within proposal_limits (D-197)."
 
 - name: max_conversation_turns
   type: integer
@@ -73,6 +88,12 @@ governed_parameters:
   decisions: [D-119, D-129, D-143]
   learning: may_propose
   update_class: U3
+  proposal_limits:
+    owner: Product
+    required_approval: "Standard change (A12.3) with the escalation owner confirming the XTR-06 and ESC-010 interplay; A/B test per D-111"
+    bounds: {min: 15, max: 50}
+    max_step_per_proposal: 5
+    bounds_reason: "Effective floor 15 (D-143): the ceiling must not close a conversation before ESC-010 (more than 15 turns without resolution) can fire. XTR-06 requires turn_count above esc010_turns as well, so ESC-010 can never be pre-empted at or above the floor. The ceiling 50 is the brief's."
   mirrors: []
   used_by: [config/escalation_rules.yaml parameters_ref and XTR-06, docs/escalation/triggers.md]
   notes: "Effective floor 15 (D-143, proposal): below it the ceiling would close a conversation before ESC-010 (A6: more than 15 turns without resolution) could fire. The brief's range 10-50 is kept as the outer bound."
@@ -123,10 +144,16 @@ governed_parameters:
   decisions: [D-43]
   learning: may_propose
   update_class: U3
+  proposal_limits:
+    owner: NLU Team
+    required_approval: "A/B test (A12.3) and Risk Committee review, because ESC-008 reads the value for regulatory topics (safety-invariants.md section 5.1; D-111)"
+    bounds: {min: 0.65, max: 0.90}
+    max_step_per_proposal: 0.05
+    bounds_reason: "A proposal may only keep or raise the default 0.65: lowering the value makes the agent answer on weaker evidence and lets fewer regulatory questions reach ESC-008. Lowering below the default is a Risk Committee decision outside the learning pipeline. The ceiling 0.90 is the brief's."
   mirrors: []
   used_by: [docs/knowledge-base/retrieval-pipeline.md sections 8-9, docs/intent-taxonomy/language-detection.md section 6,
-            config/escalation_rules.yaml parameters_ref, config/templates/kb.yaml]
-  notes: "Same value for every language. ESC-008 reads it for regulatory topics (D-43), so a change is safety-adjacent (safety-invariants.md section 5.1)."
+            config/escalation_rules.yaml parameters_ref, config/templates/support.yaml (TPL-KB-DEGRADE, TPL-KB-GAP, TPL-KB-TRANSLATION-UNAVAILABLE)]
+  notes: "Same value for every language. ESC-008 reads it for regulatory topics (D-43), so a change is safety-adjacent (safety-invariants.md section 5.1). It stays proposable within proposal_limits (D-197)."
 
 - name: guardrail_strictness_level
   type: enum

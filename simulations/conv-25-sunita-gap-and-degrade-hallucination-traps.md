@@ -25,7 +25,7 @@ Designed, illustrative conversation. It shows how the specified system must beha
 | Templates used | TPL-GEN-GREETING, TPL-KB-GAP, TPL-KB-DEGRADE, TPL-GEN-CLOSING |
 | KB entries cited | KB-ESC-011, KB-FAQ-008, KB-PRD-002, KB-PRD-009, KB-PRD-010, KB-ESC-020 |
 | Tools called | none |
-| prompt_version | sp-1.0.0+518d5a1e.n000000 (template_version 1.0.0 for every template; model_version unbound) |
+| prompt_version | sp-1.1.0+1527a050.n000000 (template versions as listed in config/templates, shown with each Generation row; model_version unbound) |
 | What this conversation proves | The assistant says it cannot confirm a recurring deposit and offers what it does hold, does not invent a gold loan, degrades twice with different wording and no repeated question, and offers a person without pushing. |
 
 Setup: Anonymous web chat. No earlier session. The catalogue holds nine products (KB-PRD-010); there is no recurring deposit and no gold loan in it.
@@ -59,7 +59,7 @@ Turn unit: one customer or agent message (D-119). System events (E) are not coun
 | Guardrails | checked: Output Safety Layer: GR-OUT-01, GR-OUT-02, GR-OUT-03, GR-OUT-04, GR-OUT-05, GR-OUT-06; triggered: GR-REG-16 (AI disclosure), GR-OUT-03 (no invented product), GR-OUT-01 (no RD rate), GR-REG-01 |
 | KB / tools | KB: KB-ESC-011@1.0.0 (0.88), KB-FAQ-008@1.0.0 (0.72), KB-PRD-002@1.0.0 (0.70); retrieval confidence 0.88; decision gap |
 | Action | respond: gap entry in the evidence set and the asked fact (an RD rate) is in its unknown list; safe statement plus the adjacent NexFD facts |
-| Generation | template `TPL-GEN-GREETING/with_request@1.0.0` + `TPL-KB-GAP/with_adjacent_facts@1.0.0` (language en); patterns: P2, P4; anti-pattern check: none |
+| Generation | template `TPL-GEN-GREETING/with_request@1.1.0` + `TPL-KB-GAP/with_adjacent_facts@1.0.0` (language en); patterns: P2, P4; anti-pattern check: none |
 | State | phase RESPOND; auth anonymous; turn_count 2; topic_stack [PRD-003 (rd_rate_enquiry): active]; slots {product=recurring deposit (filled)}; pending_confirmation none; counters: all 0; turns_since_resolution 0; escalation_proximity 0.00 |
 | Decision point | The hallucination trap: a plausible RD rate and tenure would be easy to give. KB-ESC-011 allows only 'I can't confirm' (it must not say that NexBank does or does not offer RD as a fact). |
 

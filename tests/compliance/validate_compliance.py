@@ -93,6 +93,36 @@ BRIEF_RISKS = {
     "RISK-B-01": ("Medium", "High", "P1"), "RISK-B-02": ("Low", "Critical", "P0"),
     "RISK-B-03": ("Low", "Critical", "P1"), "RISK-B-04": ("Low", "Critical", "P0"),
 }
+# A11.1 (p.30) and A11.2 (p.31) as the brief prints them: risk, probability, impact, severity, mitigation required.
+# The PDF text is interleaved; this is the reading by row order, checked against the page images on Day 14 (audit).
+A111_ROWS = [
+    ("LLM hallucination producing incorrect financial info", "Medium", "Critical", "P0", "Response grounding, KB cross-check, financial figure validation"),
+    ("Model drift degrading performance", "High", "High", "P1", "Continuous monitoring, drift detection, retraining triggers"),
+    ("Context window overflow in complex conversations", "Medium", "Medium", "P2", "Summarisation, sliding window, priority retention"),
+    ("KB staleness from delayed regulatory updates", "Medium", "Critical", "P0", "Regulatory fast-track, staleness alerts, version-tagged KB with expiry"),
+    ("Cascading failures across components", "Low", "Critical", "P1", "Circuit breaker, bulkhead isolation, rule-based fallback"),
+    ("Latency spikes during peak hours", "Medium", "Medium", "P2", "Auto-scaling, request queuing, response caching, CDN for static KB"),
+]
+A112_ROWS = [
+    ("Customer churn from poor AI experience", "Medium", "High", "P1", "Real-time CSAT, auto-escalation on negative sentiment, A/B testing"),
+    ("Regulatory penalty for non-compliant AI", "Low", "Critical", "P0", "Compliance layer, mandatory testing, quarterly regulatory audit"),
+    ("Reputational damage from viral negative interaction", "Low", "Critical", "P1", "Quality monitoring, crisis response, detect potentially viral conversations"),
+    ("Legal liability from AI-caused customer loss", "Low", "Critical", "P0", "Comprehensive guardrails, legal review, insurance, audit trail"),
+]
+# A10.3 (pp.28-29), the sixteen requirement lines exactly as the brief prints them. audit-logging.md quotes them in sections 8.1, 11.1 and 12.1.
+A103_QUOTES = [
+    "All log data encrypted at rest using AES-256 encryption",
+    "All log data encrypted in transit using TLS 1.3",
+    "PII fields additionally encrypted with separate key (double encryption)",
+    "Encryption keys rotated quarterly through hardware security module (HSM)",
+    "Customer right-to-deletion requests processed within 30 days",
+    "Deletion includes all copies, backups, and derived data including model training data",
+    "Deletion certificates generated and stored for regulatory proof",
+    "Monthly AI interaction summary for RBI (volume, escalation rates, complaint categories)",
+    "Quarterly customer complaint analysis per Banking Ombudsman requirements",
+    "Annual AI system audit report covering accuracy, fairness, and safety metrics",
+    "Ad-hoc regulatory query responses within 48 hours of receipt",
+]
 BRIEF_ETHICAL = 15  # A11.3: 4 fairness + 4 transparency + 3 accountability + 4 privacy statements
 LIK = {1: "Low", 2: "Medium", 3: "High"}
 IMP = {1: "Low", 2: "Medium", 3: "High", 4: "Critical"}
@@ -290,6 +320,26 @@ SECRET_PATTERNS = {
 }
 
 
+SEALED_OK = re.compile(r"^(?:SYNTHETIC-CIPHERTEXT[-A-Z0-9_]*|(?:v\d+:)?[A-Za-z0-9+/_-]{24,}={0,2})$")
+
+
+def check_sealed_fields(fname, node, path=""):
+    """A field the schema types as ciphertext must hold a sealed or synthetic-ciphertext marker, never readable text."""
+    if isinstance(node, dict):
+        for k, v in node.items():
+            if k == "ciphertext" and isinstance(v, str):
+                erased = bool(node.get("erased"))
+                if v == "" and erased:
+                    continue
+                if not SEALED_OK.match(v):
+                    err(2, "%s: %s.ciphertext holds readable text, not a sealed value: %r" % (fname, path or "/", v[:40]))
+            else:
+                check_sealed_fields(fname, v, path + "/" + k)
+    elif isinstance(node, list):
+        for k, v in enumerate(node):
+            check_sealed_fields(fname, v, "%s[%d]" % (path, k))
+
+
 def check_examples_hygiene():
     files = sorted(glob.glob(O("tests", "compliance", "examples", "*.json")))
     if len(files) < 3:
@@ -300,11 +350,12 @@ def check_examples_hygiene():
         for name, rx in SECRET_PATTERNS.items():
             for m in rx.finditer(text):
                 s = m.group(0)
-                if re.fullmatch(r"[0-9a-f]{8}-?[0-9a-f-]*", s):
-                    continue
+                if re.fullmatch(r"[0-9a-f]{8}-[0-9a-f-]+", s) or (re.fullmatch(r"[0-9a-f]{20,}", s) and re.search(r"[a-f]", s)):
+                    continue                      # a UUID or a hex digest, never a bare run of digits
                 err(2, "%s: looks like a full %s: %r" % (os.path.basename(f), name, s[:30]))
         rec = json.loads(text)
         kinds.add((rec["ext"]["record_type"], rec.get("speaker")))
+        check_sealed_fields(os.path.basename(f), rec)
     if files and not ({("conversation", None), ("turn", "customer"), ("turn", "agent")} <= kinds):
         err(2, "examples must cover a conversation record, a customer turn and an agent turn; found %s" % sorted(kinds, key=str))
 
@@ -405,6 +456,9 @@ def check_brief_fields_in_doc():
                    "Banking Ombudsman", "Annual AI system audit report", "meta-audit trail", "Deletion certificates"):
         if phrase not in doc:
             err(4, "audit-logging.md lacks the brief's phrase %r" % phrase)
+    for q in A103_QUOTES:
+        if '"%s"' % q not in doc:
+            err(4, "audit-logging.md does not quote the brief's A10.3 line exactly: %r" % q)
     nq = len(re.findall(r"^\*\*AQ-\d+\.", doc, re.M))
     if nq < 10:
         err(4, "audit-logging.md has %d worked audit queries, at least 10 are required" % nq)
@@ -424,6 +478,7 @@ CITE = re.compile(
     r"EQ-\d+|FT-\d+|AQ-\d+|RPT-\d+|QG-\d+|INV-\d+|RED-\d+|XTR-\d+|TPL-[A-Z]+(?:-[A-Z0-9]+)+|FAIR-\d+(?:-[ab])?|SS-[A-Z]+-\d+"
     r")(?![A-Za-z0-9\[])")
 PENDING_DECISIONS = {"D-%d" % n for n in range(181, 191)}  # in the Day 14 handoff, not yet merged into the decisions log
+AUDIT_FIX_DECISIONS = {"D-%d" % n for n in range(200, 208)}  # Day 14 audit fixes, same status
 
 
 def collect_definitions():
@@ -470,7 +525,7 @@ def check_cited_ids():
     for ident, where in seen.items():
         if ident in defs:
             continue
-        if ident in PENDING_DECISIONS:
+        if ident in PENDING_DECISIONS or ident in AUDIT_FIX_DECISIONS:
             pending.add(ident)
             continue
         # a range written as "GR-REG-01 to GR-REG-20" cites both ends; a case ID is checked as a case ID
@@ -591,6 +646,19 @@ def check_risk_register():
     for rid in BRIEF_RISKS:
         if rid in reg and severity_by_rule(reg[rid]["l"], reg[rid]["i"], rid in regulatory_legal) != BRIEF_RISKS[rid][2]:
             err(6, "%s: the severity rule of section 2.4 does not reproduce the brief's severity" % rid)
+    # the brief's matrices as reproduced in sections 3.1 and 4.1 must equal the transcription above, cell by cell
+    for sec_a, sec_b, rows, label in (("### 3.1", "### 3.2", A111_ROWS, "A11.1 (section 3.1)"), ("### 4.1", "### 4.2", A112_ROWS, "A11.2 (section 4.1)")):
+        part = text.split(sec_a)[1].split(sec_b)[0] if sec_a in text and sec_b in text else ""
+        got = []
+        for ln in part.split("\n"):
+            if ln.startswith("|") and not ln.startswith("| Risk") and not ln.startswith("|---"):
+                got.append(tuple(split_row(ln)))
+        if got != [tuple(r) for r in rows]:
+            for k, (g, w) in enumerate(zip(got + [None] * len(rows), rows)):
+                if g != tuple(w):
+                    err(6, "%s row %d differs from the brief: document %s, brief %s" % (label, k + 1, g, w))
+            if len(got) != len(rows):
+                err(6, "%s has %d rows, the brief has %d" % (label, len(got), len(rows)))
     # section 2.4 table agrees with the brief rows
     for m in re.finditer(r"^\| (RISK-[TB]-\d+) \| (\w+) \| (\w+) \| (P\d) \| (P\d) \| (yes|no) \|", text, re.M):
         rid, pb, ib, sb, sr, match = m.groups()
@@ -708,7 +776,7 @@ def flatten(x, prefix=""):
     return out
 
 
-PROFILE_KEYS = {"display_name", "age_band", "gender", "region", "value_tier", "tenure_band", "complaints_90d", "occupation"}
+PROFILE_KEYS = {"display_name", "age_band", "gender", "region", "value_tier", "tenure_band", "complaints_90d", "occupation", "repeat_contact_7d"}
 
 
 def check_fairness_pairs():
@@ -913,10 +981,10 @@ def check_numbers():
     if "; ".join(parts) not in flat:
         err(8, "fairness-testing.md minimum detectable gaps: expected %r" % "; ".join(parts))
     # counterfactual bounds
-    for n_, pct in ((14, None),):
+    for n_, pct in ((15, None),):
         ub = 100 * (1 - 0.05 ** (1 / n_))
         if "the bound is %.2f percent" % ub not in fdoc:
-            err(8, "fairness-testing.md: the bound for 14 pairs should be %.2f percent" % ub)
+            err(8, "fairness-testing.md: the bound for 15 pairs should be %.2f percent" % ub)
     need = {t: math.ceil(math.log(0.05) / math.log(1 - t)) for t in (0.05, 0.01, 0.005)}
     if not ("5 percent needs %d pairs, 1 percent needs %d, and 0.5 percent needs %d" % (need[0.05], need[0.01], need[0.005])) in fdoc:
         err(8, "fairness-testing.md pair counts: recomputed %s" % need)
