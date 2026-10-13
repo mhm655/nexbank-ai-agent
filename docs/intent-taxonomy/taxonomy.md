@@ -158,6 +158,6 @@ The tertiary layer is used where it changes what the agent does. Examples: `unbl
 
 ## 7. Open items
 
-- A3.3 gives CRD, PRD, CMP and SEC no auth levels or safety ratings; the assignments here are mine and are logged as D-17 in `assumptions-and-decisions.md` for Risk Committee review.
-- The tertiary labels for the brief's intents are my design; the only labels the brief itself names are `merchant_error` and `duplicate_charge`.
+- A3.3 gives CRD, PRD, CMP and SEC no auth levels or safety ratings; the assignments here are project proposals and are logged as D-17 in `assumptions-and-decisions.md` for Risk Committee review.
+- The tertiary labels for the brief's intents are a project design choice; the only labels the brief itself names are `merchant_error` and `duplicate_charge`.
 - Sample utterances: `utterances.csv` (Day 6, 551 rows, 13 to 17 per intent, all 41 intents and 145 tertiary labels). Language handling: `language-detection.md`. NLU tests: `tests/nlu/`.

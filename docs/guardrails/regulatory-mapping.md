@@ -2,7 +2,7 @@
 
 Brief refs: A4.3 (regulatory compliance guardrails), "Regulatory Reference Summary" (appendix, pages 70-71), A10 (regulatory reporting, retention), A11.3 (ethical risk), A13.1 (product regulatory column), Part B badge "The Regulator" (RBI, PCI DSS and KYC/AML mapping with zero compliance gaps). Registry: `config/guardrails.yaml`. KB: `docs/knowledge-base/entries/regulatory.yaml` (KB-REG-001 to KB-REG-011) and the `regulatory_tags` on all 77 entries. Companion docs: `financial-advice.md`, `account-security.md`.
 
-Rule for this document: **only the regulations and obligations the brief states are claimed.** Where the brief gives a regulation only a one-line relevance statement, the obligation is that statement; what the brief does not say is listed as a residual dependency with an owner (section 6), never filled in from memory (PLAN risk: hallucinated regulations are an AUTO-FAIL).
+Rule for this document: **only the regulations and obligations the brief states are claimed.** Where the brief gives a regulation only a one-line relevance statement, the obligation is that statement; what the brief does not say is listed as a residual dependency with an owner (section 6), never filled in from memory (project delivery risk: hallucinated regulations are an AUTO-FAIL, brief A9.2).
 
 ## 1. Sources and status
 
@@ -149,7 +149,7 @@ Every `regulatory_tags` value used in the 77 KB entries maps to a row above.
 
 ## 4. OWASP LLM Top 10 (2025) cross-reference
 
-Category names are from the OWASP Top 10 for LLM Applications (2025 edition) as remembered; the brief names the list as a resource and cross-reference, and the PLAN calls for it in the Day 10 defences. **Verify names and numbering against the OWASP publication on Day 15** (D-77). Day 9 guardrails cover the categories as shown in the second column; Day 10 added the GR-ATK guardrails in the third (`adversarial-defences.md` section 12 has the per-vector view). This is a cross-reference, not a certification, and it is not part of the 38 M-rows.
+Category names are from the OWASP Top 10 for LLM Applications (2025 edition); the brief names the list as a resource and cross-reference, and the project design uses it in the Day 10 defences. Names and numbering were checked against the OWASP GenAI Security Project list (genai.owasp.org/llm-top-10) on Day 15 and match (D-77). Day 9 guardrails cover the categories as shown in the second column; Day 10 added the GR-ATK guardrails in the third (`adversarial-defences.md` section 12 has the per-vector view). This is a cross-reference, not a certification, and it is not part of the 38 M-rows.
 
 | OWASP category | Day 9 guardrails | Day 10 (GR-ATK, `adversarial-defences.md`) |
 |---|---|---|
@@ -185,13 +185,13 @@ The Regulator badge asks for the RBI, PCI DSS and KYC/AML mapping with zero comp
 |---|---|---|---|---|---|
 | G-01 | Length of the cooling-off period | Not in the brief (KB-REG-001 `not_in_brief`, KB-ESC-019) | State the obligation, say the length is not held, offer ESC-008; never a number | Regulatory Compliance Manager | KB update when a source is supplied |
 | G-02 | IRDAI "specified thresholds" for human oversight | Not in the brief | Never recommend insurance; every recommendation request goes to a human | Regulatory Compliance Manager | KB update when supplied |
-| G-03 | AML suspicious-pattern indicators beyond those in the brief | The brief names the duty, not the indicators | Flag to the AML queue on any customer-stated or structuring cue; do not tell the customer | AML Compliance team | Day 12 escalation rules (ESC-012 details) |
-| G-04 | Production of the quarterly Ombudsman complaint analysis and the monthly RBI summary | Reporting pipeline is Day 12 (metrics) and Day 14 (audit logging) | Complaint tickets carry category and timestamps now (GR-REG-19) | Chief Risk Officer | Day 12, Day 14 |
-| G-05 | DPDP mechanics: consent records, data localisation controls, 30-day deletion workflow including training data | Specified in the data pipeline (Day 11) and audit logging (Day 14) | Data minimisation and no sensitive-attribute storage hold now (GR-REG-13) | Data Protection lead with ML team | Day 11, Day 14 |
-| G-06 | PCI DSS enhanced audit logging: field list, retention for payment conversations | Audit logging spec is Day 14 (R-32) | High-risk actions blocked if the audit write fails (GR-REG-07) | Security Operations | Day 14 |
-| G-07 | NexBank's own channel encryption design | D-34: the brief supports the requirement, not NexBank's implementation | No implementation claims in chat; ESC-008 | Security Operations | Day 14 |
+| G-03 | AML suspicious-pattern indicators beyond those in the brief | The brief names the duty, not the indicators | Flag to the AML queue on any customer-stated or structuring cue; do not tell the customer | AML Compliance team | open: indicator list is an AML team input (`docs/escalation/triggers.md`) |
+| G-04 | Production of the quarterly Ombudsman complaint analysis and the monthly RBI summary | Reporting pipeline is Day 12 (metrics) and Day 14 (audit logging) | Complaint tickets carry category and timestamps now (GR-REG-19) | Chief Risk Officer | open: AL-D2 (`docs/compliance/audit-logging.md`) |
+| G-05 | DPDP mechanics: consent records, data localisation controls, 30-day deletion workflow including training data | Specified in the data pipeline (Day 11) and audit logging (Day 14) | Data minimisation and no sensitive-attribute storage hold now (GR-REG-13) | Data Protection lead with ML team | open: AL-D1 (`docs/compliance/audit-logging.md`) |
+| G-06 | PCI DSS enhanced audit logging: field list, retention for payment conversations | Audit logging spec is Day 14 (R-32) | High-risk actions blocked if the audit write fails (GR-REG-07) | Security Operations | specified in `docs/compliance/audit-logging.md`; open: AL-D3 |
+| G-07 | NexBank's own channel encryption design | D-34: the brief supports the requirement, not NexBank's implementation | No implementation claims in chat; ESC-008 | Security Operations | open: AL-D3 (`docs/compliance/audit-logging.md`) |
 | G-08 | Final text of the RBI Responsible AI circular (draft, 2025) | Draft status | Build to the two stated aims; re-review on publication via fast-track | Regulatory Compliance Manager | On publication |
-| G-09 | EU AI Act risk classification of this system and NIST AI RMF function mapping | Day 14 risk matrix (R-33) | Registry carries severity, FP target and fail mode per guardrail | Chief Risk Officer | Day 14 |
+| G-09 | EU AI Act risk classification of this system and NIST AI RMF function mapping | Day 14 risk matrix (R-33) | Registry carries severity, FP target and fail mode per guardrail | Chief Risk Officer | specified in `docs/risk/risk-matrix.md` |
 
 The registry cites G-01 to G-05 in the `fail_mode` of the guardrails they qualify.
 
@@ -201,4 +201,4 @@ A new RBI circular or SEBI/IRDAI notice enters through the KB regulatory fast-tr
 
 ## 8. Reserved test IDs and counts
 
-Reserved IDs follow `<guardrail ID>-<NN>`: GR-REG-01 to GR-REG-20 reserve 2, 2, 3, 2, 2, 2, 1, 2, 2, 2, 2, 2, 2, 1, 2, 2, 2, 2, 1, 2 (total 38); GR-OUT-01 to GR-OUT-05 reserve 2 each (10); GR-SYS-01 reserves 2. Across all families the registry reserves GR-ADV 30, GR-SEC 40, GR-REG 38, GR-OUT 10, GR-SYS 6, a total of 124, from which Day 10 writes at least the 55 guardrail and adversarial cases the PLAN requires, and every guardrail gets at least one written case before Day 15. Day 10 adds the adversarial family GR-ATK (11 guardrails, 62 reserved IDs, `adversarial-defences.md` section 15), so the registry reserves 186 IDs in total (124 + 62); the Day 9 figures above are unchanged. The Day 10 audit adds GR-OUT-06 and GR-SYS-04 with 2 reserved IDs each (D-90): 58 guardrails and 190 reserved IDs.
+Reserved IDs follow `<guardrail ID>-<NN>`: GR-REG-01 to GR-REG-20 reserve 2, 2, 3, 2, 2, 2, 1, 2, 2, 2, 2, 2, 2, 1, 2, 2, 2, 2, 1, 2 (total 38); GR-OUT-01 to GR-OUT-05 reserve 2 each (10); GR-SYS-01 reserves 2. Across all families the registry reserves GR-ADV 30, GR-SEC 40, GR-REG 38, GR-OUT 10, GR-SYS 6, a total of 124, from which Day 10 writes at least the 55 guardrail and adversarial cases the project target requires (the brief asks for 50+), and every guardrail gets at least one written case before Day 15. Day 10 adds the adversarial family GR-ATK (11 guardrails, 62 reserved IDs, `adversarial-defences.md` section 15), so the registry reserves 186 IDs in total (124 + 62); the Day 9 figures above are unchanged. The Day 10 audit adds GR-OUT-06 and GR-SYS-04 with 2 reserved IDs each (D-90): 58 guardrails and 190 reserved IDs.

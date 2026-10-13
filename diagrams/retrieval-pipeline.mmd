@@ -1,5 +1,5 @@
 %% NexBank retrieval pipeline (Day 8). Spec: docs/knowledge-base/retrieval-pipeline.md
-%% Thresholds: retrieval_confidence_threshold 0.65 (config/parameters.yaml on Day 13); fusion 0.6 dense / 0.4 sparse; p95 budget about 160-180 ms, limit 200 ms.
+%% Thresholds: retrieval_confidence_threshold 0.65 (config/parameters.yaml); fusion 0.6 dense / 0.4 sparse; p95 budget about 160-180 ms, limit 200 ms.
 flowchart TD
     REQ["Policy Engine request<br/>rewritten query, auth_level, language, intent hint, mode, now"]
     RW["1. Query rewrite (rules, in the 50 ms state/policy slot)<br/>anaphora, entity injection (no identifiers), language handling<br/>secondary language: English pivot is the query"]

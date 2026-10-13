@@ -2,7 +2,7 @@
 
 Brief refs: A4.1 (advice guardrails), A6 (ESC-013), A9.2 (False Confidence, Knowledge Hallucination), A11.3 (no sensitive-attribute inference, minimum data), Regulatory Reference Summary (SEBI robo-advisory 2024, IRDAI AI in insurance distribution 2024). Registry: `config/guardrails.yaml` (GR-ADV-01 to GR-ADV-09). Related: `docs/intent-taxonomy/disambiguation.md` section 3 (pair 2), `docs/knowledge-base/entries/policy.yaml` (KB-POL-001), `docs/architecture/response-generation.md` section 5, `diagrams/guardrail-layers.mmd`.
 
-Template names are named here only; the wording is written on Day 13. Adversarial attempts to talk the agent into advice (role-play, "pretend you are my advisor", prompt injection) are Day 10; this document specifies the boundary they attack.
+Template names are named here only; the wording is in `config/templates/advice.yaml`. Adversarial attempts to talk the agent into advice (role-play, "pretend you are my advisor", prompt injection) are Day 10; this document specifies the boundary they attack.
 
 ## 1. The rule
 
@@ -212,6 +212,6 @@ Scheme: `<guardrail ID>-<NN>`, two digits from 01.
 
 ## 12. Open items
 
-- Native-speaker review of Hindi and Hinglish signal lists and the advice templates (Day 13).
+- Native-speaker review of Hindi and Hinglish signal lists and the advice templates: pending (D-145).
 - Risk Committee: the output-side thresholds (D-54) and the end-to-end false-positive gate and the per-class diagnostic bounds (D-57, D-64) are proposals.
 - Whether a stated circumstance may appear in the handoff summary in the customer's own words is decided as "topic only" in D-55; Wealth Advisory may prefer the full transcript, which they can already open.

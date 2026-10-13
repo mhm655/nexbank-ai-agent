@@ -58,7 +58,7 @@ Turn unit: one customer or agent message (D-119). System events (E) are not coun
 | NLU | n/a (agent message) |
 | Sentiment | n/a (agent messages are not scored); smoothed stays -0.05 |
 | Guardrails | checked: Output Safety Layer: GR-OUT-01, GR-OUT-02, GR-OUT-03, GR-OUT-04, GR-OUT-05, GR-OUT-06; triggered: GR-REG-16 (AI disclosure in the first reply), GR-SEC-R2 (statement needs otp_verified), GR-SEC-R5 (the code goes to the secure widget, never typed in chat), GR-REG-17 (no threshold changed) |
-| KB / tools | KB: KB-POL-003@1.0.0 (0.81), KB-ESC-003@1.0.0 (0.66); retrieval confidence 0.81; decision answer |
+| KB / tools | KB: KB-POL-003@1.0.0 (0.81), KB-ESC-003@2.0.0 (0.66); retrieval confidence 0.81; decision answer |
 | Action | transfer: to the authentication flow; XTR-03 handling: short sentences, one step at a time, one human offer (the human request is not counted until she makes one) |
 | Generation | hybrid `TPL-GEN-GREETING/with_request@1.1.0` + `TPL-AUTH-OTP-REQUEST/default@1.0.0` + free text (grounded on the cited entries) (language en); patterns: P1, P2; anti-pattern check: none |
 | State | phase AUTH_REQUIRED; auth anonymous; turn_count 2; topic_stack [ACC-002 (email_statement): active]; slots {}; pending_confirmation none; counters: care_flag 1; turns_since_resolution 2; escalation_proximity 0.00 |

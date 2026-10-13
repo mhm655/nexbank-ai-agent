@@ -2,7 +2,7 @@
 
 Brief refs: A2.4 (multilingual), A2.2 (NLU), A13.2 (personas with Hindi-English mix and Gujarati support). This file expands the Day 3 outline in `docs/architecture/multilingual.md`, which stays the summary and is not contradicted here. Pipeline slots: stages 3.1 (language ID and code-switch tagging) and 3.2 (normalisation) in `docs/architecture/nlu-pipeline-overview.md`. Test data: `utterances.csv` (this folder) and `tests/nlu/README.md`.
 
-All thresholds below are **proposals** (D-20). Like the NLU thresholds they move to `config/parameters.yaml` on Day 13 and are tuned on the `dev` split.
+All thresholds below are **proposals** (D-20). Like the NLU thresholds they are held in `config/parameters.yaml` and are tuned on the `dev` split.
 
 ## 1. Language set and codes
 
@@ -135,14 +135,14 @@ The intent thresholds in `config/intents.yaml` apply unchanged to secondary-lang
 | Sentiment on secondary-language turns | Use the EMA route and the confidence gate from D-18; the secondary-language sentiment head is weaker |
 | Fraud, scam, distress, human request, legal threat | Never wait for translation quality: the flow-entry gates apply (0.50), the Input Guard screens native text and pivot, replies use reviewed templates, and the human handoff carries the language |
 
-**Per-language gate (from multilingual.md).** Each language has a rolling intent-accuracy target. Proposed: primary languages at the brief's > 92% intent accuracy; secondary languages at >= 85% pooled until native-reviewed data supports per-language targets (D-22). A language that falls below its target for a full evaluation window is put in "escalate on low confidence" mode: the clarification budget drops from 2 turns to 1 and the human offer is made at the first failure, until the fix is verified. The language also shows on the dashboards (Day 12 work).
+**Per-language gate (from multilingual.md).** Each language has a rolling intent-accuracy target. Proposed: primary languages at the brief's > 92% intent accuracy; secondary languages at >= 85% pooled until native-reviewed data supports per-language targets (D-22). A language that falls below its target for a full evaluation window is put in "escalate on low confidence" mode: the clarification budget drops from 2 turns to 1 and the human offer is made at the first failure, until the fix is verified. The language also shows on the dashboards (`docs/metrics/dashboards.md`).
 
 **Human coverage.** Whether the escalation queue can staff all five secondary languages is open (section 9); the spec routes by a `language` field so the queue design can decide.
 
 ## 8. Evaluation and quality assurance
 
 - `utterances.csv` carries a `language` column (`en` 213, `hinglish` 167, `hi` 87, `ta` 26, `te` 15, `bn` 15, `mr` 14, `gu` 13 rows) and the test split is stratified by language class, so every intent has at least one test row and the test split includes rows in all five secondary languages.
-- Metrics are reported by language and pooled for the secondary group (`tests/nlu/README.md`). The secondary test split has only 17 rows, so per-language numbers are not stable yet; Day 14 conversations and a native-reviewed expansion add rows.
+- Metrics are reported by language and pooled for the secondary group (`tests/nlu/README.md`). The secondary test split has only 17 rows, so per-language numbers are not stable yet; the Day 14 conversations add no rows to the split; a native-reviewed expansion is pending.
 - Language ID itself is evaluated on the same set: accuracy by language, confusion between Hindi and Marathi, and the Roman-script secondary case. Target (proposed): >= 0.95 for primary languages, >= 0.90 for secondary.
 - Native-speaker review (CEB concern, multilingual.md): the secondary-language utterances and the translated template set are provisional until a reviewer per language signs them off. Review records the reviewer, date and corrections in the CHANGELOG.
 - Monitoring: per-language intent accuracy, clarify rate, fallback offers, human-handoff rate and CSAT, as in multilingual.md.
@@ -151,5 +151,5 @@ The intent thresholds in `config/intents.yaml` apply unchanged to secondary-lang
 
 - Whether human support exists for each secondary language and its hours (affects the last step of section 7); Risk and CEB input.
 - The detector, translator and encoder are provider-agnostic (A4); candidate model classes are named in the NLU overview, and none is committed.
-- Secondary-language rows in the library were authored by the model and are not native-reviewed; treat them as provisional (D-22).
-- Thresholds in sections 3, 5, 6 and 7 are proposals to be tuned on `dev` and moved to `config/parameters.yaml` on Day 13.
+- Secondary-language rows in the library are machine-drafted and not native-reviewed; treat them as provisional (D-22).
+- Thresholds in sections 3, 5, 6 and 7 are proposals to be tuned on `dev` and held in `config/parameters.yaml`.

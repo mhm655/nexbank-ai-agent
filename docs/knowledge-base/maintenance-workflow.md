@@ -98,7 +98,7 @@ The roles in the category chain approve in order and record a decision with comm
    - for a safety-adjacent change, the fixed safety suite (200 or more cases, 100% pass; A5) and HITL sign-off;
    - the dependent artefacts are consistent: templates, prompt layer references, tests that name the entry.
 3. **Shadow run.** The candidate epoch answers live queries in parallel without serving them; differences in decision (`answer`, `gap`, `escalate_esc_008`) and confidence are reviewed for the changed topics.
-4. **Canary ladder** for ordinary changes: 1%, then 5%, then 25%, then 100% of conversations, the same ladder as the learning pipeline (A5, PLAN 3.7). Between stages a **circuit breaker** compares guardrail and retrieval metrics against the live epoch: auth assertion failures, a drop in mean confidence or in containment for the affected intents, a rise in ESC-008 raises, CSAT. A breach rolls the epoch back automatically and pages the owner.
+4. **Canary ladder** for ordinary changes: 1%, then 5%, then 25%, then 100% of conversations, the same ladder as the learning pipeline (A5, `docs/learning-pipeline/safety-invariants.md` section 6). Between stages a **circuit breaker** compares guardrail and retrieval metrics against the live epoch: auth assertion failures, a drop in mean confidence or in containment for the affected intents, a rise in ESC-008 raises, CSAT. A breach rolls the epoch back automatically and pages the owner.
 5. **Cut-over** is an atomic switch of the live `index_epoch`. Conversations in progress finish their current turn on the epoch they started, then use the new one. No restart is needed (A2.3 "live updates without interruption").
 6. **Post-publish verification** of the changed topics by sampled supervisor review. The old version is moved to `deprecated` only after verification (kb-schema section 6), and stays in the version store.
 
@@ -138,7 +138,7 @@ circular received -> impact analysis -> quarantine if needed -> draft -> two app
 | Step | Who | What |
 |---|---|---|
 | 1. Receipt and logging | Regulatory Compliance Manager (monitoring function) | Log the circular, issuer, date and the instrument tag affected. The log entry starts the P0 clock |
-| 2. Impact analysis | Regulatory Compliance Manager with KB Operations | Find affected content by tag: all entries with the tag, their related entries, gap entries, templates and prompt-layer text that quote the rule, and tests that depend on it (the "regulatory change simulator" idea in the innovation backlog diffs the circular against all four) |
+| 2. Impact analysis | Regulatory Compliance Manager with KB Operations | Find affected content by tag: all entries with the tag, their related entries, gap entries, templates and prompt-layer text that quote the rule, and tests that depend on it (a "regulatory change simulator" that diffs the circular against all four is an idea only and is not specified; the project additions that are specified are listed in [innovations.md](../innovations.md)) |
 | 3. Quarantine, if the current text may now be wrong | Regulatory Compliance Manager or Chief Risk Officer | The entry's status is set to `expired` with `change_reason: quarantine`. The retriever excludes it, so the agent answers regulatory questions through KB-ESC-008 and ESC-008 (Compliance Helpdesk) instead of stating possibly wrong text. Proposal (D-46): quarantine decision on the same working day as the confirmed impact |
 | 4. Draft | Regulatory Compliance Manager (author) | New MAJOR version of each affected `regulatory` entry; changed figures re-sourced; gap entries updated if the circular supplies a fact that was a gap, or creates one |
 | 5. Approval | Regulatory Compliance Manager is the author, so approval comes from the Chief Risk Officer plus a second Risk & Compliance reviewer (four-eyes). Product and FAQ entries that restate the rule use their own chains, run in parallel, not in sequence | The full chain is repeated for a MAJOR change; only the waiting is shortened |
@@ -163,7 +163,7 @@ TTL values are D-27 (still proposals for the Risk Committee). This section confi
 | `faq_troubleshooting` | 120 | Soft | Owner | Same as above | Same as above |
 | `escalation_procedure` | 365 | Soft | Owner (Customer Experience) | Same as above | Same as above |
 
-The 14-day early warning and the 30-day grace are D-27 proposals, confirmed here as the working values; both move to `config/parameters.yaml` on Day 13.
+The 14-day early warning and the 30-day grace are D-27 proposals, confirmed here as the working values; both are held in `config/parameters.yaml`.
 
 Worked dates for the sample KB (`effective_from: 2026-10-01`, synthetic): `regulatory` and `rates` entries expire 2026-12-30, so the owner alert is 2026-12-16; `faq_troubleshooting` entries expire 2027-01-29 (alert 2027-01-15; soft grace ends 2027-02-28); `product_features` and `policy` entries expire 2027-03-30 (alert 2027-03-16; grace ends 2027-04-29); `escalation_procedure` entries expire 2027-10-01 (alert 2027-09-17; grace ends 2027-10-31).
 

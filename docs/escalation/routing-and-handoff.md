@@ -185,7 +185,7 @@ When the human joins, the agent posts one line to both sides and then stops spea
 | Case | Difference from the standard shape | Illustrative wording |
 |---|---|---|
 | P0 fraud or access (ESC-001, ESC-009) | Protective action first, then the transfer; urgency in tone without alarm (A9.3); no marketing | "I take this seriously. First, with your go-ahead, I will block the card so nothing more can go through. Then I am connecting you to our fraud team, who will have everything you have told me." |
-| P0 crisis (ESC-011) | Reviewed template only; no banking content; no wait estimate; no CSAT ask | Template text is written and reviewed on Day 13; it is not improvised here |
+| P0 crisis (ESC-011) | Reviewed template only; no banking content; no wait estimate; no CSAT ask | Template text is in `config/templates/escalation.yaml` and is not improvised here; the Crisis Response team review is pending |
 | Discreet (ESC-015, ESC-009 pattern) | Parts 1 to 5 without the reason | "A specialist colleague will help you with this request. I am bringing them into this chat, and they will have the details so far." |
 | Silent case (ESC-012, ESC-001 system source) | No handoff message at all. The reply is the ordinary refusal or answer | (no transfer wording) |
 | Offer accepted (ESC-013) | Confirms what the advisor will and will not do | "I am connecting you to one of our SEBI-registered advisors. I have passed on your question about fixed deposits and mutual funds." |

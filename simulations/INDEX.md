@@ -578,4 +578,32 @@ Distinct intents covered: 34 of 41. Not covered: ACC-007, ACC-008, TXN-005, PRD-
 - Confidence, sentiment and retrieval numbers are illustrative values chosen to exercise thresholds. They are not measurements and no model was run.
 - Hindi, Hinglish and Gujarati wording is authored and not native-reviewed (D-22). Only four KB entries have Hindi and Hinglish bodies (KB-FAQ-001, 002, 008, 009), so conversations in those languages keep to those facts, tool values and templates.
 - Conv-07 to conv-30 were written when several short replies had no template (the XTR-03 offer, the XTR-01 offer, the multi-request acknowledgement, the phishing triage question, the closure-reason question, a complaint status, a cancelled-handoff line, the turn-ceiling close), so those turns are free text checked by the Output Safety Layer. The library now holds templates for most of them (TPL-ESC-CARE-OFFER, TPL-ESC-HUMAN-REQUEST-FIRST, TPL-GEN-TWO-REQUESTS, TPL-SEC-PHISHING-TRIAGE, TPL-ACC-CLOSURE-REASON, TPL-CMP-STATUS, TPL-ESC-HANDOFF-CANCELLED, TPL-GEN-LIMIT-CLOSE); those conversations have not been re-rendered with them yet. Conv-31 and conv-32 use the library as it stands.
-- `config/templates/labels.yaml` still lacks the `action_plain`, `result_plain`, `service_plain`, `topic` and `option_a..c` label tables that its own header says the Day 14 simulations would fix; these conversations use plain phrases for them and a proposal is in the handoff.
+- `config/templates/labels.yaml` still lacks the `action_plain`, `result_plain`, `service_plain`, `topic` and `option_a..c` label tables; these conversations use plain phrases for them, and the tables remain an open item for the template owners.
+
+## 8. State-row names (D-212)
+
+The `State` row of every conversation uses working counter names for readability. They are not a second schema. The table maps each name to a property of `config/dialogue_state.schema.json` or marks it "derived, not stored" with the rule that derives it. Neither the schema nor the conversations are changed by this mapping.
+
+| Name in the State row | Maps to | Rule or note |
+|---|---|---|
+| `human_requests` | `human_request_count` | Same value; `human_requests` is the signal name in `config/escalation_rules.yaml` |
+| `low_conf_streak`, `low_confidence_turns` | `consecutive_low_conf` | Same value; `low_conf_streak` is the signal name |
+| `clarify_attempts` | `clarification_attempts` | Same value |
+| `flagged_turns` | `guardrails.injection_attempts` | Same value; the name used by `config/templates/adversarial.yaml` |
+| `neg_sentiment_streak` | `escalation.neg_sentiment_streak` | Same value |
+| `turns_since_resolution` | `escalation.turns_since_resolution` | Same value |
+| `otp_failures` | `escalation.otp_failures` | Same value |
+| `multi_intent` | `intent.multi_intent` | Count of intents in the last message when more than one |
+| `advice_deflections` | `guardrails.advice_deflections` | Same value |
+| `escalation_proximity` | `escalation_proximity` | Same value |
+| `dispute_open` | derived, not stored | True while a TXN-002 topic is active or parked and not resolved (the signal of the same name in `config/escalation_rules.yaml`), read from `topic_stack` |
+| `pep_case_open` | derived, not stored | True when `escalation.fired` holds an ESC-015 record for the conversation (the silent case of ESC-015.a) |
+| `aml_cue` | derived, not stored | Number of turns for which `guardrails.triggered` holds GR-REG-09 or GR-REG-10 (the signal `aml_indicator`) |
+| `grievance_info_due_turn` | derived, not stored | The turn by which grievance information must have been given: the complaint turn plus 2 messages (GR-REG-03, D-119, D-205), computed from `history` |
+| `care_flag` | derived, not stored | True once the customer has stated bereavement, serious illness, disability or hardship in the session (the signal `care_disclosure`), read from `history` |
+| `degrade_count` | derived, not stored | Number of turns whose retrieval decision was `degrade`, counted from the per-turn records (`last_response` and the audit log); the dialogue state holds no such counter |
+| `advisor_offers` | derived, not stored | Number of GR-ADV-08 advisor offers made in the session, counted from `guardrails.triggered` and `history` |
+| `oversize_inputs` | derived, not stored | Number of messages refused by the input length limit (GR-ATK-08), counted from `guardrails.triggered` |
+| `throttle_events` | derived, not stored | Number of messages refused by the rate limit (GR-ATK-08), counted from `guardrails.triggered` |
+| `lang_choice_offered` | derived, not stored | 1 once the language-choice message has been sent in the session (`language.reply_language` records the outcome), counted from `history` |
+| `deadline`, `awaited` (conv-06) | derived, not stored | The follow-up timer of Case Study 6; its signal is `followup_deadline_missed` in `config/escalation_rules.yaml` |

@@ -231,9 +231,9 @@ These three are small additions needed to make the table in section 3 complete. 
 | Verification-request check: a draft that asks for verification while `auth_level` meets the intent's level and `auth_expiry` has not passed is replaced by the direct answer | Output Safety Layer, as a deterministic rule in stage S1 | AP6 Authentication Theatre |
 | `apology_given` per topic on the topic stack | `config/dialogue_state.schema.json` (field exists, D-150) | AP7: one apology per issue across turns |
 
-## 7. Using this in the Day 14 simulations
+## 7. Use in the simulations
 
-Each simulated conversation should annotate, per agent turn: the template id and variant, the pattern codes applied, and a line "anti-pattern check: none" backed by the validator rules. A conversation that involves a problem must show all four P1 steps; one with a side-effect action must show the P3 sequence including the reference from the tool; one with a missing fact must show P4 without a figure; a returning-customer conversation must show P5 with re-verification.
+Each simulated conversation in `simulations/` annotates, per agent turn: the template id and variant, the pattern codes applied, and a line "anti-pattern check: none" backed by the validator rules. A conversation that involves a problem must show all four P1 steps; one with a side-effect action must show the P3 sequence including the reference from the tool; one with a missing fact must show P4 without a figure; a returning-customer conversation must show P5 with re-verification.
 
 ## 8. Open items
 
@@ -242,3 +242,15 @@ Each simulated conversation should annotate, per agent turn: the template id and
 3. Hindi and Hinglish register needs native review; cultural adaptation for the five secondary languages is not written.
 4. The first two controls in section 6 need acceptance by the owner of the Output Safety Layer; the third is in the state schema.
 5. Hindi and Hinglish replies built from locked KB slots mix languages until the KB entries carry reviewed `body_i18n` (section 5, D-199). Launch blocker.
+
+## 9. Accessibility and proactive service
+
+The brief's Customer Experience Board asks for accessibility for users with varying literacy levels and for proactive service (A1.3). No single rule covers them; the controls below are specified elsewhere and are listed here so that they can be found. No new rule is added. The persona is Meera (A13.2), a customer who finds the app hard to use.
+
+| Control | What it does | Where it is specified |
+|---|---|---|
+| Care flag (XTR-03) | An explicit vulnerability disclosure raises a care flag and offers a person | `config/escalation_rules.yaml` (XTR-03), `docs/escalation/triggers.md` section 5 |
+| Vulnerable and low-literacy customers (RISK-E-20) | The risk, its controls and its owner: plain words, short replies, steps that do not depend on the app | `docs/risk/risk-matrix.md` (RISK-E-20) |
+| Reply length and register | Short replies, plain language and one question at a time | `docs/architecture/response-generation.md` section 2 |
+| Proactive strategies | Surface an open ticket status or a related step when it is safe and factual | `docs/architecture/dialogue-management.md` section 4.6 |
+| Scheduled follow-up (XTR-05) | A follow-up the agent promised is checked at its deadline, and a missed one is escalated | `config/escalation_rules.yaml` (XTR-05) |

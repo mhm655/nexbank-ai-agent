@@ -1,4 +1,4 @@
-# Level 3 boss set: 5 queries that each need 3 or more KB entries synthesised (brief Part B, Level 3; PLAN 4 Phase 3 item 7).
+# Level 3 boss set: 5 queries that each need 3 or more KB entries synthesised (brief Part B, Level 3; brief Part D, Day 7-8).
 # Target: synthesis_confidence > 0.85 (the brief's retrieval relevance target) with every required entry in the top 5.
 # Schema and scoring: tests/kb/README.md (section "Retrieval evaluation"). Pipeline: docs/knowledge-base/retrieval-pipeline.md.
 # Figures below appear only in the cited entries (A13.1, A4.1, A6) or in the pipeline spec. Thresholds are NOT restated

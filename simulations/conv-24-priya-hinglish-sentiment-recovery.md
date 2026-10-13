@@ -153,7 +153,7 @@ _English gloss (annotation only, not customer-facing; not native-reviewed): I ca
 | NLU | n/a (agent message) |
 | Sentiment | n/a (agent messages are not scored); smoothed stays -0.57 |
 | Guardrails | checked: Output Safety Layer: GR-OUT-01, GR-OUT-02, GR-OUT-03, GR-OUT-04, GR-OUT-05, GR-OUT-06; triggered: GR-OUT-05 (the 'for sure when' is answered by the template's 'request, can change'), GR-SEC-R1 |
-| KB / tools | KB: KB-ESC-003@1.0.0 (0.72), KB-POL-007@1.0.0 (0.78); retrieval confidence 0.78; decision answer<br>tool: `get_profile_masked`() -> ok: {registered_phone: ending 7710} |
+| KB / tools | KB: KB-ESC-003@2.0.0 (0.72), KB-POL-007@1.0.0 (0.78); retrieval confidence 0.78; decision answer<br>tool: `get_profile_masked`() -> ok: {registered_phone: ending 7710} |
 | Action | confirm: explicit confirmation before schedule_callback; the time is described as a request |
 | Generation | template `TPL-ESC-CALLBACK-OFFER/ask@1.0.0` (language hinglish); patterns: P3, P4; anti-pattern check: none |
 | State | phase CONFIRM; auth otp_verified; turn_count 7; topic_stack [CMP-005 (schedule_callback): active, CMP-002: parked]; slots {complaint_id=CMP-SYN-2401 (from the record)}; pending_confirmation schedule_callback, explicit, awaiting yes or no; counters: neg_sentiment_streak 0; turns_since_resolution 7; escalation_proximity 0.35 |

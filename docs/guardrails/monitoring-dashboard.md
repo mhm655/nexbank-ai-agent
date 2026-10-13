@@ -122,7 +122,7 @@ Rule of use: the per-guardrail bars are diagnostics (D-64); an ATK guardrail's b
 
 ## 5. Sampling and review plan (proposal, D-89)
 
-The FP estimate and the false-negative estimate (FMEA #19) both need human labels; the brief does not size the review effort beyond the supervisor loop of about 50 reviews per supervisor per day (PLAN 3.7).
+The FP estimate and the false-negative estimate (FMEA #19) both need human labels; the brief does not size the review effort beyond the supervisor loop of about 50 reviews per supervisor per day (A5.1).
 
 | Stream | Sample | Purpose |
 |---|---|---|
@@ -162,7 +162,7 @@ A release strip along the top of the heat map shows every change to prompt layer
 
 ## 8. Link to the circuit breaker
 
-The circuit breaker (A5.4, PLAN 3.7, D-46 for KB changes) reads this dashboard's metrics; it does not use a separate pipeline.
+The circuit breaker (A5.4, `docs/learning-pipeline/safety-invariants.md` section 7, D-46 for KB changes) reads this dashboard's metrics; it does not use a separate pipeline.
 
 | Aspect | Specification (proposal unless the brief states it) |
 |---|---|

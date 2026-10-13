@@ -135,7 +135,7 @@ Three rules override the score:
 
 ## 5. DEPLOY
 
-The brief requires "staged rollout with A/B testing for all improvements affecting customer-facing behaviour". The mechanics are specified on Day 11 and are used as they stand:
+The brief requires "staged rollout with A/B testing for all improvements affecting customer-facing behaviour". The mechanics are specified in `docs/learning-pipeline/ab-testing.md` and are used as they stand:
 
 | Element | Where it is specified |
 |---|---|

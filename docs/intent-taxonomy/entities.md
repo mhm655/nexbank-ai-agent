@@ -106,10 +106,10 @@ If a new value conflicts with a filled one, the slot becomes `conflicting` and t
 
 ## 6. Entity coverage by intent
 
-Every entity in the catalogue is required or optional for at least one intent, and every entity named in `config/intents.yaml` exists in the catalogue (checked by script on Day 4; the cross-reference lint on Day 15 repeats it).
+Every entity in the catalogue is required or optional for at least one intent, and every entity named in `config/intents.yaml` exists in the catalogue (checked by script on Day 4; the cross-reference lint `tests/validate_crossrefs.py` repeats it).
 
 ## 7. Open items
 
-- Sample utterances that exercise each entity in English, Hindi and Hinglish arrive on Day 6.
+- Sample utterances that exercise each entity in English, Hindi and Hinglish are in `docs/intent-taxonomy/utterances.csv`.
 - `desired_account_type` and `current_account_type` stay thin because A13.1 lists one account product; Day 7 KB entries decide whether variants exist.
 - Callback hours and PSP and bank lists are configuration data, not specified in the brief.

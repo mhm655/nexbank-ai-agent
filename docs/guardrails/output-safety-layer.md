@@ -1,6 +1,6 @@
 # Output Safety Layer: Response Safety Specification
 
-Brief refs: A4 (guardrails, response safety), A9.1 (patterns 3 and 4), A9.2 (anti-patterns: False Confidence, AUTO-FAIL item), A9.3 (tone), A10.2 (turn-level log fields), A11.1 (hallucination P0), A11.3 (transparency, privacy). PLAN 3.5 (300 ms budget) and 3.6 (item 4 output verification, item 5 fail-closed). Registry: `config/guardrails.yaml` (GR-OUT-01 to GR-OUT-06, GR-SYS-01, GR-SYS-04 and the related GR-ADV, GR-REG and GR-SEC entries named below). Architecture: `docs/architecture/response-generation.md` section 5, `docs/architecture/component-interfaces.md` rows 10 and 11, `docs/architecture/failure-modes.md` (FMEA #17, #19, #20). Companion docs: `financial-advice.md`, `account-security.md`, `regulatory-mapping.md`, `monitoring-dashboard.md`, `incident-response-playbook.md`.
+Brief refs: A4 (guardrails, response safety), A9.1 (patterns 3 and 4), A9.2 (anti-patterns: False Confidence, AUTO-FAIL item), A9.3 (tone), A10.2 (turn-level log fields), A11.1 (hallucination P0), A11.3 (transparency, privacy). `latency-scalability-cost.md` section 1 (300 ms budget) and `system-architecture.md` section 5 (output verification, fail-closed). Registry: `config/guardrails.yaml` (GR-OUT-01 to GR-OUT-06, GR-SYS-01, GR-SYS-04 and the related GR-ADV, GR-REG and GR-SEC entries named below). Architecture: `docs/architecture/response-generation.md` section 5, `docs/architecture/component-interfaces.md` rows 10 and 11, `docs/architecture/failure-modes.md` (FMEA #17, #19, #20). Companion docs: `financial-advice.md`, `account-security.md`, `regulatory-mapping.md`, `monitoring-dashboard.md`, `incident-response-playbook.md`.
 
 **Status.** Every threshold, timeout and budget share marked "proposal" is unmeasured and needs Risk Committee review (D-64 conventions). Decisions: D-80 to D-82, D-88, D-89 in `docs/assumptions-and-decisions.md`.
 
@@ -83,7 +83,7 @@ Detailed signals and thresholds are in `financial-advice.md` section 4.2. The OS
 
 ## 4. Execution model and latency budget
 
-The 300 ms share is fixed by PLAN 3.5 and `latency-scalability-cost.md` section 1; the split inside it is a proposal.
+The 300 ms share is fixed by `latency-scalability-cost.md` section 1; the split inside it is a proposal.
 
 | Stage | Work | Budget p95 (ms, proposal) | Timeout behaviour |
 |---|---|---|---|
@@ -109,7 +109,7 @@ All checks run (no early exit, so the log shows every failed check). The final o
 | Rung | Action | When |
 |---|---|---|
 | 1 | Deterministic repair inside the check (mask, slot, hedge, information-only wording) | repairable and re-check passes |
-| 2 | Safe template for the intent and state (names in `financial-advice.md` section 6 and the Day 13 templates) | repair fails, check timed out, or LLM text blocked |
+| 2 | Safe template for the intent and state (names in `financial-advice.md` section 6 and the templates in `config/templates/`) | repair fails, check timed out, or LLM text blocked |
 | 3 | Clarify: one targeted question from a pre-approved template | only where allowed (below) |
 | 4 | Escalate with the handoff package (KB-ESC-001): ESC-008 for regulatory or ungrounded regulatory claims, ESC-013 for advice (offer), ESC-003 / ESC-014 per GR-SYS-01 | clarify not allowed, or clarify used and the next draft fails |
 | 5 | Static status message and the human line | every rung fails or the OSL is unavailable (FMEA #24) |

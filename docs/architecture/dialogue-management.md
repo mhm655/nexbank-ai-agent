@@ -1,6 +1,6 @@
 # Dialogue Management
 
-State schema: `config/dialogue_state.schema.json`. Diagrams: `diagrams/dialogue-state-machine.mmd`, `diagrams/auth-flow.mmd`. Thresholds are defaults and live in `config/parameters.yaml` (Day 13).
+State schema: `config/dialogue_state.schema.json`. Diagrams: `diagrams/dialogue-state-machine.mmd`, `diagrams/auth-flow.mmd`. Thresholds are defaults and live in `config/parameters.yaml`.
 
 ## 1. State summary
 
@@ -22,7 +22,9 @@ The State Tracker owns: current intent (label, per-layer confidence, alternative
 | any > AUTH_REQUIRED | intent's required auth > current `auth_level` |
 | SLOT_FILL > CONFIRM | tool has side effects (protective actions, ticket creation) |
 | CONFIRM > EXECUTE | explicit affirmative within the confirmation window (default 2 turns or 2 minutes) |
-| any > ESCALATING | any escalation trigger fires (ESC table, Day 12) |
+| any > ESCALATING | any escalation trigger fires (`config/escalation_rules.yaml`, `docs/escalation/triggers.md`) |
+| any > ESCALATING | `turns_since_resolution` > 15 with an open topic (ESC-010) |
+| any > CLOSING or ESCALATING | `turn_count` >= `max_conversation_turns` (25, `config/parameters.yaml`) and above 15: a polite close when every topic is resolved, ESC-010 when a topic is open (XTR-06, D-174). The reply that makes `turn_count` equal 25 is the closing reply; no further message is processed |
 
 ## 3. Authentication sub-machine
 

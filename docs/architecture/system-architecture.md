@@ -84,4 +84,4 @@ The Dialogue Policy Engine acts as orchestrator and hands the turn to a speciali
 
 ## 8. Related documents
 
-`component-interfaces.md` (contracts), `dialogue-management.md`, `response-generation.md`, `multilingual.md`, `failure-modes.md`, `latency-scalability-cost.md`, `boss-trace.md`.
+`component-interfaces.md` (contracts and message shapes), `dialogue-management.md`, `response-generation.md`, `multilingual.md`, `failure-modes.md`, `latency-scalability-cost.md`, `boss-trace.md`. Later documents that specify components in detail: `nlu-pipeline-overview.md` (Language & NLU), `docs/guardrails/` (Input Guard, Output Safety Layer), `docs/knowledge-base/retrieval-pipeline.md` (Knowledge Retrieval), `docs/escalation/` (Escalation Router), `docs/compliance/audit-logging.md` (Audit & Telemetry Bus), `docs/learning-pipeline/` (Continuous Learning Pipeline).

@@ -448,4 +448,4 @@ Open items:
 5. Risks outside the AI platform (the human channel's conduct after a handoff, core banking, telephony) are not in this register.
 6. Network-layer DDoS protection (CDN, WAF, scrubbing, upstream capacity) is a platform dependency with no design in this repository. Owner: the CTO with the Information Security Officer. RISK-T-18 stays red until a platform control is specified and tested.
 7. Access control, network isolation, encryption and backup of the embedding store (OWASP LLM08, store isolation) are a platform dependency with no design in this repository. Owner: the Information Security Officer with the platform team. RISK-T-19 is scored on the application-side controls only.
-8. The OWASP LLM 2025 category names used for LLM08 and LLM10 are still to be verified against the OWASP publication (Day 15).
+8. The OWASP LLM 2025 category names used for LLM08 and LLM10 were checked against the OWASP GenAI Security Project list on Day 15 and match.

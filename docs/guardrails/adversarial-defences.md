@@ -20,7 +20,7 @@ Status. Everything here is specification. No system has been built or attacked, 
 
 ## 2. Vector to guardrail summary
 
-| A4.4 vector | Brief's required defence | Guardrails | Detection | OWASP LLM 2025 category (verify Day 15) | Reserved tests |
+| A4.4 vector | Brief's required defence | Guardrails | Detection | OWASP LLM 2025 category | Reserved tests |
 |---|---|---|---|---|---|
 | Prompt Injection | Input sanitisation, instruction-data separation, output validation | GR-ATK-01, GR-ATK-02 (output validation by GR-ATK-07, GR-OUT-01 to GR-OUT-05) | hybrid, hybrid | LLM01 Prompt Injection | 14 |
 | Jailbreak Attempts | Multi-layer guardrail architecture, behavioural monitoring, auto escalation | GR-ATK-03, GR-ATK-04 (layers: GR-SEC-*, GR-ADV-*, GR-OUT-*, GR-SYS-01) | hybrid, rule | LLM01 (jailbreaking is a form of injection in the 2025 list), LLM06 | 12 |
@@ -66,7 +66,7 @@ Applies to every GR-ATK reply and is what the tests assert. The reply:
 6. Serves the legitimate remainder. A message with a valid request and an injected span is answered for the valid part (Case Study 4: "normal flow resumed"). A refused attempt does not poison the next benign message.
 7. Never executes, confirms or half-executes the attacked action. "I cannot do that, but ..." not "I did part of it".
 
-Template names (text is a Day 13 deliverable, English, Hindi and Hinglish): `TPL-ATK-NEUTRAL-REDIRECT` (three variants), `TPL-ATK-CANNOT-SHARE-CONFIG`, `TPL-ATK-AUTH-PROMPT`, `TPL-ATK-THIRD-PARTY` (reuses the KB-POL-010 wording), `TPL-ATK-THROTTLE`, `TPL-ATK-SHORTEN-OR-SPLIT`, `TPL-ATK-SAFE-MODE`. The scam-victim reverse case uses the existing SEC-001 flow.
+Template names (wording is in `config/templates/adversarial.yaml`, English, Hindi and Hinglish): `TPL-ATK-NEUTRAL-REDIRECT` (three variants), `TPL-ATK-CANNOT-SHARE-CONFIG`, `TPL-ATK-AUTH-PROMPT`, `TPL-ATK-THIRD-PARTY` (reuses the KB-POL-010 wording), `TPL-ATK-THROTTLE`, `TPL-ATK-SHORTEN-OR-SPLIT`, `TPL-ATK-SAFE-MODE`. The scam-victim reverse case uses the existing SEC-001 flow.
 
 ### 3.4 Session adversarial score and safe mode (GR-ATK-04, D-72)
 
@@ -432,14 +432,14 @@ Typical-path sum becomes 2.50 + 0.46 = 2.96 percent, below the 3.00 gate by 0.04
 
 ## 12. OWASP Top 10 for LLM Applications (2025) cross-reference
 
-Category names are from memory of the 2025 edition and must be verified against the OWASP publication on Day 15 (D-77). The mapping is a cross-reference, not a certification. The same table, with the Day 9 columns, is in `regulatory-mapping.md` section 4.
+Category names and numbers were checked against the OWASP GenAI Security Project list (genai.owasp.org/llm-top-10) on Day 15 and match (D-77). The mapping is a cross-reference, not a certification. The same table, with the Day 9 columns, is in `regulatory-mapping.md` section 4.
 
-| OWASP category (verify) | A4.4 vector | Guardrails | Coverage |
+| OWASP category | A4.4 vector | Guardrails | Coverage |
 |---|---|---|---|
 | LLM01 Prompt Injection (includes jailbreaking) | Prompt Injection, Jailbreak Attempts, Social Engineering (persuasion form) | GR-ATK-01, GR-ATK-02, GR-ATK-03, GR-ATK-04, GR-ATK-05, GR-SEC-R8, GR-ADV-07 | covered, residual novel-paraphrase risk |
 | LLM02 Sensitive Information Disclosure | Data Exfiltration | GR-ATK-07, GR-ATK-06, GR-SEC-R1, GR-SEC-R4, GR-SEC-R5, GR-OUT-02 | covered |
 | LLM03 Supply Chain | none | none in the chat guardrails | gap by scope: model, library and data supply-chain controls are platform dependencies (Day 14) |
-| LLM04 Data and Model Poisoning | Prompt Injection (indirect) | GR-ATK-02, GR-SYS-02, KB approval workflow | partial: data-pipeline quality gates are a Day 12 dependency |
+| LLM04 Data and Model Poisoning | Prompt Injection (indirect) | GR-ATK-02, GR-SYS-02, KB approval workflow | partial: data-pipeline quality gates QG-01 to QG-07 are in `docs/learning-pipeline/data-pipeline.md` |
 | LLM05 Improper Output Handling | Prompt Injection, Data Exfiltration | GR-ATK-07, GR-OUT-01 to GR-OUT-05, GR-ADV-06, GR-SYS-01 | covered |
 | LLM06 Excessive Agency | Identity Spoofing, Social Engineering | GR-SEC-R2, GR-SEC-R3, GR-ATK-10, GR-ATK-11, GR-ATK-04 | covered structurally (no money-moving tool, no model-controlled keys) |
 | LLM07 System Prompt Leakage | Data Exfiltration | GR-ATK-06, GR-SYS-02 | covered; prompts hold no secrets by design (D-73) |
@@ -488,9 +488,8 @@ Scheme `GR-ATK-<nn>-<NN>`. All 62 are written in `tests/adversarial/` (one file 
 
 ## 16. Open items
 
-- Native-speaker review of the Hindi, Hinglish and Devanagari lexicons and of all `TPL-ATK-*` wording (Day 13).
+- Native-speaker review of the Hindi, Hinglish and Devanagari lexicons and of all `TPL-ATK-*` wording: pending (D-145).
 - Risk Committee: the thresholds in section 13, the session score and safe mode (D-72), the DoS limits (D-74), the biometric shadow-mode decision (D-75) and the false-positive allocation (D-76) are proposals.
-- Day 12: whether a dedicated "adversarial session" escalation trigger is needed (D-72); the data-pipeline quality gates for LLM04.
+- Decided: no new "adversarial session" escalation trigger is added; ESC-001.f covers it (D-72, D-206). The data-pipeline quality gates for LLM04 are QG-01 to QG-07 in `docs/learning-pipeline/data-pipeline.md`.
 - Day 14: recorded in `docs/risk/risk-matrix.md` as network-layer DDoS (RISK-T-18), store isolation for LLM08 (RISK-T-19) and supply chain for LLM03 (RISK-T-15); the platform controls themselves, and the encryption and authentication-strength statements (G-07), remain open dependencies with the owners named there.
-- Day 15: verify the OWASP LLM 2025 category names and numbering against the OWASP publication.
 - Red-team feedback loop: attacks found after release are added as new cases and, where needed, as new lexicon entries through safety change control (D-79).

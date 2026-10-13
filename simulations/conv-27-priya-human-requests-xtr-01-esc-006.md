@@ -58,7 +58,7 @@ Turn unit: one customer or agent message (D-119). System events (E) are not coun
 | NLU | n/a (agent message) |
 | Sentiment | n/a (agent messages are not scored); smoothed stays -0.30 |
 | Guardrails | checked: Output Safety Layer: GR-OUT-01, GR-OUT-02, GR-OUT-03, GR-OUT-04, GR-OUT-05, GR-OUT-06; triggered: GR-REG-16 (AI disclosure; human arranged), GR-OUT-04 (the offer is one sentence and does not block the handoff) |
-| KB / tools | KB: KB-ESC-003@1.0.0 (0.93), KB-TRB-010@1.0.0 (0.78); retrieval confidence 0.93; decision answer<br>router: queue=Next Available Agent (24x7, open); handoff preparation started; no wait estimate supplied |
+| KB / tools | KB: KB-ESC-003@2.0.0 (0.93), KB-TRB-010@1.0.0 (0.78); retrieval confidence 0.93; decision answer<br>router: queue=Next Available Agent (24x7, open); handoff preparation started; no wait estimate supplied |
 | Action | escalate: XTR-01 request 1 honoured; one concrete offer (the in-app download, KB-TRB-010) is made once and the handoff proceeds unless she takes it |
 | Generation | hybrid `TPL-GEN-GREETING/with_request@1.1.0` + `TPL-ESC-HANDOFF-WARM/customer_asked@1.0.0` + free text (grounded on the cited entries) (language en); patterns: P4, P5; anti-pattern check: none |
 | State | phase ESCALATING; auth otp_verified; turn_count 2; topic_stack [GEN-003 (first_request): active, ACC-002: parked]; slots {topic=statement not received (filled)}; pending_confirmation none; counters: human_requests 1; turns_since_resolution 2; escalation_proximity 0.30 |
@@ -88,7 +88,7 @@ Turn unit: one customer or agent message (D-119). System events (E) are not coun
 | NLU | n/a (agent message) |
 | Sentiment | n/a (agent messages are not scored); smoothed stays -0.38 |
 | Guardrails | checked: Output Safety Layer: GR-OUT-01, GR-OUT-02, GR-OUT-03, GR-OUT-04, GR-OUT-05, GR-OUT-06; triggered: GR-OUT-04 (no apology loop, no justification asked) |
-| KB / tools | KB: KB-ESC-003@1.0.0 (0.90); retrieval confidence 0.90; decision answer<br>router: queue=Next Available Agent; pending; no wait estimate yet |
+| KB / tools | KB: KB-ESC-003@2.0.0 (0.90); retrieval confidence 0.90; decision answer<br>router: queue=Next Available Agent; pending; no wait estimate yet |
 | Action | hold: second request acknowledged without a counter-offer; the handoff continues (a different template from T2) |
 | Generation | template `TPL-ESC-WAIT-UPDATE/still_here@1.0.0` (language en); patterns: P4, P5; anti-pattern check: none |
 | State | phase ESCALATING; auth otp_verified; turn_count 4; topic_stack [GEN-003 (first_request): active, ACC-002: parked]; slots {topic=statement not received (filled)}; pending_confirmation none; counters: human_requests 2; turns_since_resolution 4; escalation_proximity 0.55 |
@@ -117,7 +117,7 @@ Turn unit: one customer or agent message (D-119). System events (E) are not coun
 | NLU | n/a (agent message) |
 | Sentiment | n/a (agent messages are not scored); smoothed stays -0.49 |
 | Guardrails | checked: Output Safety Layer: GR-OUT-01, GR-OUT-02, GR-OUT-03, GR-OUT-04, GR-OUT-05, GR-OUT-06; triggered: GR-OUT-05 (the estimate is the router's, stated as an estimate) |
-| KB / tools | KB: KB-ESC-003@1.0.0 (0.90); retrieval confidence 0.90; decision answer<br>router: queue=Next Available Agent; queue_wait=about 3 minutes (platform forecast, stated as an estimate) |
+| KB / tools | KB: KB-ESC-003@2.0.0 (0.90); retrieval confidence 0.90; decision answer<br>router: queue=Next Available Agent; queue_wait=about 3 minutes (platform forecast, stated as an estimate) |
 | Action | escalate: ESC-006 backstop; no question, no offer; the only new content is the router estimate |
 | Generation | template `TPL-ESC-WAIT-UPDATE/estimate@1.0.0` (language en); patterns: P1, P4; anti-pattern check: none |
 | State | phase ESCALATING; auth otp_verified; turn_count 6; topic_stack [GEN-003 (first_request): active, ACC-002: parked]; slots {topic=statement not received (filled)}; pending_confirmation none; counters: human_requests 3; turns_since_resolution 6; escalation_proximity 0.85 |

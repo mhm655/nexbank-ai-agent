@@ -2,7 +2,7 @@
 
 Component [6] Knowledge Retrieval. Brief refs: A2.3 (dense, sparse or hybrid with fusion weights; cross-encoder re-ranking; contextual query modification; confidence scoring with an uncertainty threshold; maximum 200 ms at p95; graceful fallback), A4.3, A6 (ESC-008), A10 (logging), A11.1 (KB staleness, P0). Plan refs: section 3.4, section 4 Phase 3 items 3, 4 and 7, section 6.1. Decisions: D-41 to D-48 in `docs/assumptions-and-decisions.md`. Data model, TTL classes and auth levels: `kb-schema.md`. Diagram: `diagrams/retrieval-pipeline.mmd`. Interface contract: `docs/architecture/component-interfaces.md` row 6. Access rules: `access-control-matrix.md`. Update and staleness workflow: `maintenance-workflow.md`.
 
-Thresholds are defaults here. The governed copies move to `config/parameters.yaml` on Day 13 (`retrieval_confidence_threshold` is already an A12.3 parameter name used in `nlu-pipeline-overview.md` and `language-detection.md`; its value 0.65 is the same in all three places).
+Thresholds are defaults here. The governed copies are in `config/parameters.yaml` (`retrieval_confidence_threshold` is already an A12.3 parameter name used in `nlu-pipeline-overview.md` and `language-detection.md`; its value 0.65 is the same in all three places).
 
 ## 1. Overview
 
@@ -132,7 +132,7 @@ Why weighted rather than Reciprocal Rank Fusion:
 3. The fusion stage only has to maximise **recall into the candidate set**. The cross-encoder decides the final order and the confidence, so the fusion rule is not safety-relevant.
 4. Weighted fusion keeps score magnitude, so a query where the sparse side finds an exact figure match is not diluted by a rank-only rule.
 
-The weakness of weighted fusion is that it needs score normalisation and is sensitive to the score distributions of the two systems. Mitigation: normalisation is per request, and RRF stays in the evaluation as a **challenger arm** (section 15). If RRF beats weighted fusion on Recall@20 on the `dev` split by a margin the Search Lead and the Chief Risk Officer accept, the change is a config change under the same gate. The 0.6 / 0.4 starting split is the plan's initial value (PLAN 3.4), not a measured optimum.
+The weakness of weighted fusion is that it needs score normalisation and is sensitive to the score distributions of the two systems. Mitigation: normalisation is per request, and RRF stays in the evaluation as a **challenger arm** (section 15). If RRF beats weighted fusion on Recall@20 on the `dev` split by a margin the Search Lead and the Chief Risk Officer accept, the change is a config change under the same gate. The 0.6 / 0.4 starting split is the project's initial value (D-41), not a measured optimum.
 
 ### 7.1 Intent prior and gap companions
 
@@ -159,13 +159,13 @@ Notes: the threshold is the same for every language (`language-detection.md` sec
 
 ## 9. Decisions after retrieval
 
-| Case | Detection | Decision | Customer-facing behaviour (templates named only; the Day 13 files write them) |
+| Case | Detection | Decision | Customer-facing behaviour (the wording is in the templates under `config/templates/`) |
 |---|---|---|---|
 | Confident answer | `top1_confidence >= 0.65`, rank-1 is not a gap entry | `answer` | Facts from the evidence set. Stale-flagged entries are used, and the reply stays template-first for figures. Companion guidance entries steer wording, for example KB-POL-008 disclosures for a loan answer |
 | Gap hit | `top1_confidence >= 0.65`, a gap entry (`gap_handling: true`) is in the evidence set (its own calibrated relevance is also at least 0.65, section 8) and the question asks for a fact in its `unknown` list | `gap` | Template `graceful_degradation` with the entry's `safe_statement`, the `known_adjacent_facts` the retriever also returned, and the `offer` (human, callback). No number that is not in the KB |
 | Low confidence, non-regulatory | `top1_confidence < 0.65` and the topic carries no regulatory tag | `degrade` | Template `graceful_degradation`: say it is not certain, name the nearest known topic only if an entry in the top 5 lists the top NLU intent (which must have reached the act tier of D-06 on the NLU scale), by title and with no figure; no retrieval score floor is used for this, because the NLU and retrieval scales differ (section 8); offer a clarifying question once, then a human. KB-ESC-020 is the generic gap entry. Two failed clarifications use the existing safe default (`max_clarification_turns`) |
 | Regulatory-uncertain | See below | `escalate_esc_008` | Template `handoff` to the Compliance Helpdesk (ESC-008, P1, under 10 min per KB-ESC-008). The agent states what the KB does say (that the obligation exists) and that it is not certain of the specifics. It never quotes a regulation from memory |
-| Filtered by auth | Low confidence, auth below `full_kyc`, probe finds a qualifying hit | `step_up` | Policy Engine starts the step-up (section 5.4). Template `confirmation_before_action` wording for the verification step is a Day 13 item |
+| Filtered by auth | Low confidence, auth below `full_kyc`, probe finds a qualifying hit | `step_up` | Policy Engine starts the step-up (section 5.4). Template `confirmation_before_action` wording for the verification step is in `config/templates/` (see `TPL-AUTH-*`) |
 | Index down | Section 13 | `unavailable` | Cached FAQ, else template `handoff` (technical support, ESC-014) |
 
 **Regulatory-uncertain (D-43).** A request is regulatory-uncertain when it maps to a regulatory tag (kb-schema section 8) or to an intent whose `escalation` list in `config/intents.yaml` carries ESC-008 (PRD-001 when a regulation is asked about, PRD-004) and one of these holds:
@@ -214,7 +214,7 @@ Cache hits skip embed, ANN, BM25 and re-rank (the FAQ result cache) or embed onl
 
 - Alert at 70% of the stage budget, as in `latency-scalability-cost.md` section 4 (retrieval: 140 ms p95).
 - Hard timeout for the whole retrieval call is the 200 ms budget. On a partial result the rules of section 13 apply.
-- **The "Retriever" badge (< 150 ms p95)** is **not claimed** by this budget, which sits at 160 to 180. Levers that could bring the measured p95 under 150 ms are: embedding and result cache hits (a hit removes 20 ms or more), trimming the re-rank candidate count below 20, a smaller re-ranker, and skipping re-rank when the fused top score is far ahead of the second (proposals, each needing a recall check). Whether the badge is reachable is a Day 14 load-test question, not a design claim.
+- **The "Retriever" badge (< 150 ms p95)** is **not claimed** by this budget, which sits at 160 to 180. Levers that could bring the measured p95 under 150 ms are: embedding and result cache hits (a hit removes 20 ms or more), trimming the re-rank candidate count below 20, a smaller re-ranker, and skipping re-rank when the fused top score is far ahead of the second (proposals, each needing a recall check). Whether the badge is reachable is not measured: nothing is built, so it is not a design claim.
 - Retrieval runs in parallel with independent tool calls (`latency-scalability-cost.md` section 1). Pure tool intents (balance, statement) skip retrieval.
 
 ## 13. Failure modes
@@ -231,7 +231,7 @@ Cache hits skip embed, ANN, BM25 and re-rank (the FAQ result cache) or embed onl
 | 8 | Wrong passage with high confidence | Output Safety Layer grounding and number check, supervisor sampling of low-score and random turns | Block or rewrite the reply. A repeat feeds the maintenance workflow (rewrite the entry or add a gap entry) and the gold set |
 | 9 | Auth leak (an entry above the session level returned) | Post-retrieval assertion: every returned `auth_level_required` <= session level | Drop the passage, raise a P0 incident (security rule 2, A4.2), freeze the index epoch until reviewed. Target: zero in the evaluation and in production |
 | 10 | Expired or unpublished entry returned | Same assertion on status and expiry | Same as 9 |
-| 11 | Instruction text inside a KB body or the query | Input Guard on the query; KB bodies are approved content, but are still passed to the model as data in a separate delimited section | The Generator never treats KB text as instructions (PLAN 3.6 item 3 and `system-architecture.md` section 5: instruction and data separation) |
+| 11 | Instruction text inside a KB body or the query | Input Guard on the query; KB bodies are approved content, but are still passed to the model as data in a separate delimited section | The Generator never treats KB text as instructions (`system-architecture.md` section 5: instruction and data separation) |
 | 12 | Rewrite picks the wrong referent | Tie detection; the customer's correction | Ask on a tie; the correction re-runs retrieval; log `rewrite_applied` for review |
 | 13 | Translation missing or stale | `languages` and stale marks (kb-schema section 6) | English body, flag `translation_unavailable` |
 | 14 | Stale cache across a publish | `index_epoch` in the key | Entry is not matched; the epoch change flushes related keys |
@@ -271,7 +271,7 @@ Metrics and alerts: p95 and p99 latency per stage; share of turns per `decision`
 
 ## 15. Retrieval evaluation plan
 
-Source: PLAN 6.1, "Retrieval evaluation: a query set with gold KB IDs, measured by Recall@5, MRR, nDCG, mean relevance (target > 0.85) and p95 latency". Schema and the first hard slice are in `tests/kb/boss-level3.yaml` and `tests/kb/README.md`.
+Source: project test design (D-47), "Retrieval evaluation: a query set with gold KB IDs, measured by Recall@5, MRR, nDCG, mean relevance (target > 0.85) and p95 latency". Schema and the first hard slice are in `tests/kb/boss-level3.yaml` and `tests/kb/README.md`.
 
 ### 15.1 Metrics
 
@@ -302,4 +302,4 @@ No measured result exists: the project is a specification. The only numbers quot
 
 ## 16. Verification of this specification
 
-The Day 8 checker (scratchpad, not in the repo) confirms that every gold ID in `tests/kb/boss-level3.yaml` exists, is published, passes the auth clause at the stated level, and that every `forbidden_ids` entry is above that level. The retrieval gold-set schema and the checker's rules are described in `tests/kb/README.md` so the check can be promoted to the Day 15 cross-reference lint.
+The Day 8 checker (scratchpad, not in the repo) confirms that every gold ID in `tests/kb/boss-level3.yaml` exists, is published, passes the auth clause at the stated level, and that every `forbidden_ids` entry is above that level. The retrieval gold-set schema and the checker's rules are described in `tests/kb/README.md` so the check could be promoted to the cross-reference lint (`tests/validate_crossrefs.py`).

@@ -10,7 +10,7 @@
 #   Test ID      : <guardrail ID>-<NN>   NN = two digits starting at 01, for example GR-SEC-R1-01 or GR-ATK-05-03. Day 10 writes the cases in
 #                  tests/guardrails/ (Day 9 families) and tests/adversarial/ (GR-ATK-*); Day 11 re-uses them in the fixed safety suite.
 #                  `tests_reserved` is the number of IDs reserved (01..N); a guardrail may not ship with fewer written cases than 1, and the
-#                  Day 10 total must reach the PLAN 55+ minimum.
+#                  Day 10 total must reach the project target of 55+ (the brief asks for 50+, Part D, Day 9-10).
 #
 # Counts (Day 10): 58 guardrails = ADV 9, SEC 8, REG 20, OUT 6, SYS 4 (Day 9: 45; rule 23, hybrid 20, model 2) + ATK 11 (rule 4, hybrid 6, model 1)
 #   + GR-OUT-06 and GR-SYS-04 (rule, added Day 10, D-90); all 58: rule 29, hybrid 26, model 3. Reserved test IDs: 190 = Day 9 124
@@ -31,7 +31,7 @@
 # `also` lists secondary actions that always accompany the primary one (log is implicit for every guardrail).
 #
 # Types: rule (deterministic), model (classifier), hybrid (rule floor plus model; a rule hit can never be unset by the model).
-# Layers (system-architecture.md section 5, PLAN 3.6): L1 immutable rule layer, L2 model classifiers, L3 prompt layers 0-2,
+# Layers (system-architecture.md section 5): L1 immutable rule layer, L2 model classifiers, L3 prompt layers 0-2,
 #   L4 output verification, L5 fail-closed degradation ladder.
 #   The L1-L5 scheme is our own; the brief has no layer scheme (D-93). Tagging rule: a guardrail carries L4 if and only if
 #   `output_safety_layer` is among its enforcement points (it executes at the Output Safety Layer, in both directions); model-type guardrails carry L2.
@@ -69,7 +69,7 @@ parameters:               # values restated from other docs; governed copy is co
   advice_boundary_act: 0.50                 # disambiguation.md section 3; flow_entry_overrides PRD-005 in config/intents.yaml
   advice_boundary_flag: 0.30                # disambiguation.md section 3 (adds a boundary sentence)
   grievance_info_max_turns: 2               # A4.3
-  fp_overall_target_pct: 3                  # GATE: measured end-to-end per benign message, below 3 percent (FMEA #4, PLAN 3.6, D-64)
+  fp_overall_target_pct: 3                  # GATE: measured end-to-end per benign message, below 3 percent (FMEA #4, system-architecture.md section 5, D-64)
   fp_class_bounds_pct: { rule: 0.1, hybrid: 0.15, model: 0.3 }   # proposal D-64 (supersedes the D-57 figures 1, 2, 3); diagnostics, not the gate
   fp_typical_path: { rule: 10, hybrid: 6, model: 2 }              # proposal D-64: 10*0.1 + 6*0.15 + 2*0.3 = 2.5 percent
   fp_reserve_pct: 0.5                                             # proposal D-64: 3.0 - 2.5, for the L5 ladder, interactions and unmodelled paths
@@ -693,7 +693,7 @@ guardrails:
   severity: HIGH
   fp_target_pct: 0.15
   immutable: true
-  fail_mode: "sensitive-attribute inference (religion, politics, health) is never stored; if a classifier produces one it is discarded at the State Tracker; consent, residency and deletion mechanics are specified in Day 11 and Day 14 documents (G-05)"
+  fail_mode: "sensitive-attribute inference (religion, politics, health) is never stored; if a classifier produces one it is discarded at the State Tracker; consent, residency and deletion mechanics are specified in `docs/learning-pipeline/data-pipeline.md` and `docs/compliance/audit-logging.md` (G-05)"
   tests_reserved: 2
   brief_ref: A11.3, A10, Regulatory Reference Summary
   doc: regulatory-mapping.md
@@ -773,7 +773,7 @@ guardrails:
   severity: HIGH
   fp_target_pct: 0.15
   immutable: true
-  fail_mode: "escalation thresholds and guardrail thresholds are segment-independent constants; counterfactual persona swaps (PLAN 6.1) are a release gate; statistical fairness testing is specified in Day 11 and Day 14"
+  fail_mode: "escalation thresholds and guardrail thresholds are segment-independent constants; counterfactual persona swaps (tests/README.md section 8) are a release gate; statistical fairness testing is specified in `docs/risk/fairness-testing.md`"
   tests_reserved: 2
   brief_ref: A11.3, Regulatory Reference Summary
   doc: regulatory-mapping.md
@@ -813,7 +813,7 @@ guardrails:
   severity: MEDIUM
   fp_target_pct: 0.1
   immutable: true
-  fail_mode: "every complaint ticket carries a category and timestamps so the quarterly analysis (A10) can be produced; report generation itself is specified in Day 12 and Day 14 (G-04)"
+  fail_mode: "every complaint ticket carries a category and timestamps so the quarterly analysis (A10) can be produced; report generation itself is specified in `docs/compliance/audit-logging.md` (G-04; format and recipients open: AL-D2)"
   tests_reserved: 1
   brief_ref: A10 (Regulatory Reporting), Regulatory Reference Summary
   doc: regulatory-mapping.md
@@ -956,7 +956,7 @@ guardrails:
   immutable: true
   fail_mode: "an outbound message (free text, template or escalation notice) that lacks a SafetyVerdict is not delivered; the static status message and human line are sent instead (GR-SYS-01 rung 5) and a P0 incident is raised (output-safety-layer.md section 1)"
   tests_reserved: 2
-  brief_ref: A4 (response safety), PLAN 3.6
+  brief_ref: A4 (response safety), system-architecture.md section 5
   doc: output-safety-layer.md
 
 # ------------------------------------------------------------------ CROSS-CUTTING
@@ -977,7 +977,7 @@ guardrails:
   immutable: true
   fail_mode: "if every rung fails, the static status message and the human line are used (FMEA #24); the clarify rung is skipped where clarify is not allowed (PRD-005 pair 2; contain-first safety flows, pair 6, D-19)"
   tests_reserved: 2
-  brief_ref: A4.4, PLAN 3.6
+  brief_ref: A4.4, system-architecture.md section 5
   doc: regulatory-mapping.md
 
 - id: GR-SYS-02
@@ -997,7 +997,7 @@ guardrails:
   immutable: true
   fail_mode: "any proposed change to rules, thresholds or prompt layers 0-2 from the learning pipeline is rejected at the change gate; safety changes need HITL and Risk Committee approval"
   tests_reserved: 2
-  brief_ref: A5, PLAN 3.7
+  brief_ref: A5, docs/learning-pipeline/safety-invariants.md
   doc: account-security.md
 
 - id: GR-SYS-03
@@ -1043,7 +1043,7 @@ guardrails:
 # ------------------------------------------------------------------ ADVERSARIAL ROBUSTNESS (A4.4, six vectors; spec docs/guardrails/adversarial-defences.md)
 # One or two guardrails per A4.4 vector. They are the attack-side layer over the Day 9 rules (GR-SEC-*, GR-ADV-*, GR-OUT-*); a rule still enforces on its own.
 # `vector` values: prompt_injection, jailbreak, social_engineering, data_exfiltration, denial_of_service, identity_spoofing.
-# `owasp_llm_2025` is a cross-reference only (category names from memory, verified on Day 15).
+# `owasp_llm_2025` is a cross-reference only (category names checked against the OWASP list on Day 15).
 
 - id: GR-ATK-01
   name: Input sanitisation and prompt-injection detector
@@ -1058,7 +1058,7 @@ guardrails:
   intents: [GEN-004]
   kb_entries: [KB-POL-002, KB-POL-004]
   regulatory_tags: []
-  owasp_llm_2025: [LLM01]    # names to be verified against the OWASP publication on Day 15
+  owasp_llm_2025: [LLM01]    # names verified on Day 15
   severity: CRITICAL
   fp_target_pct: 0.08
   immutable: true
@@ -1080,7 +1080,7 @@ guardrails:
   intents: [SEC-001, TXN-001]
   kb_entries: [KB-POL-002, KB-POL-004, KB-ESC-010]
   regulatory_tags: []
-  owasp_llm_2025: [LLM01, LLM04, LLM08]    # names to be verified against the OWASP publication on Day 15
+  owasp_llm_2025: [LLM01, LLM04, LLM08]    # names verified on Day 15
   severity: CRITICAL
   fp_target_pct: 0.05
   immutable: true
@@ -1102,7 +1102,7 @@ guardrails:
   intents: [PRD-005, GEN-004]
   kb_entries: [KB-POL-001, KB-POL-004, KB-POL-009]
   regulatory_tags: []
-  owasp_llm_2025: [LLM01]    # names to be verified against the OWASP publication on Day 15
+  owasp_llm_2025: [LLM01]    # names verified on Day 15
   severity: CRITICAL
   fp_target_pct: 0.1
   immutable: true
@@ -1124,7 +1124,7 @@ guardrails:
   intents: [SEC-001, SEC-004]
   kb_entries: [KB-POL-002, KB-POL-010, KB-ESC-010]
   regulatory_tags: []
-  owasp_llm_2025: [LLM01, LLM06]    # names to be verified against the OWASP publication on Day 15
+  owasp_llm_2025: [LLM01, LLM06]    # names verified on Day 15
   severity: HIGH
   fp_target_pct: 0.05
   immutable: true
@@ -1146,7 +1146,7 @@ guardrails:
   intents: [SEC-001, SEC-002, GEN-003]
   kb_entries: [KB-POL-010, KB-POL-002, KB-ESC-002]
   regulatory_tags: []
-  owasp_llm_2025: [LLM01, LLM06]    # names to be verified against the OWASP publication on Day 15
+  owasp_llm_2025: [LLM01, LLM06]    # names verified on Day 15
   severity: CRITICAL
   fp_target_pct: 0.08
   immutable: true
@@ -1168,7 +1168,7 @@ guardrails:
   intents: [GEN-002, GEN-004]
   kb_entries: [KB-POL-009, KB-POL-004, KB-FAQ-009]
   regulatory_tags: []
-  owasp_llm_2025: [LLM07, LLM02]    # names to be verified against the OWASP publication on Day 15
+  owasp_llm_2025: [LLM07, LLM02]    # names verified on Day 15
   severity: HIGH
   fp_target_pct: 0.05
   immutable: true
@@ -1190,7 +1190,7 @@ guardrails:
   intents: [ACC-001, ACC-002, SEC-001]
   kb_entries: [KB-POL-002, KB-POL-010, KB-REG-007]
   regulatory_tags: [DPDP_ACT, IT_SPDI_RULES, PCI_DSS]
-  owasp_llm_2025: [LLM02, LLM05]    # names to be verified against the OWASP publication on Day 15
+  owasp_llm_2025: [LLM02, LLM05]    # names verified on Day 15
   severity: CRITICAL
   fp_target_pct: 0.05
   immutable: true
@@ -1212,7 +1212,7 @@ guardrails:
   intents: [GEN-003, SEC-001, GEN-007]
   kb_entries: [KB-POL-004, KB-ESC-020]
   regulatory_tags: []
-  owasp_llm_2025: [LLM10]    # names to be verified against the OWASP publication on Day 15
+  owasp_llm_2025: [LLM10]    # names verified on Day 15
   severity: HIGH
   fp_target_pct: 0.02
   immutable: true
@@ -1234,7 +1234,7 @@ guardrails:
   intents: [GEN-004]
   kb_entries: [KB-POL-004, KB-ESC-010, KB-ESC-020]
   regulatory_tags: []
-  owasp_llm_2025: [LLM10]    # names to be verified against the OWASP publication on Day 15
+  owasp_llm_2025: [LLM10]    # names verified on Day 15
   severity: MEDIUM
   fp_target_pct: 0.03
   immutable: true
@@ -1256,7 +1256,7 @@ guardrails:
   intents: [SEC-003, ACC-001, ACC-003]
   kb_entries: [KB-POL-003, KB-POL-010, KB-POL-011, KB-TRB-007, KB-TRB-011]
   regulatory_tags: [RBI_DIGITAL_PAYMENT_SECURITY, KYC_AML]
-  owasp_llm_2025: [LLM06]    # names to be verified against the OWASP publication on Day 15
+  owasp_llm_2025: [LLM06]    # names verified on Day 15
   severity: CRITICAL
   fp_target_pct: 0.05
   immutable: true
@@ -1278,7 +1278,7 @@ guardrails:
   intents: [SEC-004, ACC-003]
   kb_entries: [KB-POL-003, KB-TRB-011]
   regulatory_tags: [DPDP_ACT]
-  owasp_llm_2025: [LLM06]    # names to be verified against the OWASP publication on Day 15
+  owasp_llm_2025: [LLM06]    # names verified on Day 15
   severity: HIGH
   fp_target_pct: 0.2
   immutable: true

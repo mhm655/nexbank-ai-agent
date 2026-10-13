@@ -317,7 +317,7 @@ _English gloss (annotation only, not customer-facing; not native-reviewed): All 
 | NLU | n/a (agent message) |
 | Sentiment | n/a (agent messages are not scored); smoothed stays -0.69 |
 | Guardrails | checked: Output Safety Layer: GR-OUT-01, GR-OUT-02, GR-OUT-03, GR-OUT-04, GR-OUT-05, GR-OUT-06; triggered: GR-OUT-05 (the wait is a router estimate), GR-OUT-04 (one acknowledgement) |
-| KB / tools | KB: KB-ESC-005@1.0.0 (0.86), KB-ESC-003@1.0.0 (0.80), KB-ESC-001@1.0.0 (0.70); retrieval confidence 0.86; decision answer<br>router: queue=Customer Retention (open, 08:00-22:00 IST); team_plain=customer care team; queue_wait=about 4 minutes (platform forecast, stated as an estimate) |
+| KB / tools | KB: KB-ESC-005@1.0.0 (0.86), KB-ESC-003@2.0.0 (0.80), KB-ESC-001@1.0.0 (0.70); retrieval confidence 0.86; decision answer<br>router: queue=Customer Retention (open, 08:00-22:00 IST); team_plain=customer care team; queue_wait=about 4 minutes (platform forecast, stated as an estimate) |
 | Action | escalate: ESC-004 warm handoff prepared; the package is built from state (nothing re-typed); the agent stays |
 | Generation | hybrid `TPL-ESC-HANDOFF-WARM/standard_with_wait@1.0.0` (language en); patterns: P1, P4, P5; anti-pattern check: none |
 | State | phase ESCALATING; auth otp_verified; turn_count 19; topic_stack [TXN-003 (payment_pending): active (ticket DSP-SYN-3001 open); GEN-003 (first_request): active]; slots {merchant_name=State Electricity Board (from history); amount=INR 1,840 (from history); expected_date=14 Oct 2026 (from the tool); ticket=DSP-SYN-3001 (from history)}; pending_confirmation none; counters: neg_sentiment_streak 2, human_requests 1; turns_since_resolution 8; escalation_proximity 0.90 |

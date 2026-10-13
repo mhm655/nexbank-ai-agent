@@ -2687,7 +2687,7 @@ cases:
   expected_action: escalate
   turns: 1
   tier: 2
-  sha256: c7c573e289a8229c012cd372533bd37805c65b7beffbffddbf5c81d2cb90771c
+  sha256: 2abd74bc3b56cdb8491eb3fe5f5ebd2738522409a3cbe41e1d5ece1d0afcd7f9
 - id: GR-REG-17-02
   file: tests/guardrails/regulatory.yaml
   suite_category: guardrail

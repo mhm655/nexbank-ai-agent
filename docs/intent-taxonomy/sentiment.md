@@ -158,5 +158,5 @@ The evaluation set is built from the Day 6 utterance library plus 100 synthetic 
 ## 10. Open items
 
 - D-18: ESC-004 uses raw consecutive scores per the brief, with the confidence and EMA safeguards above. Awaiting CEB view on the EMA route for secondary languages.
-- The exact lexicon and emoji table are data artefacts, built with native-speaker review on Day 6 (plan risk table: Hinglish and Indic quality).
+- The exact lexicon and emoji table are data artefacts that are not built here; they need native-speaker review before use (D-22), which has not happened.
 - Voice channel prosody features (tone, speech rate) are out of scope for this text spec.

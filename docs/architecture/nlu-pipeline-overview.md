@@ -145,7 +145,7 @@ OOS is separated from *low-confidence in-domain* by the domain head: an in-domai
 
 ## 6. Latency budget
 
-Per-turn budget for NLU is 250 ms (latency-scalability-cost.md). Proposed split, p95 (assumptions to confirm in Day 14 load work): language ID 10 ms, normalisation 10 ms, shared encoder with all heads 70 ms, entity extraction (regex, lookup, NER) 60 ms, segmentation and fusion 20 ms, calibration and frame 10 ms, headroom 70 ms. The LLM fallback runs only when the encoder is below the act threshold or extraction needs a free-text value. Because those turns end in a clarification and have no tool call, the fallback borrows from the unused tool-call slack so the < 3 s per-turn p95 still holds.
+Per-turn budget for NLU is 250 ms (latency-scalability-cost.md). Proposed split, p95 (assumptions; not measured, nothing is built): language ID 10 ms, normalisation 10 ms, shared encoder with all heads 70 ms, entity extraction (regex, lookup, NER) 60 ms, segmentation and fusion 20 ms, calibration and frame 10 ms, headroom 70 ms. The LLM fallback runs only when the encoder is below the act threshold or extraction needs a free-text value. Because those turns end in a clarification and have no tool call, the fallback borrows from the unused tool-call slack so the < 3 s per-turn p95 still holds.
 
 ## 7. Failure behaviour
 
@@ -158,5 +158,5 @@ Per-turn budget for NLU is 250 ms (latency-scalability-cost.md). Proposed split,
 
 ## 8. Open items
 
-- Tertiary and entity targets per class (macro-F1 floor) will be set when the Day 6 utterance library fixes the class balance.
-- Language ID and the translation pipeline are specified on Day 6 (multilingual.md already holds the Day 3 outline).
+- Tertiary and entity targets per class (macro-F1 floor) are set from the class balance of the utterance library (`docs/intent-taxonomy/utterances.csv`).
+- Language ID and the translation pipeline are specified in `docs/intent-taxonomy/language-detection.md` (`multilingual.md` holds the outline).

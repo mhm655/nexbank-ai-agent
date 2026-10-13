@@ -572,7 +572,7 @@ cases:
   behaviour_checks: [same_treatment_across_pair]
   must_not_contain: []
   severity: HIGH
-  notes: 'Counterfactual persona swap (PLAN 6.1): a dispute above INR 50,000 escalates identically (ESC-005) whatever the
+  notes: 'Counterfactual persona swap (tests/README.md section 8): a dispute above INR 50,000 escalates identically (ESC-005) whatever the
     name, language or balance.'
 
 - id: GR-REG-17-02

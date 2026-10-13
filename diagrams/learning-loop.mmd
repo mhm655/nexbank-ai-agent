@@ -33,7 +33,7 @@ flowchart TD
     G1 -- fail --> REJ
     G1 -- pass --> G2{"G2 regression evaluation<br/>no CRITICAL slice loss,<br/>FP below 3 percent, drift below 0.05"}
     G2 -- fail --> REJ
-    G2 -- pass --> G3{"G3 fixed safety suite<br/>355 cases, 100 percent"}
+    G2 -- pass --> G3{"G3 fixed safety suite<br/>356 cases, 100 percent"}
     G3 -- "any case fails" --> REJ
     G3 -- pass --> G4{"G4 red-team run<br/>boss cases and fresh variants,<br/>zero breaches"}
     G4 -- breach --> REJ

@@ -1,13 +1,13 @@
 # Knowledge Base Schema and ER Model
 
-Brief refs: A2.3 (categories, formats, versioning, regulatory tagging, TTL, access control), A4.3 (regulatory guardrails), A13.1 (catalogue), A6 (escalation). PLAN refs: section 3.3 (KB entry schema), section 4 Phase 3 items 1 and 2. Decisions: D-25 to D-29 in `docs/assumptions-and-decisions.md`. Entries live in `docs/knowledge-base/entries/` and are indexed in `README.md`. Retrieval, the maintenance workflow and the full access matrix are Day 8 and are only referenced here.
+Brief refs: A2.3 (categories, formats, versioning, regulatory tagging, TTL, access control), A4.3 (regulatory guardrails), A13.1 (catalogue), A6 (escalation). Brief Part D, Day 7-8 (KB schema, sample entries). Decisions: D-25 to D-29 in `docs/assumptions-and-decisions.md`. Entries live in `docs/knowledge-base/entries/` and are indexed in `README.md`. Retrieval, the maintenance workflow and the full access matrix are Day 8 and are only referenced here.
 
 ## 1. Purpose and principles
 
 1. **Grounded only.** Every product figure comes from A13.1 (page 35 of the brief). Every regulatory statement restates the brief's regulatory text (A4.3, A6 and the Regulatory Reference Summary on pages 70 and 71). Two worked examples that the brief itself gives in A4.1 (FD 6.5% for 1 year, EMI about 17,356 for 20L at 8.5% over 20 years) are allowed only as labelled illustrations with `source_ref: A4.1` (D-26).
 2. **Absence is knowledge.** Where A13.1 is silent (the `kb_gap: true` intents), the KB holds an explicit **gap-handling entry** that lists what is unknown, gives a safe statement and offers a human. The agent never fills a gap with a plausible figure (D-26).
 3. **Fresh or flagged.** Every entry carries an expiry. Rates and regulatory entries expire hard; others expire soft and raise a review ticket (section 7).
-4. **Auth-filtered before retrieval.** An entry above the customer's auth level is never retrieved (PLAN 3.4, `component-interfaces.md` row 6).
+4. **Auth-filtered before retrieval.** An entry above the customer's auth level is never retrieved (`retrieval-pipeline.md` section 5, `component-interfaces.md` row 6).
 5. **Traceable.** Each turn logs `kb_entry_ids` with versions (A11.3), so any answer can be traced to an entry version.
 
 ## 2. Entry schema
@@ -30,7 +30,7 @@ One entry is one YAML mapping. All fields below are required unless marked optio
 | `effective_from` | date | ISO date the version goes live |
 | `ttl_class` | enum | One of the six classes in section 7 |
 | `ttl_days` | int | Must equal the class default |
-| `expires_at` | date | `effective_from + ttl_days` (the PLAN's `ttl/expires_at`) |
+| `expires_at` | date | `effective_from + ttl_days` (the brief's TTL requirement, A2.3) |
 | `owner` | string | Accountable role (not a person) |
 | `approval_chain` | list | Ordered roles that must approve; at least 2; the last is the final approver |
 | `source_ref` | string | Brief section(s) or decision the content comes from, for example `A13.1` or `A4.3; Appendix p71` |
@@ -41,7 +41,7 @@ One entry is one YAML mapping. All fields below are required unless marked optio
 | `gap_handling` | bool, optional | `true` on gap entries |
 | `gap_for` | list, optional | Intent IDs the gap entry covers; required on gap entries |
 
-Fields added to the PLAN list: `audience`, `ttl_class`/`ttl_days`, `status`, `intents`, `escalation_triggers`, `body_i18n`, `gap_handling`/`gap_for`. They exist to make retrieval filtering, TTL handling and gap handling testable.
+Fields added to the brief A2.3 field list: `audience`, `ttl_class`/`ttl_days`, `status`, `intents`, `escalation_triggers`, `body_i18n`, `gap_handling`/`gap_for`. They exist to make retrieval filtering, TTL handling and gap handling testable.
 
 ## 3. ID naming convention
 
@@ -66,7 +66,7 @@ The category code matches the file name, and the validator rejects an ID whose c
 | `semi_structured` | Procedures, rule lists, comparisons | Nested lists and maps (steps, `never` lists, Q&A pairs) plus a short explanatory body | Keeps steps and prohibitions separable for templates and tests |
 | `unstructured` | Policies in prose, FAQs, empathy-sensitive guidance | Natural-language passages, `structured_fields: {}` | Reads naturally and embeds well for dense retrieval |
 
-Numeric claims in responses are checked against `structured_fields` when present, else against the body text (guardrail in `system-architecture.md` section 3.6, step 4).
+Numeric claims in responses are checked against `structured_fields` when present, else against the body text (guardrail in `system-architecture.md` section 5, step 4).
 
 ## 5. ER model
 
@@ -184,7 +184,7 @@ The brief requires TTL specifications for freshness (A2.3) but gives no values, 
 | `escalation_procedure` | 365 | Soft | `escalation` entries, including gap entries (which therefore hold no figure, section 11) |
 
 - **Hard expiry:** at `expires_at` the entry is excluded from retrieval. For a figure the agent then follows the matching gap entry; for a regulatory topic it follows KB-ESC-008 and hands off to the Compliance Helpdesk (ESC-008) rather than answering from memory.
-- **Soft expiry:** the entry is still served, flagged `stale` in the log, and a review ticket goes to the owner. A soft-expired entry is excluded after a 30-day grace period (a proposal, to be confirmed in the Day 8 workflow).
+- **Soft expiry:** the entry is still served, flagged `stale` in the log, and a review ticket goes to the owner. A soft-expired entry is excluded after a 30-day grace period (a proposal, to be confirmed in the maintenance workflow (`maintenance-workflow.md`)).
 - **Early warning:** the owner is alerted 14 days before `expires_at` (proposal). Day 8 adds staleness alerts and the regulatory fast-track for new RBI circulars, which resets the TTL of the affected `regulatory` entries immediately on publish.
 - **Event override:** a change to A13.1 data, a new regulation or an escalation rule change forces review regardless of the TTL.
 - **Sample dates.** All sample entries use `effective_from: 2026-10-01` so expiries are comparable; they are synthetic.
@@ -221,14 +221,14 @@ Rules:
 
 `anonymous` < `otp_verified` < `biometric_verified` < `full_kyc`
 
-- **Pre-retrieval filter.** The retrieval request carries the session `auth_level`; the index applies `rank(auth_level) >= rank(entry.auth_level_required)` as a hard filter before scoring, so a higher-level entry cannot appear even as a low-ranked candidate (PLAN 3.4).
+- **Pre-retrieval filter.** The retrieval request carries the session `auth_level`; the index applies `rank(auth_level) >= rank(entry.auth_level_required)` as a hard filter before scoring, so a higher-level entry cannot appear even as a low-ranked candidate (`retrieval-pipeline.md` section 5).
 - **Default is anonymous.** Generic product, regulatory and FAQ content is public. `config/intents.yaml` marks the matching intents with `generic_info_auth: anonymous` (for example ACC-007, ACC-008, CMP-001, CMP-003, TXN-006, CRD-004, CRD-005, SEC-003). An intent whose account-specific `auth` is above `anonymous` but whose KB content is generic or a no-data gap entry (CRD-004, ACC-007) or generic credential-reset guidance (SEC-003) carries the flag, so its anonymous entries stay retrievable before step-up; it never unlocks anything account-specific.
 - **Elevated entries.** Entries that describe a personal action or a guarded process carry the level the action needs: statement and transaction-dispute guidance at `otp_verified`, card unblocking at `biometric_verified`, closure and nominee handling and high-value closure at `full_kyc`.
 - **Empty after filtering is not "no information".** If the filter removed the best-matching entries, the policy engine moves to `AUTH_REQUIRED` and asks for the step-up, rather than telling the customer the topic is unknown (this also avoids leaking that an entry exists).
 - **Audience is separate from auth.** `agent_internal` entries (policy, escalation procedures) are mostly `anonymous`, so they are retrievable by the agent in any session because they steer behaviour (the exception is KB-ESC-007, which belongs to the `full_kyc` closure flow), but are never quoted verbatim to the customer and never shown above the customer's level. The Output Safety Layer rejects a response that copies an `agent_internal` body.
 - **Detection rules are separate internal entries.** Customer-facing guidance stays generic and anonymous; any rule that reveals how fraud or takeover is detected (for example KB-TRB-011, the reset-after-contact-change check) lives in its own `agent_internal` entry at the level at which it is applied (`otp_verified`, after verification), so an anonymous session can never retrieve it (D-30).
 - **Session rules.** Session timeout of 5 minutes and re-authentication follow KB-POL-003 and D-05; when a session drops to `anonymous`, elevated entries drop out of retrieval immediately.
-- The complete access matrix (intent by auth by action by entry class) is Day 8.
+- The complete access matrix (intent by auth by action by entry class) is `access-control-matrix.md`.
 
 ## 10. Linking entries to intents
 
@@ -247,7 +247,7 @@ Gap entries have `category: escalation`, `gap_handling: true`, `gap_for: [<inten
 | `safe_statement` | A short, honest sentence the agent may say (templates can wrap it) |
 | `known_adjacent_facts` | KB IDs the agent can offer instead |
 | `offer` | Next steps (human handoff, callback request, illustration) |
-| `never` | Specific fabrications to block, also used to seed hallucination-trap tests on Day 10 |
+| `never` | Specific fabrications to block, also used to seed hallucination-trap tests (`tests/kb/`, `tests/adversarial/`) |
 
 The first reply to a gap never contains a number that is not in the KB. If the customer insists, the escalation path is a human handoff, not a guess.
 

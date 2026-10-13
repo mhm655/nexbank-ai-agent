@@ -83,22 +83,23 @@ entries:
   category: escalation
   format: semi_structured
   title: Customer asks for a human agent
-  body: A request for a human is honoured. It is counted, never stalled, and does not require the customer to explain why. At the third request the Next Available Agent queue is triggered.
+  body: A request for a human is honoured. It is counted, never stalled, and does not require the customer to explain why. A request for a human is honoured from the first explicit request, when the handoff is prepared and one concrete offer may be made; a second request proceeds with no counter-offer. ESC-006 is the brief's backstop at the third request, where the Next Available Agent queue is triggered.
   structured_fields:
-    trigger: ESC-006 (customer requests a human agent 3 or more times)
+    trigger: the first-request rule (D-117) from the first explicit request; ESC-006 (customer requests a human agent 3 or more times) as the brief's backstop
     priority: P2
     queue: Next Available Agent
     sla: under 10 min
     behaviour:
-      - acknowledge the request on the first ask and keep helping while arranging the handoff where possible
+      - first_request - acknowledge the request and prepare the handoff at once; the reply may carry one concrete offer to finish the task now, and the handoff proceeds unless the customer takes it
+      - second_request - proceed with the handoff with no counter-offer
       - increment human_request_count, including implicit requests such as "who can I talk to"
-      - at 3 or more requests hand off at once, with no further questions
+      - at 3 or more requests ESC-006 applies as the hard backstop, hand off at once, with no further questions
       - offer a callback request if no agent is free; the callback time is a request, not a guarantee
     never: [argue, ask the customer to justify the request, pretend to be human]
   regulatory_tags: [EU_AI_ACT]
   auth_level_required: anonymous
   audience: agent_internal
-  version: 1.0.0
+  version: 2.0.0
   effective_from: *eff
   ttl_class: escalation_procedure
   ttl_days: 365

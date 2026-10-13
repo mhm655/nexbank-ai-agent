@@ -160,4 +160,4 @@ Decisions made in this document: D-95 (update classes and exclusions), D-106 (ca
 
 1. Named owners and deputies for every role are a dependency on NexBank (as D-84).
 2. The 14-day deletion-only rebuild cycle depends on the legal reading of "derived data" (D-104, D-157); its equivalence tolerances are proposals to calibrate on the first rebuilds.
-3. `config/parameters.yaml` (Day 13) will hold the governed copy of the proposals in these documents; until then the values are listed in each document and nowhere else.
+3. `config/parameters.yaml` holds the governed copy of the proposals in these documents.

@@ -2,13 +2,13 @@
 
 Status: `todo` / `draft` / `done`. Brief sections refer to the ZeTheta PDF. Updated daily. Level numbers follow the campaign levels (D-02).
 
-| ID | Requirement | Brief § | Level | Deliverable file(s) | Day | Status |
+| ID | Requirement | Brief section | Level | Deliverable file(s) | Day | Status |
 |---|---|---|---|---|---|---|
-| R-01 | Repo in the required structure, README, CHANGELOG (daily) | D / F | 7 | `README.md`, `CHANGELOG.md` | 1, 15 | draft |
+| R-01 | Repo in the required structure, README, CHANGELOG (daily) | D / F | 7 | `README.md`, `CHANGELOG.md` | 1, 15 | done |
 | R-02 | Requirements traceability, assumptions, stakeholder analysis | D | 7 | `docs/requirements-traceability.md`, `docs/assumptions-and-decisions.md`, `docs/stakeholder-analysis.md` | 1 | done |
 | R-03 | System architecture, minimum 8 components | A2 | 1 | `docs/architecture/system-architecture.md`, `diagrams/architecture.mmd` | 2 | done |
 | R-04 | Component interface contracts | A2 | 1 | `docs/architecture/component-interfaces.md` | 2 | done |
-| R-05 | Agent/tool matrix, least privilege | A2 | 1 | `diagrams/agents-and-tools.mmd`, system-architecture §3 | 2 | done |
+| R-05 | Agent/tool matrix, least privilege | A2 | 1 | `diagrams/agents-and-tools.mmd`, system-architecture section 3 | 2 | done |
 | R-06 | Dialogue state schema: intent+confidence+alternatives, slots, >= 20 turns, sentiment trajectory, auth level, guardrail state, escalation proximity, carry-over | A2.1 | 1 | `config/dialogue_state.schema.json` | 3 | done |
 | R-07 | Dialogue policy: action space, hybrid decision logic, confirmation, clarification, recovery, proactive | A2.1 | 1 | `docs/architecture/dialogue-management.md` | 3 | done |
 | R-08 | Multi-turn reasoning: anaphora, topic switching, implicit intent, contradictions, context window | A2.1 | 1 | `docs/architecture/dialogue-management.md` | 3 | done |
@@ -37,10 +37,10 @@ Status: `todo` / `draft` / `done`. Brief sections refer to the ZeTheta PDF. Upda
 | R-31 | 20+ annotated conversations | D (Day 14-15), B (Level 7) | 7 | `simulations/` (32 conversations, 318 messages, `INDEX.md`, `pattern-audit.md`) | 14 | done (designed examples, not run; Hindi, Hinglish and Gujarati wording not native-reviewed) |
 | R-32 | Audit and compliance logging: interaction-level (A10.1, 11 fields) and turn-level (A10.2, 14 fields) schemas, retention, field masking, event taxonomy, 16 audit queries, answer-to-version traceability | A10.1, A10.2, A11.3 | 7 | `docs/compliance/audit-logging.md` sections 1-6, 13, 14, `config/audit_log.schema.json`, `tests/compliance/examples/`, `diagrams/audit-log-flow.mmd` | 14 | done (specified, not run) |
 | R-33 | Risk assessment matrices: technical, business, ethical; heat map, top 10 residual, appetite | A11.1, A11.2, A11.3 | 7 | `docs/risk/risk-matrix.md` (55 risks: RISK-T-18, RISK-T-19, RISK-E-23 added on the Day 14 audit) | 14 | done (scores are design-time judgements) |
-| R-34 | Cross-reference audit, transfer to `@ZethetaIntern` | F | 7 | n/a | 15 | todo |
+| R-34 | Cross-reference audit, transfer to `@ZethetaIntern` | F | 7 | n/a | 15 | cross-reference audit done (`tests/validate_crossrefs.py`); transfer pending, to be done by the repository owner |
 | R-35 | Graceful fallback when no relevant knowledge is found; gap handling | A2.3 | 3 | `docs/knowledge-base/retrieval-pipeline.md` sections 9-10, `docs/knowledge-base/entries/escalation.yaml`, `config/templates/support.yaml` (TPL-KB-GAP, TPL-KB-DEGRADE) | 7, 8, 13 | done |
 | R-36 | KB maintenance workflow, regulatory fast-track, staleness alerts; access matrix by auth level; Level 3 boss (5 queries, 3+ entries) | A2.3, B | 3 | `docs/knowledge-base/maintenance-workflow.md`, `docs/knowledge-base/access-control-matrix.md`, `tests/kb/boss-level3.yaml`, `tests/kb/README.md` | 8 | done |
-| R-37 | Guardrail registry: implementation type (rule, model, hybrid), enforcement point, action, immutability and false-positive target per guardrail; defence-in-depth diagram | A4, PLAN Phase 4 items 1-5 | 4 | `config/guardrails.yaml`, `diagrams/guardrail-layers.mmd` | 9 | done |
+| R-37 | Guardrail registry: implementation type (rule, model, hybrid), enforcement point, action, immutability and false-positive target per guardrail; defence-in-depth diagram | A4, brief Part D, Day 9-10 | 4 | `config/guardrails.yaml`, `diagrams/guardrail-layers.mmd` | 9 | done |
 | R-38 | Fixed safety suite, minimum 200 cases, 100% pass before any update; every ESC-001..015 and every guardrail covered | A5.4 | 5 | `tests/safety-suite/manifest.yaml` (356 cases: 254 by reference [190 Day 10, 64 Day 12], 102 new; 291 on Day 11, 349 after the Day 11 audit fixes), `tests/safety-suite/manifest.lock.yaml`, `tests/safety-suite/*.yaml`, `tests/safety-suite/README.md`, `tests/safety-suite/validate_manifest.py` | 11 | done (specified, not run) |
 | R-39 | Data pipeline: collection, redaction, consent, features, versioning, quality gates, right to deletion in training data | D (Day 11), A10.3, A11.3 | 5 | `docs/learning-pipeline/data-pipeline.md` | 11 | done |
 | R-40 | A/B testing framework: traffic split, metric hierarchy, power, sequential testing, stopping rules (Scientist badge) | A8.4, D (Day 11), B3.2 | 5 | `docs/learning-pipeline/ab-testing.md` | 11 | done |
@@ -66,7 +66,33 @@ Status: `todo` / `draft` / `done`. Brief sections refer to the ZeTheta PDF. Upda
 | R-60 | Regulatory reporting: monthly RBI summary, quarterly complaint analysis, annual AI audit report, 48-hour ad-hoc queries | A10.3 | 7 | `docs/compliance/audit-logging.md` section 12 | 14 | draft (formats and recipients AL-D2 open) |
 | R-61 | Fail-closed behaviour when the audit bus is down; enhanced logging for payment-related conversations | A4.3, A10.3 | 7 | `docs/compliance/audit-logging.md` sections 15-17 | 14 | done (class H2 needs Risk Committee) |
 | R-62 | Statistical fairness testing, counterfactual pairs, transparency, accountability chain, privacy purposes | A11.3 | 7 | `docs/risk/fairness-testing.md`, `tests/compliance/fairness-pairs.yaml` (15 pairs, 30 cases, incl. FAIR-15) | 14 | done (pairs specified, not run) |
-| R-63 | Submission checklist: mandatory minimums, proxy lists for the 10 failure conditions and 7 deliverable requirements | Part D, A9.2, D-01, D-02 | 7 | `docs/compliance/submission-checklist.md` | 14 | draft (simulations and CHANGELOG pending) |
+| R-63 | Submission checklist: mandatory minimums, proxy lists for the 10 failure conditions and 7 deliverable requirements | Part D, A9.2, D-01, D-02 | 7 | `docs/compliance/submission-checklist.md` | 14, 15 | done |
 | R-64 | Compliance and risk validator with seeded-defect evidence | A10, A11 | 7 | `tests/compliance/validate_compliance.py`, `tests/compliance/README.md` | 14 | done |
+| R-65 | Innovations beyond the minimum, each with evidence | A1.4, Part B (innovation), D-211 | 7 | `docs/innovations.md` | 15 | done (specified, not run) |
+| R-66 | Technical constraints: model-swappable design, realistic latency, mid-stage cost | E5 | 1 | `docs/architecture/system-architecture.md` sections 1 and 7, `docs/architecture/latency-scalability-cost.md` | 15 | done |
+| R-67 | The A1.2 data package and the A1.4 competitive view used as design inputs | A1.2, A1.4 | 6 | `docs/escalation/queue-management.md` (capacity model), `docs/metrics/kpi-framework.md`, `docs/metrics/dashboards.md` (benchmark panel) | 15 | done |
+| R-68 | Data model: state, knowledge, logging and learning layers | B4.1 | 1 | `docs/architecture/system-architecture.md` section 6 | 15 | done |
+| R-69 | Dependencies between the seven deliverables (Part D, Day 1-3) | Part D Day 1-3 | 7 | this file, section "Dependency map" | 15 | done |
+| R-70 | Accessibility for varying literacy levels and proactive service | A1.3 (CEB) | 1 | `docs/architecture/conversation-design.md` section "Accessibility and proactive service" | 15 | done (rules are those of XTR-03, RISK-E-20, `response-generation.md` section 2, `dialogue-management.md` section 4.6, XTR-05) |
 
 Note: R-38: suite cases are specified, not executed (D-79).
+
+## Dependency map
+
+How the seven levels depend on one another (Part D, Day 1-3: map the dependencies between the seven deliverables). An arrow means "is an input to".
+
+```mermaid
+graph LR
+    L1[L1 Architecture] --> L2[L2 NLU]
+    L2 --> L3[L3 Knowledge base]
+    L3 --> L4[L4 Safety]
+    L4 --> L5[L5 Learning]
+    L2 --> L6[L6 Routing and satisfaction]
+    L4 --> L6
+    L1 --> L7[L7 Integration]
+    L2 --> L7
+    L3 --> L7
+    L4 --> L7
+    L5 --> L7
+    L6 --> L7
+```

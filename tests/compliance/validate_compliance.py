@@ -477,8 +477,8 @@ CITE = re.compile(
     r"GR-[A-Z]+-R?\d+(?:-\d+)?|ESC-\d{3}|ESC-T-\d+-\d+|KB-[A-Z]+-\d+|D-\d+|DM-\d+|KPI-[A-Z]\d+|RISK-[TBE]-\d+|"
     r"EQ-\d+|FT-\d+|AQ-\d+|RPT-\d+|QG-\d+|INV-\d+|RED-\d+|XTR-\d+|TPL-[A-Z]+(?:-[A-Z0-9]+)+|FAIR-\d+(?:-[ab])?|SS-[A-Z]+-\d+"
     r")(?![A-Za-z0-9\[])")
-PENDING_DECISIONS = {"D-%d" % n for n in range(181, 191)}  # in the Day 14 handoff, not yet merged into the decisions log
-AUDIT_FIX_DECISIONS = {"D-%d" % n for n in range(200, 208)}  # Day 14 audit fixes, same status
+PENDING_DECISIONS = {"D-%d" % n for n in range(181, 191)}  # decisions of Day 14 (now in the log); tolerated if a log row is ever missing
+AUDIT_FIX_DECISIONS = {"D-%d" % n for n in range(200, 208)}  # Day 14 audit fixes, same tolerance
 
 
 def collect_definitions():
@@ -533,12 +533,12 @@ def check_cited_ids():
     for ident, where in sorted(missing.items()):
         err(5, "%s is cited in %s and is not defined anywhere" % (ident, ", ".join(sorted(where))))
     for p in sorted(pending):
-        warn(5, "%s is defined only in the Day 14 handoff (not merged into the decisions log yet)" % p)
+        warn(5, "%s is cited but has no row in the decisions log" % p)
     # decisions the owned files claim: each of D-181..D-190 must be cited at least once
     cited_new = sorted(PENDING_DECISIONS & set(seen))
     for d in sorted(PENDING_DECISIONS):
         if d not in seen:
-            warn(5, "%s is reserved for this work but not cited in any owned file" % d)
+            warn(5, "%s is not cited in any owned file" % d)
     return len(seen), len(cited_new)
 
 
@@ -1070,7 +1070,7 @@ CHECKLIST_ROWS.update({
     "FC-06": ("ap5", "==", 1), "FC-07": ("ap6", "==", 1), "FC-08": ("ap7", "==", 1), "FC-09": ("ap8", "==", 1),
     "FC-10": ("mm_not_met", "==", 0),
 })
-PENDING_ROWS = {"MM-30": "pending Day 15 CHANGELOG entry"}
+PENDING_ROWS = {}  # no row is pending: every counted row is compared with the repository
 
 
 def compare(op, got, want):
@@ -1111,7 +1111,7 @@ def check_checklist():
             if PENDING_ROWS[rid].split(" ", 1)[1] not in status:
                 err(9, "%s: status must say %r, found %r" % (rid, PENDING_ROWS[rid], status))
             if shown != c[key]:
-                warn(9, "%s: checklist records %d at the time of writing; the repository now holds %d (another agent is writing it)" % (rid, shown, c[key]))
+                warn(9, "%s: checklist records %d at the time of writing; the repository now holds %d" % (rid, shown, c[key]))
             continue
         if shown != c[key]:
             err(9, "%s: checklist says %d, recomputed %d (%s)" % (rid, shown, c[key], key))

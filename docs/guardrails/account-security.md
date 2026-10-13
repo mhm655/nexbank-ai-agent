@@ -168,7 +168,7 @@ Evaluated per turn, first rule that fires decides (dialogue-management.md sectio
 
 - GR-SYS-02: the learning pipeline cannot propose or apply any change to rules, thresholds or prompt layers 0-2. A proposal that touches them is rejected at the change gate and logged.
 - GR-SYS-03: `guardrail_strictness_level` (default HIGH), `session_timeout_minutes` and the thresholds in `config/guardrails.yaml` change only through Risk Committee approval (A12.3). The runtime rejects values outside the registry bounds.
-- Classifier weights of hybrid and model guardrails (R3, R4, R8 and the advice classifier) change only through the safety change-control path: HITL sign-off, Risk Committee approval, the fixed safety suite at 100 percent pass, canary and circuit breaker (PLAN 3.7). They are never trained from the learning pipeline's feedback.
+- Classifier weights of hybrid and model guardrails (R3, R4, R8 and the advice classifier) change only through the safety change-control path: HITL sign-off, Risk Committee approval, the fixed safety suite at 100 percent pass, canary and circuit breaker (`docs/learning-pipeline/safety-invariants.md` sections 5 to 7). They are never trained from the learning pipeline's feedback.
 
 ## 7. Failure behaviour summary
 
@@ -186,7 +186,7 @@ R1 with GR-REG-05 and GR-REG-06 (PCI DSS card masking and CVV); R2 with GR-REG-0
 
 ## 9. Reserved test IDs and counts
 
-Reserved: R1 6, R2 5, R3 5, R4 5, R5 6, R6 4, R7 4, R8 5, which is 40 IDs. Related: GR-OUT-02-01 to GR-OUT-02-02 (PII leak scan), GR-SYS-02-01 to GR-SYS-02-02 (immutability), GR-SYS-03-01 to GR-SYS-03-02 (parameter bounds). Every test record uses the schema in PLAN 6.1 (`id, category, vector, persona, input_turns[], preconditions(auth_level), expected_action, expected_guardrails[], must_not_contain[], severity`). Rule tests that run at several auth levels use one ID per level suffix in the case description, not new IDs.
+Reserved: R1 6, R2 5, R3 5, R4 5, R5 6, R6 4, R7 4, R8 5, which is 40 IDs. Related: GR-OUT-02-01 to GR-OUT-02-02 (PII leak scan), GR-SYS-02-01 to GR-SYS-02-02 (immutability), GR-SYS-03-01 to GR-SYS-03-02 (parameter bounds). Every test record uses the schema in `tests/README.md` section 2 (`id, category, vector, persona, input_turns[], preconditions(auth_level), expected_action, expected_guardrails[], must_not_contain[], severity`). Rule tests that run at several auth levels use one ID per level suffix in the case description, not new IDs.
 
 ## 10. Metrics hooks (Day 10 dashboard)
 
@@ -197,4 +197,4 @@ Per rule: triggers per 1,000 turns, redactions by RED id, auth rejections at the
 - Joint accounts and customers holding several relationships are not covered in the brief: assumed that an authenticated customer sees every account they hold, including joint ones, and nothing else; Risk Committee to confirm.
 - Escalation targets are design choices, not brief requirements (D-65): GR-SEC-R2 routes the three-failed-OTP lock to ESC-009 and GR-SEC-R3 refuses a plain transfer request once, without escalation; ESC-001 follows only when the request carries a scam cue, and ESC-012 only with a structuring or evasion cue. Day 12 confirmed or corrected them in D-115 (the three-failed-OTP route to ESC-009 is a system-detected extension, sub-rule ESC-009.c); no other behaviour changes.
 - The definition of "facilitate" (D-59) and the escalation of authority claims with a request (D-60) are proposals.
-- Voice channel read-out rules (R1) are specified at the draft-text level; channel-specific tests follow in Day 10.
+- Voice channel read-out rules (R1) are specified at the draft-text level; channel-specific tests are in `tests/guardrails/account-security.yaml`.

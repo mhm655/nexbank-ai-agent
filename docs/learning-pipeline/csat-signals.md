@@ -36,7 +36,7 @@ Check-in answers are explicit signals at turn level. They are the main input to 
 
 | Aspect | Specification |
 |---|---|
-| Question | one rating, 1 to 5 (brief), with an optional free-text comment (brief). Wording is a Day 13 template; the scale direction is stated every time (1 lowest, 5 highest) |
+| Question | one rating, 1 to 5 (brief), with an optional free-text comment (brief). Wording is in `config/templates/` (family SRV); the scale direction is stated every time (1 lowest, 5 highest) |
 | When | when the conversation reaches `CLOSING` after GEN-006 (thanks or closure) or a completed task; for an escalated conversation, after the human agent closes it, with a separate question about the AI part and the human part (proposal) so that the handoff is not scored against the wrong party |
 | Not asked | conversations that ended in ESC-011 (crisis); fraud and security conversations still open with a human team (asked after the case closes); sessions that timed out with no customer message after the greeting; a customer already surveyed in the last 7 days (proposal, survey fatigue); a customer who opted out of surveys |
 | Channel | the same channel as the conversation; one prompt, no reminder |
@@ -173,6 +173,6 @@ Rolling 1-hour CSAT (A8.5) is shown only when the hour holds at least 30 ratings
 
 D-99 (survey rules and the 15% response-rate assumption), D-100 (two-stage silent-dissatisfaction detector and its allowed uses), D-101 (post-stratification weighting with a cap), D-102 (four attribution levels; only experiments justify a release).
 
-1. Survey wording and check-in templates are written on Day 13 with the template library.
+1. Survey wording and check-in templates are in the template library (`config/templates/support.yaml`, family SRV).
 2. The non-responder follow-up needs a consent basis and a channel decision from the CX Team and the Data Protection lead.
-3. CES and NPS collection is specified with the metrics framework in `docs/metrics/` (Day 12).
+3. CES and NPS collection is specified with the metrics framework in `docs/metrics/`.

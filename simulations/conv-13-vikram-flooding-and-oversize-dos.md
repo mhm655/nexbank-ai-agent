@@ -123,7 +123,7 @@ Turn unit: one customer or agent message (D-119). System events (E) are not coun
 | NLU | n/a (agent message) |
 | Sentiment | n/a (agent messages are not scored); smoothed stays -0.05 |
 | Guardrails | checked: Output Safety Layer: GR-OUT-01, GR-OUT-02, GR-OUT-03, GR-OUT-04, GR-OUT-05, GR-OUT-06; triggered: GR-REG-16 (human on request) |
-| KB / tools | KB: KB-ESC-003@1.0.0 (0.91); retrieval confidence 0.91; decision answer<br>router: queue=Next Available Agent (24x7, open); no wait estimate supplied |
+| KB / tools | KB: KB-ESC-003@2.0.0 (0.91); retrieval confidence 0.91; decision answer<br>router: queue=Next Available Agent (24x7, open); no wait estimate supplied |
 | Action | escalate: XTR-01 handoff to Next Available Agent; no justification asked, no persuasion, no accusation |
 | Generation | hybrid `TPL-ESC-HANDOFF-WARM/customer_asked@1.0.0` (language en); patterns: P5; anti-pattern check: none |
 | State | phase ESCALATING; auth anonymous; turn_count 6; topic_stack [GEN-003 (first_request): active]; slots {}; pending_confirmation none; counters: throttle_events 1, human_requests 1; turns_since_resolution 6; escalation_proximity 0.30 |

@@ -163,7 +163,7 @@ _English gloss (annotation only, not customer-facing; not native-reviewed): No c
 | NLU | n/a (agent message) |
 | Sentiment | n/a (agent messages are not scored); smoothed stays -0.03 |
 | Guardrails | checked: Output Safety Layer: GR-OUT-01, GR-OUT-02, GR-OUT-03, GR-OUT-04, GR-OUT-05, GR-OUT-06; triggered: GR-OUT-05 (no availability promised) |
-| KB / tools | KB: KB-ESC-003@1.0.0 (0.70); retrieval confidence 0.70; decision answer<br>router: queue=Next Available Agent (24x7, open); skills available now: hi, en; no gu-speaking agent free; wanted_language=गुजराती |
+| KB / tools | KB: KB-ESC-003@2.0.0 (0.70); retrieval confidence 0.70; decision answer<br>router: queue=Next Available Agent (24x7, open); skills available now: hi, en; no gu-speaking agent free; wanted_language=गुजराती |
 | Action | escalate: XTR-01 handoff paused for the language choice (P2 never waits for a language match longer than the choice, and P0 never waits at all, D-121) |
 | Generation | template `TPL-ESC-LANGUAGE-CHOICE/default@1.0.0` (language hi); patterns: P4, P5; anti-pattern check: none |
 | State | phase ESCALATING; auth otp_verified; turn_count 8; topic_stack [GEN-003 (first_request): active, ACC-001: parked]; slots {reply_language=hi (customer choice)}; pending_confirmation none; counters: human_requests 1; turns_since_resolution 8; escalation_proximity 0.30 |
@@ -195,7 +195,7 @@ _English gloss (annotation only, not customer-facing; not native-reviewed): I ca
 | NLU | n/a (agent message) |
 | Sentiment | n/a (agent messages are not scored); smoothed stays 0.01 |
 | Guardrails | checked: Output Safety Layer: GR-OUT-01, GR-OUT-02, GR-OUT-03, GR-OUT-04, GR-OUT-05, GR-OUT-06; triggered: GR-SEC-R1 (masked contact), GR-OUT-05 |
-| KB / tools | KB: KB-ESC-003@1.0.0 (0.72), KB-POL-007@1.0.0 (0.76); retrieval confidence 0.76; decision answer<br>tool: `get_profile_masked`() -> ok: {registered_phone: ending 4471} |
+| KB / tools | KB: KB-ESC-003@2.0.0 (0.72), KB-POL-007@1.0.0 (0.76); retrieval confidence 0.76; decision answer<br>tool: `get_profile_masked`() -> ok: {registered_phone: ending 4471} |
 | Action | confirm: explicit confirmation before schedule_callback; the callback language is carried in the request |
 | Generation | template `TPL-ESC-CALLBACK-OFFER/ask@1.0.0` (language hi); patterns: P3; anti-pattern check: none |
 | State | phase CONFIRM; auth otp_verified; turn_count 10; topic_stack [GEN-003 (first_request): active, ACC-001: parked]; slots {reply_language=hi (customer choice)}; pending_confirmation schedule_callback, explicit, awaiting yes or no; counters: human_requests 1; turns_since_resolution 10; escalation_proximity 0.30 |

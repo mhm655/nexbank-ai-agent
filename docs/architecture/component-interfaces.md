@@ -1,6 +1,6 @@
 # Component Interface Contracts
 
-Each contract lists input, output, errors and the p95 latency budget (sums to the per-turn budget in `latency-scalability-cost.md`). All messages carry `conversation_id`, `turn_index`, `trace_id`. Error behaviour always degrades toward safety (fail closed).
+Each contract lists input, output, errors and the p95 latency budget (rows 1-7, 9 and 10 sum to the 2,850 ms per-turn budget in `latency-scalability-cost.md` (D-07); the Escalation Router's 50 ms applies only on a turn that escalates, where the reply is a template and Generation takes under 50 ms). All messages carry `conversation_id`, `turn_index`, `trace_id`. Error behaviour always degrades toward safety (fail closed).
 
 | # | Component | Input | Output | Errors and fallback | p95 SLA |
 |---|---|---|---|---|---|
@@ -14,7 +14,7 @@ Each contract lists input, output, errors and the p95 latency budget (sums to th
 | 8 | Escalation Router | `DialogueState`, trigger signals | `EscalationDecision` {trigger_id, priority, queue, handoff_package, sla} | Queue unavailable: next queue by priority, then callback scheduling. Handoff package missing fields: fill from state, flag incomplete | 50 ms |
 | 9 | Response Generator | `PolicyDecision`, passages, tool data, persona, language | `DraftResponse` {text, mode (template|llm|hybrid), citations[]} | LLM timeout or error: use template. No template: clarification/escalation template | 1,500 ms (streamed) |
 | 10 | Output Safety Layer | `DraftResponse`, state, sources | `SafetyVerdict` {pass, rewrite, block, checks[]} and the final text | Check timeout: block the LLM text, send the template version. Any "block": safe template, then clarify, then escalate | 300 ms |
-| 11 | Audit & Telemetry Bus | Turn/conversation events, guard flags, versions | Immutable, encrypted log records; metric streams | Async with local buffer; when the bus is down, buffer to disk and alert. Never block the customer turn. Audit write failure on a high-risk action blocks that action | async |
+| 11 | Audit & Telemetry Bus | Turn/conversation events, guard flags, versions | Immutable, encrypted log records; metric streams | Async with local buffer; when the bus is down, buffer to disk and alert. Never block the customer turn. Exception: with no durable local write the system fails closed (`docs/compliance/audit-logging.md` section 15, state A3). Audit write failure on a high-risk action blocks that action | async |
 | 12 | Continuous Learning Pipeline | Supervisor labels, CSAT, outcomes, logs | Candidate updates (KB edits, prompt layers 3-5, thresholds, model versions) with eval reports | Any gate failure: reject the candidate. Circuit breaker breach: auto-rollback and page the owner. Layers 0-2 and rule layer are read-only to this component | offline |
 
 ## Cross-cutting rules
@@ -24,3 +24,22 @@ Each contract lists input, output, errors and the p95 latency budget (sums to th
 - **Timeouts:** each hop has a hard timeout and a defined fallback; no unbounded waits.
 - **PII:** components exchange tokens or masked values where possible; full card numbers, CVV, PIN and full Aadhaar never enter state or logs.
 - **Auth:** the Policy Engine checks `auth_level` against the intent's required level before calling any agent; the Tool Orchestrator re-checks independently.
+
+## Message shapes
+
+Field lists for each interface message. Every field is taken from the rows above, from `config/dialogue_state.schema.json` (state), from `config/audit_log.schema.json` (log records) or from the document named in the last column. No field is new. Types and value sets are in the schema files.
+
+| Message | Fields | Taken from | Specified in detail in |
+|---|---|---|---|
+| `TurnRequest` (1 to 2) | `conversation_id`, `turn_index`, `trace_id`, text, channel, session, `auth_level` (one of the four levels of `config/intents.yaml`), timestamp | row 1; state `conversation_id`, `turn_index`, `auth_level`, `last_activity_at` | `docs/architecture/system-architecture.md` section 4 |
+| `GuardVerdict` (2) | decision (`allow`, `block`, `sanitise`), `flags[]`, `crisis` | row 2; state `guardrails.active`, `guardrails.triggered` (`rule_id`, `turn`, `severity`) | `docs/guardrails/` (`config/guardrails.yaml`) |
+| `NLUResult` (3) | `language` (`primary`, `code_switching`, `reply_language`), `intents[]` (`label`, `confidence`), `layer_path`, `layer_confidence`, `alternatives`, `entities[]`, `sentiment` (`current`, `emotions`, `sarcasm_suspected`), `multi_intent`, `out_of_scope`, `implicit` | row 3; state `language`, `intent`, `sentiment` | `docs/architecture/nlu-pipeline-overview.md` |
+| `DialogueState` (4) | `conversation_id`, `turn_index`, `dialogue_phase`, `language`, `intent`, `topic_stack[]`, `slots`, `history[]`, `summary`, `sentiment`, `auth_level`, `pending_confirmation`, `actions_taken[]`, `guardrails`, `escalation_proximity`, `consecutive_low_conf`, `human_request_count`, `clarification_attempts`, `carry_over`, `last_response`, `escalation`, `versions` | `config/dialogue_state.schema.json` (required: `conversation_id`, `turn_index`, `language`, `intent`, `slots`, `history`, `sentiment`, `auth_level`, `guardrails`, `escalation_proximity`, `dialogue_phase`) | `docs/architecture/dialogue-management.md` |
+| `PolicyDecision` (5) | `action`, `agent`, `tool_calls[]`, `template_id` (optional), `reason_codes[]` | row 5; state `last_response` (`template_id`, `variant`, `template_version`) | `docs/architecture/dialogue-management.md` |
+| `RetrievalResult` (6) | `passages[]` (`id`, `version`, `score`, `lane`, `stale`, `translation_unavailable`, `gap_handling`), `confidence`, `decision`, `step_up_hint` (Policy Engine only), `latency` | row 6; state `versions.kb_entry_ids` | `docs/knowledge-base/retrieval-pipeline.md` |
+| `ToolCall` / `ToolResult` (7) | call: `name`, `args`, `idempotency_key`, `auth_proof`; result: `ok`, `data`, `error_code`, `source_ts` | row 7; state `actions_taken[]` (`action`, `turn`, `result`, `reference_id`) | `docs/architecture/system-architecture.md` section 3 |
+| `EscalationDecision` (8) | `trigger_id`, `priority`, `queue`, `handoff_package`, `sla`; stored as `escalation.pending` (`trigger_id`, `priority`, `queue`, `created_at`, `sla_deadline`, `status`, `handoff_attempts`) and `escalation.fired[]` | row 8; state `escalation` | `docs/escalation/` (`routing-and-handoff.md`, `triggers.md`) |
+| `DraftResponse` (9) | `text`, `mode` (`template`, `llm`, `hybrid`), `citations[]` | row 9; state `last_response` | `docs/architecture/response-generation.md` |
+| `SafetyVerdict` (10) | `pass`, `rewrite`, `block`, `checks[]`, final text | row 10 | `docs/guardrails/output-safety-layer.md` |
+| Audit records (11) | per conversation: `conversation_id`, `customer_id`, `channel`, `authentication_level`, `primary_intent`, `resolution_status`, `guardrails_activated`, `csat_score`, `model_version`, `turn_count`, `pii_detected`; per turn: `turn_id`, `speaker`, `raw_message`, `intent_classification`, `entities_extracted`, `sentiment_score`, `knowledge_items_retrieved`, `retrieval_confidence`, `agent_response`, `response_generation_method`, `guardrails_checked`, `guardrails_triggered`, `response_latency_ms`, `action_taken`; each with one `ext` object | `config/audit_log.schema.json` | `docs/compliance/audit-logging.md` |
+| Learning candidates (12) | candidate update (KB edit, prompt layer 3-5, threshold, model version) with an evaluation report | row 12 | `docs/learning-pipeline/` |

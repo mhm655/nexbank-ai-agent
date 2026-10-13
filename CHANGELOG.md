@@ -1,8 +1,11 @@
 # CHANGELOG
 
-One entry per working day (15). Each entry: tasks, decisions with rationale, challenges, open questions, next-day plan.
+One entry per day of the brief's 15-day plan (15). Each entry: date, tasks, decisions with rationale, challenges, open questions, next-day plan. Dates are taken from the commit history; where several days share a date the work was done in consecutive sessions on that date; session times were not recorded.
 
 ## Day 1: Setup and analysis
+
+**Date**: 2026-10-03
+
 
 **Tasks completed**
 - Read the full 71-page brief and produced an implementation plan.
@@ -23,12 +26,15 @@ One entry per working day (15). Each entry: tasks, decisions with rationale, cha
 - The 500 transcripts are not included; only the aggregate table in A1.2 exists.
 
 **Open questions**
-- Q1, Q2, Q10, Q12 are awaiting coordinator input (see `docs/coordinator-questions.md`).
+- Q1, Q2, Q10, Q12 (the question numbers are the rows D-01, D-02, D-10 and D-12 of `docs/assumptions-and-decisions.md`) are open: the query is drafted in `docs/coordinator-questions.md` and was not sent.
 
 **Next (Day 2)**
 - 12-component architecture diagram, component interface contracts, agent/tool matrix.
 
 ## Day 2: Architecture, interfaces, agents
+
+**Date**: 2026-10-04
+
 
 **Tasks completed**
 - `docs/architecture/system-architecture.md`: principles, 12 components, agent/tool scope, per-turn flow, safety architecture, reference stack.
@@ -51,6 +57,9 @@ One entry per working day (15). Each entry: tasks, decisions with rationale, cha
 
 ## Day 3: State machine, FMEA, latency and scale
 
+**Date**: 2026-10-04 (the state machine diagram was added in a later commit on 2026-10-06)
+
+
 **Tasks completed**
 - `config/dialogue_state.schema.json` (JSON Schema 2020-12; validated as parseable JSON).
 - `diagrams/dialogue-state-machine.mmd`, `diagrams/auth-flow.mmd`.
@@ -64,7 +73,7 @@ One entry per working day (15). Each entry: tasks, decisions with rationale, cha
 - Cost-model unit prices are labelled illustrative placeholders, not quotes.
 
 **Challenges**
-- Level 1 boss trace needed 12 switches in 20 turns while still exercising safety invariants; achieved with a security pre-emption, an advice-boundary deflection and a human-request trigger.
+- Level 1 boss trace needed 12 switches in 20 turns while still exercising safety invariants; achieved with a security pre-emption, an advice-boundary deflection and a human-request trigger. (Amended on Day 15 (D-210): the trace now uses a duplicate-charge dispute and a lost-card block instead of a fraud report, so no P0 is raised and then left waiting; still 20 turns and 12 switches.)
 
 **Open questions**
 - The 15 ESC triggers are referenced but defined on Day 12; intent labels in the trace are provisional until Day 4.
@@ -72,6 +81,9 @@ One entry per working day (15). Each entry: tasks, decisions with rationale, cha
 **Next (Day 4)**: intent taxonomy (30+ intents), entity catalogue.
 
 ## Day 4: Intent taxonomy and entity catalogue
+
+**Date**: 2026-10-07
+
 
 **Tasks completed**
 - `config/intents.yaml`: 41 intents (32 from A3.1 to A3.3, plus ACC-008 KYC Update and 8 general intents GEN-001 to GEN-008), 145 tertiary labels, per-intent auth level, safety rating, action type, confirmation level, ESC links and multi-intent rank.
@@ -93,11 +105,14 @@ One entry per working day (15). Each entry: tasks, decisions with rationale, cha
 - The brief lists the primary layer as six classes but the CRD intents as their own family; resolved by D-13.
 
 **Open questions**
-- Q1, Q2, Q10, Q12 still awaiting coordinator input.
+- Q1, Q2, Q10, Q12 still open (query drafted, not sent).
 
 **Next (Day 5)**: disambiguation trees for the six pairs, multi-intent and out-of-scope handling, per-layer thresholds, sentiment and emotion spec.
 
 ## Day 5: Disambiguation, multi-intent, out-of-scope, sentiment
+
+**Date**: 2026-10-07
+
 
 **Tasks completed**
 - `docs/intent-taxonomy/disambiguation.md` and `diagrams/disambiguation-01..06-*.mmd`: one decision tree per A3.4 pair, each with entity-based rules, threshold logic, a clarifying question sequence (English plus Hinglish pattern), a safe default and escalation hooks. All Mermaid files parse with the Mermaid parser.
@@ -116,20 +131,23 @@ One entry per working day (15). Each entry: tasks, decisions with rationale, cha
 - Pair 5 can be mistaken for an accusation; the spec keeps reclassification between fraud and dispute open until handoff, and the tone rules forbid accusing the customer.
 
 **Open questions**
-- Sentiment accuracy targets in `sentiment.md` are my proposals; the brief gives none.
+- Sentiment accuracy targets in `sentiment.md` are project proposals; the brief gives none.
 - CEB view needed on the EMA route in D-18.
 
 **Next (Day 6)**: utterance library (300+ across English, Hindi, Hinglish and secondary languages), language detection and code-switching spec, Level 2 boss set of 10 ambiguous messages in `tests/nlu/`.
 
 **Day 4-5 audit fixes (applied after review)**
 - Fixed 9 small defects found by the audit: tool name `send_credential_reset_link`, wrong section pointers, the `inferred` slot state, confirmation expiry wording, ACC-003 then ACC-004 chain, NLU frame to state mapping, a dead-end node in the pair 6 diagram, and boss-trace phases and labels.
-- Boss trace: ESC-001 (P0) now fires at T5 when the intent resolves to fraud, so the fraud report is never left parked without escalation (A4.2 rule 6); T13 now asks the pair 3 question and T14 answers it; T17 carries `loan_type`.
+- Boss trace: ESC-001 (P0) fired at T5 when the intent resolved to fraud, so the fraud report was never left parked without escalation (A4.2 rule 6; amended on Day 15 (D-210): T4 to T6 are now a duplicate-charge dispute and a lost-card block, and no P0 fires in the trace); T13 now asks the pair 3 question and T14 answers it; T17 carries `loan_type`.
 - SEC-002 confirmation raised to explicit; the execution-gate comment now covers `ticket` actions.
 - Citation fixes: the 0.15 ambiguity gap now cites the dialogue-management guards (D-06 defines only the 0.70 and 0.40 tiers); taxonomy mapping for the FD-rate turn is `fd_rate_by_tenure`; pair 6 wording now matches the 0.85 execution rule.
-- Still open from the audit: clarification budget vs "escalate after 2 failed clarifications", agent/tool matrix gaps, and the `PLAN.md` references that sit outside the repo.
+- Still open from the audit: clarification budget vs "escalate after 2 failed clarifications", agent/tool matrix gaps, and the references to the external planning file, which sits outside the repo.
 
 
 ## Day 6: Utterance library, language detection, Level 2 boss
+
+**Date**: 2026-10-08
+
 
 **Tasks completed**
 - `docs/intent-taxonomy/utterances.csv`: 551 labelled utterances for all 41 intents (13 to 17 each) covering all 145 tertiary labels. Languages: English 213, Hinglish 167, Hindi 87, Tamil 26, Telugu 15, Bengali 15, Marathi 14, Gujarati 13. Includes typos (36), sarcasm (5), code-switched rows (Devanagari plus Latin and Roman Hinglish), 12 multi-intent rows, 14 crisis rows and the KB-gap traps. Split 69.5 / 15.3 / 15.3 (train / dev / test), stratified per intent and by language class, every intent present in test. No full card, Aadhaar, CVV, OTP, PIN or account value appears; only masked or last-4 forms.
@@ -160,8 +178,11 @@ One entry per working day (15). Each entry: tasks, decisions with rationale, cha
 
 ## Day 7: Knowledge base schema and entries
 
+**Date**: 2026-10-08
+
+
 **Tasks completed**
-- `docs/knowledge-base/kb-schema.md`: entry schema (PLAN 3.3 fields plus `audience`, `ttl_class`, `status`, `intents`, `escalation_triggers`, `body_i18n`, gap fields), ER model (`diagrams/kb-er-model.mmd`, parses with the Mermaid parser), three formats with rules, ID convention `KB-<CAT>-<NNN>`, semantic versioning with live updates and immutable history, six TTL classes with hard and soft expiry, regulatory tag vocabulary mapped to the brief, auth-level access control as a pre-retrieval filter, intent links, gap-entry shape.
+- `docs/knowledge-base/kb-schema.md`: entry schema (brief A2.3 fields plus `audience`, `ttl_class`, `status`, `intents`, `escalation_triggers`, `body_i18n`, gap fields), ER model (`diagrams/kb-er-model.mmd`, parses with the Mermaid parser), three formats with rules, ID convention `KB-<CAT>-<NNN>`, semantic versioning with live updates and immutable history, six TTL classes with hard and soft expiry, regulatory tag vocabulary mapped to the brief, auth-level access control as a pre-retrieval filter, intent links, gap-entry shape.
 - `docs/knowledge-base/entries/`: 77 entries in six YAML files (product 12, policy 11, regulatory 11, FAQ 11, troubleshooting 10, escalation 21). Formats: 18 structured, 34 semi-structured, 24 unstructured. 11 are gap-handling entries covering the four `kb_gap` intents (ACC-007, CRD-004, PRD-003, GEN-008) and further topics A13.1 does not cover (RD, international transfer charges, card and loan fees, insurance premiums, ombudsman and cooling-off details, a generic unknown-question fallback). Four FAQ entries carry Hindi and Hinglish wording (review simulated; native-speaker check pending, see open questions). Every entry has intent links valid in `config/intents.yaml` and a `source_ref` to the brief (A13.1, A4.1 to A4.3, A6, appendix pages 70 and 71).
 - `docs/knowledge-base/README.md`: index table (ID, title, category, format, auth, audience, intents) and coverage counts. 38 of 41 intents have at least one entry; CMP-004, GEN-005 and GEN-006 are answered by templates and need none.
 - `tests/kb/validate_kb_entries.py`: validator. Result: PASS. Checks include parse, required fields, unique IDs, ID code matches category and file, valid enums and auth levels, `expires_at = effective_from + ttl_days`, intent and ESC IDs exist, `KB-` cross references resolve, every `kb_gap` intent has a gap entry, at least 55 entries, all categories and formats present, gap-entry shape (non-empty `gap_for`, five keys, no figures), and an allow-list scan of every number in titles, bodies, translated bodies and fields (YAML numbers included) plus an allow-list of number-and-time-unit pairs that reports timeline wording such as "working days".
@@ -193,6 +214,9 @@ One entry per working day (15). Each entry: tasks, decisions with rationale, cha
 - Day 7: validator holes closed (14 mutation cases now caught), four FAQ TTLs moved to the 90-day `rates` class, figures removed from gap entries, KB-ESC-020 no longer conflates ESC-003, source_ref fixes. Then resolved the open items: detection rule moved from anonymous KB-TRB-007 to agent-internal KB-TRB-011 (D-30), `generic_info_auth` for SEC-003 and CRD-004 (D-30, D-31), KB-PRD-007/008/009 and KB-FAQ-004/006 on `rates` (D-32), SEBI_ROBO_ADVISORY removed from three entries (D-33), KB-REG-008 reworded to the regulation only (D-34), ER diagram gained a gap-for link (parser check passed, not rendered). KB now has 77 entries.
 
 ## Day 8: Retrieval pipeline, maintenance workflow, access matrix, Level 3 boss
+
+**Date**: 2026-10-09
+
 
 **Tasks completed**
 - `docs/knowledge-base/retrieval-pipeline.md`: query rewrite (anaphora, safe entity injection, primary and secondary language handling), hard pre-filter inside both searches (epoch, status, effective date, hard and soft expiry, auth rank, evidence and guidance audience lanes), dense top-20 plus BM25 top-20, weighted 0.6/0.4 fusion with intent prior and gap companions, cross-encoder re-rank to top-5 with calibrated confidence and the 0.65 gate, decision table (answer, gap, degrade, ESC-008, step-up, unavailable), fallback ladder, caching, 160-180 ms p95 budget, 16 failure modes, log fields including `kb_entry_ids`, and the retrieval evaluation plan (Recall@5, MRR, nDCG, mean relevance > 0.85, gold-set design with auth, expiry and hallucination traps).
@@ -230,6 +254,9 @@ One entry per working day (15). Each entry: tasks, decisions with rationale, cha
 
 ## Day 9: Advice, security and compliance guardrails
 
+**Date**: 2026-10-09
+
+
 **Tasks completed**
 - `docs/guardrails/financial-advice.md`: information-versus-advice boundary for the six A4.1 categories (brief wording quoted, cross-checked against KB-POL-001), three-question test, per-category detection signals and allowed information with KB sources, layered enforcement (rule floor, advice classifier, output check), thresholds 0.50 and 0.30 aligned with disambiguation pair 2, 13 safe-response template names (text on Day 13), the ESC-013 offer-then-escalate route and its split from ESC-008, no-elicitation rule (no income, age or portfolio questions), 16 borderline cases, false-positive analysis, reserved test IDs.
 - `docs/guardrails/account-security.md`: the 8 A4.2 rules quoted verbatim and numbered R1-R8, component enforcement matrix, auth-level interplay table, and per rule the enforcement point, mechanism, failure behaviour, Day 10 attack surface and reserved test IDs; decision order, immutability and change control, metrics hooks.
@@ -258,6 +285,9 @@ One entry per working day (15). Each entry: tasks, decisions with rationale, cha
 **Next (Day 10)**: adversarial defences for the six A4.4 vectors (`GR-ATK-*`), 55+ guardrail and adversarial tests in the reserved ID ranges with 20 boss scenarios, response safety layer spec, monitoring dashboard with trigger heat map, incident response playbook.
 
 ## Day 10: Adversarial defences, response safety layer, monitoring, incident response
+
+**Date**: 2026-10-09
+
 
 **Tasks completed**
 - `docs/guardrails/adversarial-defences.md`: defences for the six A4.4 vectors (Prompt Injection, Jailbreak Attempts, Social Engineering, Data Exfiltration, Denial of Service, Identity Spoofing): canonicalisation, instruction/data separation, leak-tolerant system prompt, rate limiting and complexity scoring, attack-response contract that avoids the A9.2 anti-patterns (D-68 to D-77).
@@ -290,6 +320,9 @@ One entry per working day (15). Each entry: tasks, decisions with rationale, cha
 **Next (Day 11)**: continuous learning pipeline, A/B testing framework, safety-preserving update protocol, 200+ case safety suite index, Level 5 boss.
 
 ## Day 11: Continuous learning pipeline, A/B testing, safety suite, Level 5 boss
+
+**Date**: 2026-10-11
+
 
 **Tasks completed**
 - `docs/learning-pipeline/overview.md`: the loop mapped to A8.4 (DETECT to DOCUMENT) with the A5.4 protocol inside DEPLOY; five update classes in order of preference (U1 KB, U2 prompt layers 3-5, U3 A12.3 parameters, U4 NLU and retrieval models, U5 policy and generation model) and six excluded artefact groups (layers 0-2, rule layer, all 58 guardrails, registry parameters, ESC triggers, the suite and breaker); cadence (safety immediately, quality daily, style weekly); update strategy per class with incremental versus full retraining; roles; pipeline health metrics.
@@ -327,6 +360,9 @@ One entry per working day (15). Each entry: tasks, decisions with rationale, cha
 **Day 11 audit fixes** (independent audit, 26 findings; decisions D-156 to D-160): (1) deletion deadline: the 21-day retrain cycle did not meet the 30-day duty once gates G6 to G8 are counted (day 41 to 48), so a deletion-only rebuild path was added (same code and hyper-parameters, data minus tombstones; G1, G2 equivalence, G3, 1% and 5% canary, no A/B; 14-day cycle, old model retired by day 20) in `overview.md`, `data-pipeline.md` and `safety-invariants.md` (D-157); (2) over-strict oracles: 20 SS cases whose substring oracles failed correct replies ("loan" matching "alone", "will be approved" matching "cannot promise it will be approved") now use assertive, negation-aware patterns, checked against 37 sample replies; (3) `validate_manifest.py` hardened: new `manifest.lock.yaml` (floor, SHA, kind, expected_action, change log), `--rebuild` refuses a changed case without `--accept-change <ID> --decision <ref>`, refuses when the lock is absent unless `--init`, non-control SS cases need a non-empty oracle, PAN- and credential-shaped literals are rejected; the reviewer's mutations were re-run on scratch copies and are all caught; the docs now say plainly that a hash only detects change relative to a copy the changer cannot write (D-156); (4) Level 5 boss: states why a prompt-layer change is offered as the "model update" and what differs for a U4 or U5 candidate, adds the post-update suite run (assumed input), decision moved to day 21 (D-160); (5) experiment analysis: intention to treat with no post-assignment exclusions, SRM on randomised units, a 3-day CSAT maturity rule with a late-rating sensitivity analysis, a harm test for slices in place of an unattainable per-slice non-inferiority proof, an early one-sided harm rule (z at or below -2.0), arms frozen from day 14 to the day-21 decision, the Lan-DeMets convention named (D-158); (6) learning-invariant cases: `expected_guardrails` now holds only the control that rejects, protected guardrails moved to `covers`; SS-AUTH-05 no longer expects GR-SEC-R6; SS-HAL-14 escalates to ESC-008; SS-ESC-16 gains a tipping-off oracle; boundary control SS-ESC-20 added (message 15 does not fire ESC-010); (7) smaller items: workload model includes canary doubling (18 on the floor, 23 on the roster during an A/B stage), canary bounds quoted at the sample floors, holdback no longer "optional", pre-registration frozen at G5 in text and diagram, containment stated as 1 minus the escalation rate, closing confirmation exempt from the check-in limits, a precedence table for conflicting feedback sources (D-159). Suite: 349 cases (102 SS), 34 existing cases changed under D-156, all specified, not run.
 
 ## Day 12: Escalation triggers, routing and handoff, queues, KPI framework, dashboards
+
+**Date**: 2026-10-11
+
 
 **Tasks completed**
 - `config/escalation_rules.yaml`: machine-readable rules for ESC-001 to ESC-015 (brief wording quoted with page, priority, queue, SLA, `fire_when` expression over 35 defined signals, 28 sub-rules, precedence rank, cancellable flag, handoff mode, linked intents, guardrails, KB entries and tests), 7 additions XTR-01 to XTR-07 marked `origin: addition`, the 15 queues with hours, overflow chains and after-hours rules, the 8-element handoff package. Priorities, queues and SLAs equal KB-ESC-010 and the PDF (A6 pp.16-17): no mismatch found.
@@ -374,6 +410,9 @@ One entry per working day (15). Each entry: tasks, decisions with rationale, cha
 
 ## Day 13: Six-layer system prompt, governed parameters, template library, conversation design
 
+**Date**: 2026-10-12
+
+
 **Tasks completed**
 - `config/system-prompt/`: one file per A12.1 layer (Identity, Safety, Regulatory, Dialogue, Knowledge, Operational) with the brief's name, purpose, content and update frequency, a metadata header (version, owner, mutability, change process, approval chain, author, last reviewed, deployment date, model version, token budget), the prompt text and 84 testable assertions (`PA-L<layer>-<nn>`) each mapped to guardrail IDs and to existing test cases. Layers 0 to 2 are immutable to the learning pipeline. Every boundary has a SHOULD and a MUST NOT in the brief's six layers taken together (not for S11, K2, D4, D9, K4 individually; see Day 13 audit fixes). The text discloses AI identity, enforces the information-versus-advice boundary and the eight A4.2 rules, separates instructions from data with a per-turn boundary code, is leak-tolerant (no secret, no threshold, no figure, no tool name; states what to do when asked for it) and contains no digit outside section labels. Layer 3 has eight conditionally activated blocks (A12.2). Layer 5 is a fixed frame plus typed notice slots that cannot carry an instruction.
 - `config/system-prompt/README.md` and `manifest.yaml`: assembly order, precedence, ownership, conditional activation, token budget, versioning and hash scheme, and the `prompt_version` string logged per turn (current draft `sp-1.0.0+518d5a1e.n000000`).
@@ -417,6 +456,9 @@ One entry per working day (15). Each entry: tasks, decisions with rationale, cha
 - Not applied: finding 22 (a9 pattern claims by surveys, OTP-REQUEST and GEN-CHECKIN): the schema requires a non-empty pattern list, so removing a vacuous claim needs a schema decision (see (d)).
 
 ## Day 14: Simulations, audit logging, risk
+
+**Date**: 2026-10-12
+
 
 **Tasks completed**
 - `simulations/conv-07` to `conv-30`: 24 new annotated conversations, with conv-01 to conv-06 (the brief's six case studies re-run, kept as they were) 30 in all, 291 messages, 51 of the 63 templates used. Format is that of conv-06 (header with 21 fields, per-turn NLU / sentiment / guardrails / KB and tools / action / generation / state rows, decision points, closing, 8-element handoff package where a handoff occurred, self-audit of the 5 patterns and 8 anti-patterns).
@@ -469,3 +511,47 @@ One entry per working day (15). Each entry: tasks, decisions with rationale, cha
 - Two new conversations: conv-31 (disambiguation pair 3, ACC-003 vs ACC-004, email trap, multi-intent order) and conv-32 (CRD-003; ESC-010 fires on message 16 and not on message 15). 32 conversations, 318 messages, 34 of 41 intents, 15 of 15 brief triggers (D-207).
 - Validators: the simulation validator now catches credentials in English, Hindi and Hinglish, human claims, advice in other words, durations and dates no tool, router or KB row backs, rates in words, ESC fires with no cited sub-rule, handoff packages under 8 elements, topic statuses outside the schema enum, intents missing from the header, and stale self-audit numbers; the compliance validator holds the brief's A11.1, A11.2 and A10.3 text and rejects readable text in a ciphertext field. Every missed mutation of the audit was reproduced on scratch copies and is caught. The stronger checks found 35 real defects in the files, all fixed (D-204).
 - Lower findings: conv-20 no longer asks for a reason the customer gave, conv-18 reads the flag before acting on it and records why ESC-015.b is the one place treatment differs, the 1.5L source label (conv-16), the pattern-audit totals are generated from the table, intent headers and statuses corrected, conv-29 sentiment confidence follows the language-ID gap, conv-04 T10 gives the one fact asked, MM-30 quotes the brief's "7 daily entries". The conversations were also re-synced to the Day 13 template library (43 version bumps, 6 wording changes) and to prompt_version sp-1.1.0+1527a050.n000000.
+
+## Day 15: Cross-reference audit, polish, submission
+
+**Date**: 2026-10-13
+
+**Tasks completed**
+- Planning-file reference cleanup: 54 references to a planning file that sits outside the repository, in 18 files, were replaced by in-repo references (brief sections, decisions or documents). None remains; the two places that describe the absence check keep the word on purpose.
+- `tests/validate_crossrefs.py`: a repo-wide cross-reference lint with seven checks (cited paths and section numbers exist, every cited ID is defined in its home file, README counts match the files, no placeholder text, ASCII-only English text, stale future-tense wording, no planning-file citation). It was tried against seeded defects in a scratch copy, which it caught. Its first run found two real errors (a decision and a reserved range, both fixed below) and a stale README count.
+- Final cross-reference audit of the whole repository (27 findings: 6 HIGH, 14 MEDIUM, 7 LOW), and the fixes applied for all of them except the items listed under open questions:
+  - CHANGELOG: a Date line on every entry, taken from the commit history; this Day 15 entry; the three places that said a coordinator was "awaiting input" now say the query was drafted and not sent.
+  - `README.md` rewritten as the front door: status, overview, architecture summary with the 12 components and the diagram, setup and the seven validator commands, reading order, navigation naming every document, known limitations.
+  - `docs/innovations.md` (new): 16 project additions with what, why, the brief requirement extended and the evidence file; linked from the README, from `docs/requirements-traceability.md` (R-65) and from `docs/knowledge-base/maintenance-workflow.md`.
+  - Level 1 boss trace revised (D-210): T4 to T6 are a duplicate-charge dispute and a lost-card block, so no P0 fires and then waits while unrelated turns are served; T17 states the published starting rate and computes no EMI without a customer-stated rate. Still 20 turns and 12 topic switches (recounted).
+  - Level 1 documents: the latency sum in `component-interfaces.md` now agrees with the 2,850 ms budget (the Escalation Router's 50 ms applies only on an escalating turn); a "Message shapes" section with field tables built from the existing schemas; the A12.3 turn ceiling and ESC-010 guards added to `docs/architecture/dialogue-management.md`; a note on the audit-down exception in row 11; forward links in `system-architecture.md`; an accessibility and proactive service section in `conversation-design.md`.
+  - Traceability: R-01, R-34 and R-63 updated; R-65 to R-70 added (innovations, E5 constraints, A1.2 and A1.4 inputs, B4.1 data layers, dependency map with a Mermaid graph, accessibility).
+  - Simulations: `simulations/INDEX.md` section 8 maps the working counter names of the State rows to `config/dialogue_state.schema.json` fields or to "derived, not stored" (D-212); one stale sentence removed from conv-04.
+  - Claims that were not true were corrected: native-speaker review and LLM-as-judge calibration (`tests/README.md`), the sentiment lexicon "built with native-speaker review" (`docs/intent-taxonomy/sentiment.md`). The OWASP LLM01 to LLM10 names were checked against the OWASP GenAI Security Project list on Day 15 and match; the open items in `adversarial-defences.md`, `regulatory-mapping.md`, `risk-matrix.md` and `config/guardrails.yaml` are closed.
+  - Coordinator status made consistent: `docs/coordinator-questions.md` is a draft that was not sent; Q1 to Q12 are the rows D-01 to D-12; "Decided (coordinator ruling)" became "Decided (project decision)" (D-164, D-191).
+  - KB-ESC-003 now states the D-117 rule (version 2.0.0, because the rule changed; the simulations that cite it were updated); the duplicated sentence in the GEN-003 notes removed; `diagrams/learning-loop.mmd` says 356 cases; three `in_schema` flags in `config/escalation_rules.yaml` set to true.
+  - Submission checklist: all 36 minimum rows met, the Day 15 CHANGELOG row met, FC-02 to FC-09 point to `simulations/pattern-audit.md`, the 32-conversation count, the process wording removed; `tests/compliance/validate_compliance.py` and its README updated to match. The transfer row stays pending.
+  - About 40 forward references to days that are past were reworded to name the file that now holds the content. The 18 redundant `.gitkeep` files were removed.
+- Hash-protected test case GR-REG-17-01 had its planning-file reference replaced; the manifest was rebuilt with `--accept-change GR-REG-17-01 --decision D-208`.
+
+**Decisions (rationale in `docs/assumptions-and-decisions.md`)**
+- D-208: the GR-REG-17-01 change and the manifest rebuild. D-209: CHANGELOG dates come from the commit history; no session times are recorded. D-210: the Level 1 boss trace no longer fires a P0 and then serves unrelated turns. D-211: `docs/innovations.md`. D-212: the State-row counter names and their mapping.
+- D-175 to D-180 were reserved and not used; the log records the gap. The OWASP rows D-61, D-66 and D-77 and the turn-ceiling row D-174 were updated to their final status.
+
+**Challenges**
+- A rule in a later document (the P0 waiting rule, `routing-and-handoff.md` section 7) contradicted an early artefact (the Level 1 boss trace). The trace was changed and the rule was left alone, because XTR-01 cites turn 18 of the trace and the safety rule is the stronger source.
+- The brief asks for the date and time of each work session; only commit dates exist. The dates are taken from the commit history and the header says so; where several days share a date the work was done in consecutive sessions that day, and no time of day is claimed.
+- A KB entry that changes a rule is a MAJOR version under `docs/knowledge-base/kb-schema.md`, which meant updating every simulation turn that cites the entry's version.
+
+**Open questions**
+- Native-speaker review of the Hindi and Hinglish wording is still pending (launch blocker, D-145). KB facts render in English inside Hindi and Hinglish replies because only four KB entries carry Hindi and Hinglish bodies (D-199).
+- Proposals await sign-off by the Risk Committee or the Customer Experience Board; no committee has reviewed any layer (`docs/compliance/submission-checklist.md` section 6).
+- The coordinator questions (Q1, Q2, Q10, Q12) were drafted and never sent.
+- "10 automatic failure conditions" and "7 deliverable requirements" are proxies (D-01, D-02); the brief does not list them.
+- Nothing has been executed against a real system: no test case, simulation, metric or load figure is a result.
+- A staffing gap against the 60 percent replacement aim is recorded and needs a decision; the after-hours SLA deviation needs Risk Committee sign-off.
+- SEC-004 has no simulation (D-207).
+- No LLM-as-judge calibration is specified; behaviour checks need human review until a judge is calibrated.
+- The Retriever badge is not claimed (the retrieval budget of 160 to 180 ms is above 150 ms), and no stretch profile was added.
+
+**Next**: Repository transfer to @ZethetaIntern: pending, to be done by the repository owner.

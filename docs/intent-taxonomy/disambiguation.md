@@ -13,7 +13,7 @@ Brief ref: A3.4 (six confusable pairs, each with clarifying question sequences, 
 - One question per turn, closed form, rendered as quick-reply buttons with at most 3 options, each with a plain label. Free-text answers are accepted and classified.
 - Questions state the evidence they used ("I can see complaint CMP-... open since ...") instead of asking blindly (Context Carry-Over).
 - Wording changes on the second attempt and switches from text to buttons if it was text (Robotic Loop: never the same question the same way 3 or more times).
-- Hinglish and Hindi variants are used when `language.primary` is `hinglish` or `hi`. English wordings below are the canonical ones; Hinglish examples show the pattern, and the final copy is a Day 13 template.
+- Hinglish and Hindi variants are used when `language.primary` is `hinglish` or `hi`. English wordings below are the canonical ones; Hinglish examples show the pattern, and the final copy is in the templates under `config/templates/`.
 
 **Budget.** At most 2 clarification turns per ambiguity (`max_clarification_turns`). After that the pair's *safe default* applies, or a human offer with the gathered context if no safe default exists.
 
@@ -165,7 +165,7 @@ Diagram: `diagrams/disambiguation-05-sec-fraud-vs-txn-dispute.mmd`. The bridge b
 
 **Examples.**
 
-- "Ek Rs 480 Swiggy charge samajh nahi aaya" -> TXN-002 `unrecognised_charge` 0.78, SEC-001 0.61, gap 0.17: gap is >= 0.15 but SEC-001 is above its 0.50 flow-entry gate and the merchant is known, so Q1 is asked (this is the Day 3 trace, turn 4 and 5).
+- "Ek Rs 480 Swiggy charge samajh nahi aaya" -> TXN-002 `unrecognised_charge` 0.78, SEC-001 0.61, gap 0.17: gap is >= 0.15 but SEC-001 is above its 0.50 flow-entry gate and the merchant is known, so Q1 is asked (this is turn 4 of the Level 1 boss trace; at turn 5 the customer says it was a duplicate charge, which resolves to TXN-002 `duplicate_charge`).
 - "I clicked a link and gave my OTP" -> SEC-001 `scam_victim` 0.93, no question, ESC-001.
 
 ## 7. Pair 6: CRD-001 (card block) vs SEC-001 (fraud report)
@@ -212,5 +212,5 @@ All six pairs have a diagram, entity-based rules, threshold logic and a question
 ## 9. Open items
 
 - The Day 6 boss set (10 ambiguous messages: one per pair plus 4 cross-pair cases, 6 in Hinglish) is `tests/nlu/boss-level2.yaml`; its schema and scoring are in `tests/nlu/README.md`.
-- Question and boundary-sentence wording is final only when the Day 13 templates are written; the wording above fixes the structure and the English canonical form.
+- Question and boundary-sentence wording is in the templates under `config/templates/`; the wording above fixes the structure and the English canonical form.
 - The 0.50 flow-entry gate and the 0.15 gap are defaults to be tuned on the NLU evaluation set; their change process is A12.3 (`intent_confidence_threshold`: NLU Team, A/B test required). The 0.50 gate for safety flows is a Risk Committee setting and should not be raised by an A/B result alone.

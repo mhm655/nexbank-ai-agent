@@ -108,7 +108,7 @@ Turn unit: one customer or agent message (D-119). System events (E) are not coun
 | NLU | n/a (agent message) |
 | Sentiment | n/a (agent messages are not scored); smoothed stays 0.10 |
 | Guardrails | checked: Output Safety Layer: GR-OUT-01, GR-OUT-02, GR-OUT-03, GR-OUT-04, GR-OUT-05, GR-OUT-06; triggered: GR-SEC-R1 (masked contact), GR-OUT-05 (the time is a request) |
-| KB / tools | KB: KB-ESC-003@1.0.0 (0.74), KB-POL-007@1.0.0 (0.76); retrieval confidence 0.76; decision answer<br>tool: `get_profile_masked`() -> ok: {registered_phone: ending 3345} |
+| KB / tools | KB: KB-ESC-003@2.0.0 (0.74), KB-POL-007@1.0.0 (0.76); retrieval confidence 0.76; decision answer<br>tool: `get_profile_masked`() -> ok: {registered_phone: ending 3345} |
 | Action | confirm: explicit confirmation before schedule_callback (CMP-005 is explicit) |
 | Generation | template `TPL-ESC-CALLBACK-OFFER/ask@1.0.0` (language en); patterns: P3; anti-pattern check: none |
 | State | phase CONFIRM; auth full_kyc; turn_count 5; topic_stack [ACC-006 (add_nominee): active]; slots {relationship=daughter (filled)}; pending_confirmation schedule_callback, explicit, awaiting yes or no; counters: all 0; turns_since_resolution 5; escalation_proximity 0.20 |

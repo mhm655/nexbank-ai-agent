@@ -87,7 +87,7 @@ Turn unit: one customer or agent message (D-119). System events (E) are not coun
 | NLU | n/a (agent message) |
 | Sentiment | n/a (agent messages are not scored); smoothed stays 0.00 |
 | Guardrails | checked: Output Safety Layer: GR-OUT-01, GR-OUT-02, GR-OUT-03, GR-OUT-04, GR-OUT-05, GR-OUT-06; triggered: GR-ADV-08, GR-OUT-05 (a callback time is a request, not a guarantee) |
-| KB / tools | KB: KB-ESC-003@1.0.0 (0.70), KB-POL-007@1.0.0 (0.78); retrieval confidence 0.78; decision answer<br>router: queue=Wealth Advisory (closed; hours 08:00-22:00 IST); after_hours rule=callback_only; callback_option=next slot after 08:00 IST on 13 Oct 2026 |
+| KB / tools | KB: KB-ESC-003@2.0.0 (0.70), KB-POL-007@1.0.0 (0.78); retrieval confidence 0.78; decision answer<br>router: queue=Wealth Advisory (closed; hours 08:00-22:00 IST); after_hours rule=callback_only; callback_option=next slot after 08:00 IST on 13 Oct 2026 |
 | Action | escalate: ESC-013 record created, case opened for the next opening, callback offered; no advice given by anyone in the meantime |
 | Generation | template `TPL-ADV-ADVISOR-UNAVAILABLE/default@1.0.0` (language en); patterns: P4, P5; anti-pattern check: none |
 | State | phase ESCALATING; auth otp_verified; turn_count 4; topic_stack [PRD-005 (forex_timing_advice): active, TXN-006 (charges_and_limits_info): parked]; slots {currency=USD (filled)}; pending_confirmation none; counters: multi_intent 1, advice_deflections 1, advisor_offers 1; turns_since_resolution 4; escalation_proximity 0.60 |
@@ -115,7 +115,7 @@ Turn unit: one customer or agent message (D-119). System events (E) are not coun
 | NLU | n/a (agent message) |
 | Sentiment | n/a (agent messages are not scored); smoothed stays 0.00 |
 | Guardrails | checked: Output Safety Layer: GR-OUT-01, GR-OUT-02, GR-OUT-03, GR-OUT-04, GR-OUT-05, GR-OUT-06; triggered: GR-OUT-05 (the window is the tool's, stated as a request) |
-| KB / tools | KB: KB-ESC-003@1.0.0 (0.72), KB-POL-007@1.0.0 (0.80); retrieval confidence 0.80; decision answer<br>tool: `schedule_callback`(team=Wealth Advisory, channel=registered contact (masked), idempotency_key=set) -> ok: {callback_reference: CBK-SYN-1601, requested_window: 13 Oct 2026, 08:00 to 10:00 IST} |
+| KB / tools | KB: KB-ESC-003@2.0.0 (0.72), KB-POL-007@1.0.0 (0.80); retrieval confidence 0.80; decision answer<br>tool: `schedule_callback`(team=Wealth Advisory, channel=registered contact (masked), idempotency_key=set) -> ok: {callback_reference: CBK-SYN-1601, requested_window: 13 Oct 2026, 08:00 to 10:00 IST} |
 | Action | respond: callback request placed; the full conversation goes with it |
 | Generation | template `TPL-ESC-CALLBACK-OFFER/placed@1.0.0` (language en); patterns: P4, P5; anti-pattern check: none |
 | State | phase ESCALATING > RESPOND; auth otp_verified; turn_count 6; topic_stack [PRD-005 (forex_timing_advice): active, TXN-006 (charges_and_limits_info): parked]; slots {currency=USD (filled)}; pending_confirmation none; counters: multi_intent 1, advice_deflections 1, advisor_offers 1; turns_since_resolution 0; escalation_proximity 0.60 |

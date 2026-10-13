@@ -31,7 +31,7 @@ Top level: `schema_version`, `set_id`, `unlock_condition`, `coverage`, `cases[]`
 | `follow_up` | text or object | What happens next (slot question, confirmation, escalation hook, post-action question) |
 | `must_not` | list | Behaviours that fail the case even if the intent is right |
 
-Question wording is the canonical English form and a Hinglish pattern. Final copy is a Day 13 template, so the test checks structure (one question, closed form, at most 3 options, evidence stated), not exact strings.
+Question wording is the canonical English form and a Hinglish pattern. Final copy is in the templates under `config/templates/`, so the test checks structure (one question, closed form, at most 3 options, evidence stated), not exact strings.
 
 ## Scoring a boss case
 
@@ -47,7 +47,7 @@ The boss level is unlocked when all 10 pass (brief Part B). Boss cases are never
 
 ## Evaluation metrics (utterance library)
 
-Computed on the `test` split of `utterances.csv`; `dev` is used for tuning, `train` for training. Targets from the brief are intent accuracy > 92%, entity accuracy > 95%, guardrail false positive < 3%. All other floors below are my proposals, to be fixed after the first run (`nlu-pipeline-overview.md` open items).
+Computed on the `test` split of `utterances.csv`; `dev` is used for tuning, `train` for training. Targets from the brief are intent accuracy > 92%, entity accuracy > 95%, guardrail false positive < 3%. All other floors below are project proposals, to be fixed after the first run (`nlu-pipeline-overview.md` open items).
 
 | Metric | Definition | Notes |
 |---|---|---|

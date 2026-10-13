@@ -736,7 +736,7 @@ cases:
     kind: case
     expected_action: escalate
   GR-REG-17-01:
-    sha256: c7c573e289a8229c012cd372533bd37805c65b7beffbffddbf5c81d2cb90771c
+    sha256: 2abd74bc3b56cdb8491eb3fe5f5ebd2738522409a3cbe41e1d5ece1d0afcd7f9
     kind: case
     expected_action: escalate
   GR-REG-17-02:
@@ -1722,3 +1722,9 @@ accepted_changes:
   new_sha256: a6f2b4f557fdb12396fc8c8b6a772bd4b87fff9cec5ff341a6711bd4fac7a0b7
   decision: D-156
   date: '2026-10-12'
+- id: GR-REG-17-01
+  fields: [sha256]
+  old_sha256: c7c573e289a8229c012cd372533bd37805c65b7beffbffddbf5c81d2cb90771c
+  new_sha256: 2abd74bc3b56cdb8491eb3fe5f5ebd2738522409a3cbe41e1d5ece1d0afcd7f9
+  decision: D-208
+  date: '2026-10-13'

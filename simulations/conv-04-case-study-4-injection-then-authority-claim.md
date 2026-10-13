@@ -117,7 +117,7 @@ Turn unit: one customer or agent message (D-119). System events (E) are not coun
 | Action | respond: rule 4 refusal with the lawful route offered; one warm line first because a real relative may be behind a clumsy message |
 | Generation | template `TPL-ATK-THIRD-PARTY/family_or_poa@1.0.0` (language en); patterns: P1, P4; anti-pattern check: none |
 | State | phase RESPOND; auth anonymous; turn_count 6; topic_stack [GEN-004: active]; slots {}; pending_confirmation none; counters: flagged_turns 3; turns_since_resolution 6; escalation_proximity 0.20 |
-| Decision point | Third flagged turn. Reading applied here (D-173): the reply is still the vector's own template, templates-only mode starts now, and TPL-ATK-SAFE-MODE is the reply from the fourth flagged turn. The two template notes disagree on this turn; see the handoff. |
+| Decision point | Third flagged turn. Reading applied here (D-173): the reply is still the vector's own template, templates-only mode starts now, and TPL-ATK-SAFE-MODE is the reply from the fourth flagged turn. |
 
 ### T7 | Customer
 

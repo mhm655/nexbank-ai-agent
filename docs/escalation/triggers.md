@@ -462,4 +462,4 @@ Open items:
 3. AML Compliance: the indicator list for ESC-012 (G-03).
 4. Product: the meaning of "5L" (total deposit balance is the reading used) and of a "turn" (message is the reading used).
 5. The `escalation` state object is proposed, not yet in `config/dialogue_state.schema.json`.
-6. Template text for the crisis, fraud and handoff replies is Day 13.
+6. Template text for the crisis, fraud and handoff replies is in `config/templates/escalation.yaml`.
